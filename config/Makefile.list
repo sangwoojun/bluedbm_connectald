@@ -1,0 +1,4 @@
+projectnames = emultest \
+	boardtest \
+	simple \
+	test

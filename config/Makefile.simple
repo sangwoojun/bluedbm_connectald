@@ -1,0 +1,7 @@
+simple: BLUEDBM_PLATFORMDIR=../src/bluedbm_platform/simple_mapreduce_platform/
+simple: BLUEDBM_DRAMDIR=../src/hardware_controller/dram/simulated/
+simple: BSVFILES = Interface.bsv Top.bsv 
+simple: BSVFILES_ALL = $(BSVFILES) $(BLUEDBM_PLATFORMDIR)/BlueDBMPlatform.bsv \
+	$(BLUEDBM_PLATFORMDIR)/PlatformInterfaces.bsv \
+	$(BLUEDBM_DRAMDIR)/DRAMController.bsv
+simple: CPPFILES_ALL = $(CPPFILES) $(BLUEDBM_PLATFORMDIR)/platform.cpp

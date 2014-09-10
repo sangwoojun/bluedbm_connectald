@@ -1,0 +1,27 @@
+boardtest: BLUEDBM_PLATFORMDIR=../src/bluedbm_platform/test_platform/
+boardtest: BLUEDBM_FLASHDIR=../src/hardware_controller/flash/emulated/
+boardtest: BLUEDBM_DRAMDIR=../src/hardware_controller/dram/raw_64/
+
+boardtest: BSVFILES = Interface.bsv Top.bsv 
+boardtest: BSVFILES_ALL = $(BSVFILES) $(BLUEDBM_PLATFORMDIR)/BlueDBMPlatform.bsv \
+	$(BLUEDBM_PLATFORMDIR)/PlatformInterfaces.bsv \
+	$(BLUEDBM_FLASHDIR)/EmulatedFlash.bsv \
+	$(BLUEDBM_DRAMDIR)/DRAMController.bsv
+boardtest: XBSVFLAGS=--verilog ../../../xbsv/xilinx/ddr3_v1_7/ \
+	\
+	--verilog ../../xilinx/aurora_8b10b_X1Y24_125/ \
+	--xci ../../xilinx/aurora_8b10b_X1Y24_125/aurora_8b10b_X1Y24.xci \
+	--constraint ../xilinx/aurora_8b10b_X1Y24_125/aurora_8b10b_X1Y24_exdes.xdc \
+	\
+	--verilog ../../../xbsv/xilinx/aurora_64b66b_v7/ \
+	--xci ../../../xbsv/xilinx/aurora_64b66b_v7/aurora_64b66b_0.xci \
+	--constraint ../../xbsv/xilinx/constraints/vc707_aurora.xdc \
+	\
+	--constraint ../../xbsv/xilinx/constraints/vc707_ddr3.xdc \
+	--constraint ../xilinx/constraints/vc707_i2c.xdc \
+	--clib rt
+boardtest: CPPFILES_ALL = $(CPPFILES) $(BLUEDBM_PLATFORMDIR)/platform.cpp
+
+	#--verilog ../../xilinx/aurora_8b10b_X1Y0/ \
+	--xci ../../xilinx/aurora_8b10b_X1Y0/aurora_8b10b_X1Y0/aurora_8b10b_X1Y0.xci \
+	--constraint ../xilinx/aurora_8b10b_X1Y0/aurora_8b10b_X1Y0_exdes.xdc \

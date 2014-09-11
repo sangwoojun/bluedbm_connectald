@@ -11,7 +11,7 @@ typedef TLog#(PageWords) PageWordsLog;
 
 interface PageCacheIfc#(numeric type tBufferSizeLog);
 	method Action readPage(Bit#(64) pageIdx, Bit#(8) tag);
-	method ActionValue#(Tuple2#(Bit#(WordSz), Bit#(32))) readWord;
+	method ActionValue#(Tuple2#(Bit#(WordSz), Bit#(8))) readWord;
 	method Action writePage (Bit#(64) pageIdx, Bit#(8) tag);
 	method Action writeWord (Bit#(WordSz) data, Bit#(8) tag);
 endinterface
@@ -74,14 +74,14 @@ provisos ( Add#(a__, TAdd#(PageWordsLog, tBufferSizeLog), 64),Add#(b__, tBufferS
 		curReadIdx <= zeroExtend(pageIdxt);
 		readCount <= 0;
 	endmethod
-	method ActionValue#(Tuple2#(Bit#(WordSz), Bit#(32))) readWord;
+	method ActionValue#(Tuple2#(Bit#(WordSz), Bit#(8))) readWord;
 		//let v <- pageBuffer.portB.response.get();
 		let v = readDataQ.first;
 		readDataQ.deq;
 		//readCount <= readCount - 8;
 		globalCounter <= globalCounter + 1;
 		readTagQ.deq;
-		return tuple2(v, extend(readTagQ.first));
+		return tuple2(v, readTagQ.first);
 	endmethod
 	
 	method Action writePage (Bit#(64) pageIdx, Bit#(8) tag);

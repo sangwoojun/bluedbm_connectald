@@ -113,8 +113,6 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
    MemwriteEngineV#(WordSz,1,1) we <- mkMemwriteEngine;
 
    PageCacheIfc#(3) pageCache <- mkPageCache; // 8 pages
-   FIFO#(Bit#(8)) readBufferFreeQ <- mkSizedFIFO(bufferCount); // bufidx
-   Vector#(BufferCount, Reg#(Bit#(32))) dmaReadRefs <- replicateM(mkReg(0));
 
 	DMAWriteEngineIfc#(WordSz) dmaWriter <- mkDmaWriteEngine(we.writeServers[0], we.dataPipes[0]);
 	rule dmaWriteData;
@@ -122,59 +120,25 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 		let d = tpl_1(r);
 		let t = tpl_2(r);
 		//$display ( "data:%d %d", d[31:0], t );
-		dmaWriter.write(d,truncate(t));
+		dmaWriter.write(d,t);
 	endrule
 	rule dmaWriteDone;
 		let tag <- dmaWriter.done;
 		indication.readDone(zeroExtend(tag));
 	endrule
 
-
-	Reg#(Bit#(32)) dmaReadCount <- mkReg(0);
-	Reg#(Bit#(5)) dmaReadBurstCount <- mkReg(0);
-
-	FIFO#(Bit#(8)) readBurstIdxQ <- mkSizedFIFO(8);
-	FIFO#(Bit#(8)) readIdxQ <- mkFIFO;
-
-   rule read_finish;
-      let rv0 <- re.readServers[0].response.get;
-   endrule
-
-	rule driveHostDmaReq (dmaReadCount > 0);
-		let bufIdx = readIdxQ.first;
-		let rdRef = dmaReadRefs[bufIdx];
-		let dmaReadOffset = fromInteger(pageBytes)-dmaReadCount;
-
-
-		re.readServers[0].request.put(MemengineCmd{pointer:rdRef, base:extend(dmaReadOffset), len:fromInteger(burstBytes), burstLen:fromInteger(burstBytes)});
-
-
-		dmaReadCount <= dmaReadCount - fromInteger(burstBytes);
-		if ( dmaReadCount == fromInteger(burstBytes)) readIdxQ.deq;
-
-		readBurstIdxQ.enq(readIdxQ.first);
+	DMAReadEngineIfc#(WordSz) dmaReader <- mkDmaReadEngine(re.readServers[0], re.dataPipes[0]);
+	rule dmaReadDone;
+		let bufidx <- dmaReader.done;
+		indication.writeDone(zeroExtend(bufidx));
 	endrule
-	
-	Reg#(Bit#(32)) pageWriteCount <- mkReg(0);
-	rule flushHostRead;
-		let bufidx = readBurstIdxQ.first;
-		if ( dmaReadBurstCount >= fromInteger(burstWords)-1 ) begin
-			dmaReadBurstCount <= 0;
-			readBurstIdxQ.deq;
-
-			if ( pageWriteCount + fromInteger(burstWords) >= fromInteger(pageWords) ) begin
-				pageWriteCount <= 0;
-				indication.writeDone(zeroExtend(bufidx));
-			end else begin
-				pageWriteCount <= pageWriteCount + fromInteger(burstWords);
-			end
-		end else begin
-			dmaReadBurstCount <= dmaReadBurstCount + 1;
-		end
-
-      let v <- toGet(re.dataPipes[0]).get;
-	  pageCache.writeWord(v, bufidx);
+	rule dmaReadData;
+		let r <- dmaReader.read;
+		let d = tpl_1(r);
+		let t = tpl_2(r);
+		pageCache.writeWord(d,t);
 	endrule
+
 
 	FIFO#(FlashCmd) flashCmdQ <- mkSizedFIFO(32);
 	rule driveFlashCmd;
@@ -187,14 +151,11 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 			pageCache.readPage( zeroExtend(cmd.page), cmd.tag);
 			//$display( "starting page read %d at tag %d in buffer %", cmd.page, cmd.tag, freeidx );
 		end else if ( cmd.cmd == Write ) begin
-			if ( dmaReadCount == 0 ) begin
-				flashCmdQ.deq;
-				dmaReadCount <= fromInteger(pageBytes);
+			flashCmdQ.deq;
+			dmaReader.startRead(cmd.tag, fromInteger(pageWords));
 
-				pageCache.writePage(zeroExtend(cmd.page), cmd.tag);
-				readIdxQ.enq(cmd.tag);
-				//$display( "starting page write page %d at tag %d", cmd.page, cmd.tag );
-			end
+			pageCache.writePage(zeroExtend(cmd.page), cmd.tag);
+			//$display( "starting page write page %d at tag %d", cmd.page, cmd.tag );
 		end
 	endrule
 
@@ -246,10 +207,10 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 	endmethod
 	method Action addWriteHostBuffer(Bit#(32) pointer, Bit#(32) idx);
 		//writeBufferFreeQ.enq(truncate(idx));
-		dmaReadRefs[idx] <= pointer;
+		//dmaReadRefs[idx] <= pointer;
+		dmaReader.addBuffer(truncate(idx), pointer);
 	endmethod
 	method Action addReadHostBuffer(Bit#(32) pointer, Bit#(32) idx);
-		//readBufferFreeQ.enq(truncate(idx));
 		dmaWriter.addBuffer(pointer);
 	endmethod
    endinterface
@@ -263,7 +224,96 @@ endmodule
 
 
 
+interface DMAReadEngineIfc#(numeric type wordSz);
+	method ActionValue#(Tuple2#(Bit#(wordSz), Bit#(8))) read;
+	method Action startRead(Bit#(8) bufidx, Bit#(32) wordCount);
+	method ActionValue#(Bit#(8)) done;
+	method Action addBuffer(Bit#(8) idx, Bit#(32) bref);
+endinterface
+module mkDmaReadEngine#(
+	Server#(MemengineCmd,Bool) rServer,
+	PipeOut#(Bit#(wordSz)) rPipe )(DMAReadEngineIfc#(wordSz))
+	;
+	
+	Integer pageBytes = valueOf(PageBytes);
+	
+	Integer bufferCount = valueOf(BufferCount);
+	Integer wordBytes = valueOf(WordBytes); 
+	Integer burstBytes = 16*4;
+	Integer burstWords = burstBytes/wordBytes;
+	
+	Integer pageWords = pageBytes/wordBytes;
+	
+	Vector#(BufferCount, Reg#(Bit#(32))) dmaReadRefs <- replicateM(mkReg(0));
+	
+	Reg#(Bit#(32)) dmaReadCount <- mkReg(0);
+	Reg#(Bit#(5)) dmaReadBurstCount <- mkReg(0);
 
+	FIFO#(Bit#(8)) readBurstIdxQ <- mkSizedFIFO(8);
+	FIFO#(Bit#(8)) readIdxQ <- mkFIFO;
+
+   rule read_finish;
+      let rv0 <- rServer.response.get;
+   endrule
+
+	rule driveHostDmaReq (dmaReadCount > 0);
+		let bufIdx = readIdxQ.first;
+		let rdRef = dmaReadRefs[bufIdx];
+		let dmaReadOffset = fromInteger(pageBytes)-dmaReadCount;
+
+
+		rServer.request.put(MemengineCmd{pointer:rdRef, base:extend(dmaReadOffset), len:fromInteger(burstBytes), burstLen:fromInteger(burstBytes)});
+
+
+		dmaReadCount <= dmaReadCount - fromInteger(burstBytes);
+		if ( dmaReadCount == fromInteger(burstBytes)) readIdxQ.deq;
+
+		readBurstIdxQ.enq(readIdxQ.first);
+	endrule
+
+	FIFO#(Tuple2#(Bit#(wordSz), Bit#(8))) readQ <- mkSizedFIFO(8);
+	
+	FIFO#(Bit#(8)) readDoneQ <- mkFIFO;
+	Reg#(Bit#(32)) pageWriteCount <- mkReg(0);
+	rule flushHostRead;
+		let bufidx = readBurstIdxQ.first;
+		if ( dmaReadBurstCount >= fromInteger(burstWords)-1 ) begin
+			dmaReadBurstCount <= 0;
+			readBurstIdxQ.deq;
+
+			if ( pageWriteCount + fromInteger(burstWords) >= fromInteger(pageWords) ) begin
+				pageWriteCount <= 0;
+				//indication.writeDone(zeroExtend(bufidx));
+				readDoneQ.enq(bufidx);
+			end else begin
+				pageWriteCount <= pageWriteCount + fromInteger(burstWords);
+			end
+		end else begin
+			dmaReadBurstCount <= dmaReadBurstCount + 1;
+		end
+
+      let v <- toGet(rPipe).get;
+	  //pageCache.writeWord(v, bufidx);
+	  readQ.enq(tuple2(v, bufidx));
+	endrule
+	
+	method ActionValue#(Tuple2#(Bit#(wordSz), Bit#(8))) read;
+		readQ.deq;
+		return readQ.first;
+	endmethod
+	method Action startRead(Bit#(8) bufidx, Bit#(32) wordCount) if ( dmaReadCount == 0 );
+			dmaReadCount <= fromInteger(pageBytes);
+			readIdxQ.enq(bufidx);
+	endmethod
+	method ActionValue#(Bit#(8)) done;
+		readDoneQ.deq;
+		return readDoneQ.first;
+	endmethod
+	method Action addBuffer(Bit#(8) idx, Bit#(32) bref);
+		dmaReadRefs[idx] <= bref;
+	endmethod
+endmodule
+	
 
 
 

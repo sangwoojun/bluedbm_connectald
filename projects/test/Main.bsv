@@ -111,24 +111,9 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 		indication.hexDump(truncate(data));
 	endrule
 
-   MemreadEngine#(64,1)  re <- mkMemreadEngine;
-   MemwriteEngine#(64,1) we <- mkMemwriteEngine;
+   MemreadEngineV#(64,1,2)  re <- mkMemreadEngine;
+   MemwriteEngineV#(64,1,2) we <- mkMemwriteEngine;
 
-   Reg#(Bit#(32))        rdIterCnt <- mkReg(0);
-   Reg#(Bit#(32))        wrIterCnt <- mkReg(0);
-   Reg#(Bit#(32))            rdCnt <- mkReg(0);
-   Reg#(Bit#(32))            wrCnt <- mkReg(0);
-   Reg#(ObjectPointer)      rdPointer <- mkReg(0);
-   Reg#(ObjectPointer)      wrPointer <- mkReg(0);
-   Reg#(Bit#(32))         burstLen <- mkReg(0);
-   Reg#(Bit#(32))         numWords <- mkReg(0);
-   
-   FIFOF#(Bit#(64))    buffer <- mkSizedBRAMFIFOF(16);
-   Reg#(Bit#(32))    rdBuffer <- mkReg(32);
-   Reg#(Bit#(32))    wrBuffer <- mkReg(0); 
-   
-
-   
    rule read_finish;
       let rv0 <- re.readServers[0].response.get;
    endrule

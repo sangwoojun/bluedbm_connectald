@@ -152,7 +152,7 @@ int main(int argc, const char **argv)
 
 	for ( int i = 0; i < 8192/4; i++ ) {
 		for ( int j = 0; j < BUFFER_COUNT; j++ ) {
-			dstBuffers[j][i] = 0;
+			dstBuffers[j][i] = 8192/4-i;
 			srcBuffers[j][i] = i;
 		}
 	}
@@ -172,6 +172,8 @@ int main(int argc, const char **argv)
 	printf( "trying reading from page!\n" );
 
 	sem_wait(&done_sem);
+
+	sleep(1);
 	
 	for ( int i = 0; i < 8192/4; i++ ) {
 		printf( "0 %d\n", dstBuffers[0][i] );

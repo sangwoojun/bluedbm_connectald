@@ -8,7 +8,8 @@ BSVFILES = Main.bsv Top.bsv \
 CPPFILES=main.cpp
 #XBSVFLAGS=--bscflags " -D TRACE_AXI"
 
-EXTRA_XBSVFLAGS += -D IMPORT_HOSTIF -D PinType=Top_Pins --bscflags " -D DataBusWidth=128"
+EXTRA_XBSVFLAGS += -D IMPORT_HOSTIF -D PinType=Top_Pins
+#EXTRA_XBSVFLAGS += -D IMPORT_HOSTIF -D PinType=Top_Pins --bscflags " -D DataBusWidth=128"
 ifeq ($(BOARD), vc707)
 EXTRA_XBSVFLAGS += \
 	--verilog ../../xilinx/aurora_8b10b_fmc1/ \

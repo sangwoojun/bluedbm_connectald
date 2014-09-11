@@ -57,8 +57,8 @@ endinterface
 
 interface MainIfc;
 	interface FlashRequest request;
-	interface ObjectReadClient#(128) dmaReadClient;
-	interface ObjectWriteClient#(128) dmaWriteClient;
+	interface ObjectReadClient#(64) dmaReadClient;
+	interface ObjectWriteClient#(64) dmaWriteClient;
 
 	interface Aurora_Pins#(4) aurora_fmc1;
 	interface Aurora_Clock_Pins aurora_clk_fmc1;
@@ -68,20 +68,23 @@ typedef enum {Read,Write,Erase} CmdType deriving (Bits,Eq);
 typedef struct { Bit#(5) channel; Bit#(5) chip; Bit#(8) block; Bit#(8) page; CmdType cmd; Bit#(8) tag;} FlashCmd deriving (Bits,Eq);
 
 typedef 8192 PageBytes;
-typedef 16 WordBytes;
+//typedef 16 WordBytes;
+typedef 8 WordBytes;
 typedef 128 BufferCount;
 
 module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 	
 	Integer pageBytes = valueOf(PageBytes);
-	Integer wordBytes = valueOf(WordBytes); //128 bits
+	Integer wordBytes = valueOf(WordBytes); 
 	Integer pageWords = pageBytes/wordBytes;
 	Integer bufferCount = valueOf(BufferCount);
+	Integer burstBytes = 16*4;
+	Integer burstWords = burstBytes/wordBytes;
 
 	GtxClockImportIfc gtx_clk_fmc1 <- mkGtxClockImport;
 	AuroraIfc auroraIntra1 <- mkAuroraIntra(gtx_clk_fmc1.gtx_clk_p_ifc, gtx_clk_fmc1.gtx_clk_n_ifc, clk250);
    
-   BRAMFIFOVectorIfc#(7, 32, Bit#(128)) writeBuffer <- mkBRAMFIFOVector(4);
+   BRAMFIFOVectorIfc#(7, 32, Bit#(64)) writeBuffer <- mkBRAMFIFOVector(8);
 
 /*
 	Reg#(Bit#(16)) curTestData <- mkReg(0);
@@ -108,8 +111,8 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 		indication.hexDump(truncate(data));
 	endrule
 
-   MemreadEngine#(128,1)  re <- mkMemreadEngine;
-   MemwriteEngine#(128,1) we <- mkMemwriteEngine;
+   MemreadEngine#(64,1)  re <- mkMemreadEngine;
+   MemwriteEngine#(64,1) we <- mkMemwriteEngine;
 
    Reg#(Bit#(32))        rdIterCnt <- mkReg(0);
    Reg#(Bit#(32))        wrIterCnt <- mkReg(0);
@@ -156,29 +159,15 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 	Reg#(Bit#(5)) burstCount <- mkReg(0);
 	Reg#(Bit#(32)) writeCount <- mkReg(0);
 
-
 	FIFO#(Bit#(8)) startDmaFlushQ <- mkFIFO;
 	rule startFlushDma ( burstCount == 0 && !isValid(curWriteBuf) );
 		let rbuf <- writeBuffer.getReadyIdx;
 		let rcount = writeBuffer.getDataCount(rbuf);
 		//$display ( "datacount: %d", rcount );
-		if ( rcount >= 4 ) begin
+		if ( rcount >= fromInteger(burstWords) ) begin
 			curWriteBuf <= tagged Valid zeroExtend(rbuf);
 			startDmaFlushQ.enq(zeroExtend(rbuf));
-			
-			/*
-			let s = dmaWriteStatus[rbuf];
-			let tag = tpl_1(s);
-			let offset = tpl_2(s);
-			dmaWriteStatus[rbuf] <= tuple2(tag,offset+(16*4));
-			let wrRef = dmaWriteRefs[rbuf];
-			burstCount <= 1;
-		  
-			//$display( "%d: starting burst %d", rbuf, offset );
-			we.writeServers[0].request.put(MemengineCmd{pointer:wrRef, base:zeroExtend(offset), len:16*4, burstLen:16*4});
-			*/
 		end
-		
 	endrule
 	rule startFlushDma2;
 		let rbuf = startDmaFlushQ.first;
@@ -187,17 +176,17 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 		let s = dmaWriteStatus[rbuf];
 		let tag = tpl_1(s);
 		let offset = tpl_2(s);
-		dmaWriteStatus[rbuf] <= tuple2(tag,offset+(16*4));
+		dmaWriteStatus[rbuf] <= tuple2(tag,offset+fromInteger(burstBytes));
 		let wrRef = dmaWriteRefs[rbuf];
 		burstCount <= 1;
 	  
 		//$display( "%d: starting burst %d", rbuf, offset );
-		we.writeServers[0].request.put(MemengineCmd{pointer:wrRef, base:zeroExtend(offset), len:16*4, burstLen:16*4});
+		we.writeServers[0].request.put(MemengineCmd{pointer:wrRef, base:zeroExtend(offset), len:fromInteger(burstBytes), burstLen:fromInteger(burstBytes)});
 	endrule
 
 	FIFO#(Bit#(8)) curWriteBufQ <- mkSizedFIFO(5);
 	rule flushDma ( burstCount > 0 && isValid(curWriteBuf));
-		if ( burstCount >= 4 ) begin
+		if ( burstCount >= fromInteger(burstWords) ) begin
 			burstCount <= 0;
 			curWriteBuf <= tagged Invalid;
 		end else burstCount <= burstCount + 1;
@@ -239,9 +228,9 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 		let bufIdx = readIdxQ.first;
 		let rdRef = dmaReadRefs[bufIdx];
 		let dmaReadOffset = fromInteger(pageBytes)-dmaReadCount;
-		re.readServers[0].request.put(MemengineCmd{pointer:rdRef, base:extend(dmaReadOffset), len:(16*4), burstLen:(16*4)});
-		dmaReadCount <= dmaReadCount - 16*4;
-		if ( dmaReadCount == 16*4) readIdxQ.deq;
+		re.readServers[0].request.put(MemengineCmd{pointer:rdRef, base:extend(dmaReadOffset), len:fromInteger(burstBytes), burstLen:fromInteger(burstBytes)});
+		dmaReadCount <= dmaReadCount - fromInteger(burstBytes);
+		if ( dmaReadCount == fromInteger(burstBytes)) readIdxQ.deq;
 
 		readBurstIdxQ.enq(readIdxQ.first);
 	endrule
@@ -249,15 +238,15 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 	Reg#(Bit#(32)) pageWriteCount <- mkReg(0);
 	rule flushHostRead;
 		let bufidx = readBurstIdxQ.first;
-		if ( dmaReadBurstCount >= 4-1 ) begin
+		if ( dmaReadBurstCount >= fromInteger(burstWords)-1 ) begin
 			dmaReadBurstCount <= 0;
 			readBurstIdxQ.deq;
 
-			if ( pageWriteCount + 4 >= fromInteger(pageWords) ) begin
+			if ( pageWriteCount + fromInteger(burstWords) >= fromInteger(pageWords) ) begin
 				pageWriteCount <= 0;
 				indication.writeDone(zeroExtend(bufidx));
 			end else begin
-				pageWriteCount <= pageWriteCount + 4;
+				pageWriteCount <= pageWriteCount + fromInteger(burstWords);
 			end
 		end else begin
 			dmaReadBurstCount <= dmaReadBurstCount + 1;
@@ -340,11 +329,11 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 	endmethod
 	method Action addWriteHostBuffer(Bit#(32) pointer, Bit#(32) idx);
 		writeBufferFreeQ.enq(truncate(idx));
-		dmaReadRefs[idx] <= truncate(pointer);
+		dmaReadRefs[idx] <= pointer;
 	endmethod
 	method Action addReadHostBuffer(Bit#(32) pointer, Bit#(32) idx);
 		readBufferFreeQ.enq(truncate(idx));
-		dmaWriteRefs[idx] <= truncate(pointer);
+		dmaWriteRefs[idx] <= pointer;
 	endmethod
    endinterface
 

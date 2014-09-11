@@ -58,17 +58,6 @@ int numBytes = 2 << (10+3); // 8KB buffer
 size_t alloc_sz = numBytes*sizeof(unsigned char);
 
 
-void dump(const char *prefix, char *buf, size_t len)
-{
-    fprintf(stderr, "%s ", prefix);
-    for (int i = 0; i < len ; i++) {
-	fprintf(stderr, "%02x", (unsigned char)buf[i]);
-	if (i % 32 == 31)
-	  fprintf(stderr, "\n");
-    }
-    fprintf(stderr, "\n");
-}
-
 class FlashIndication : public FlashIndicationWrapper
 {
 
@@ -131,7 +120,7 @@ int main(int argc, const char **argv)
 		ref_dstAllocs[i] = dma->reference(dstAllocs[i]);
 
 		device->addReadHostBuffer(ref_dstAllocs[i], i);
-		device->addWriteHostBuffer(ref_srcAllocs[i], i);
+		device->addWriteHostBuffer(ref_srcAllocs[i]);
 	}
 
 	srcBuffer = (unsigned int *)portalMmap(srcAlloc, alloc_sz);
@@ -144,7 +133,7 @@ int main(int argc, const char **argv)
 
 	for ( int i = 0; i < 8192/4; i++ ) {
 		for ( int j = 0; j < BUFFER_COUNT; j++ ) {
-			dstBuffers[j][i] = 8192/4-i;
+			dstBuffers[j][i] = 0;
 			srcBuffers[j][i] = i;
 		}
 	}

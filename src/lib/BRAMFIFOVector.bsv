@@ -15,21 +15,22 @@ interface BRAMFIFOVectorIfc#(numeric type vlog, numeric type fifosize, type fifo
 	method Action enq(fifotype data, Bit#(vlog) idx);
 	method Action reqDeq(Bit#(vlog) idx);
 	method ActionValue#(fifotype) respDeq;
-	method Bit#(11) getDataCount(Bit#(vlog) idx);
+	method Bit#(TAdd#(1,TLog#(fifosize))) getDataCount(Bit#(vlog) idx);
 	method ActionValue#(Bit#(vlog)) getReadyIdx;
 endinterface
 
 module mkBRAMFIFOVector#(Integer thresh) (BRAMFIFOVectorIfc#(vlog, fifosize, fifotype))
 	provisos (
 		Literal#(fifotype), 
-		Bits#(fifotype, fifotypesz),
-		Add#(a__, 11, TAdd#(vlog, TLog#(fifosize)))
+		Bits#(fifotype, fifotypesz)
+		//,
+		//Add#(a__, 11, TAdd#(vlog, TLog#(fifosize)))
 		);
-	
-	BRAM2Port#(Bit#(TAdd#(vlog,TLog#(fifosize))), fifotype) fifoBuffer <- mkBRAM2Server(defaultValue); 
 
-	Vector#(TExp#(vlog), Reg#(Bit#(11))) headpointer <- replicateM(mkReg(0));
-	Vector#(TExp#(vlog), Reg#(Bit#(11))) tailpointer <- replicateM(mkReg(0));
+	BRAM2Port#(Bit#(TAdd#(vlog,TAdd#(1,TLog#(fifosize)))), fifotype) fifoBuffer <- mkBRAM2Server(defaultValue); 
+
+	Vector#(TExp#(vlog), Reg#(Bit#(TAdd#(1,TLog#(fifosize))))) headpointer <- replicateM(mkReg(0));
+	Vector#(TExp#(vlog), Reg#(Bit#(TAdd#(1,TLog#(fifosize))))) tailpointer <- replicateM(mkReg(0));
 	function Bool  isEmpty(Bit#(vlog) idx);
 		Bool res = False;
 		if ( headpointer[idx] == tailpointer[idx] ) res = True;
@@ -46,7 +47,7 @@ module mkBRAMFIFOVector#(Integer thresh) (BRAMFIFOVectorIfc#(vlog, fifosize, fif
 		return res;
 	endfunction
 
-	function Bit#(11) dataCount(Bit#(vlog) idx);
+	function Bit#(TAdd#(1,TLog#(fifosize))) dataCount(Bit#(vlog) idx);
 		let head = headpointer[idx];
 		let tail = tailpointer[idx];
 		if ( head < tail ) head = head + fromInteger(valueOf(fifosize));
@@ -140,7 +141,7 @@ module mkBRAMFIFOVector#(Integer thresh) (BRAMFIFOVectorIfc#(vlog, fifosize, fif
 */
 	endmethod
 	
-	method Bit#(11) getDataCount(Bit#(vlog) idx);
+	method Bit#(TAdd#(1,TLog#(fifosize))) getDataCount(Bit#(vlog) idx);
 		return dataCount(idx);
 	endmethod
 

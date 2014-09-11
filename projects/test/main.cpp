@@ -36,7 +36,7 @@
 //#include "testmemcpy2.h"
 
 #ifndef BSIM
-#define BUFFER_COUNT 128
+#define BUFFER_COUNT 16
 #else
 #define BUFFER_COUNT 8
 #endif
@@ -46,14 +46,6 @@ int srcAlloc;
 int dstAlloc;
 unsigned int *srcBuffer = 0;
 unsigned int *dstBuffer = 0;
-#ifndef BSIM
-int numWords = 16 << 18;
-#else
-int numWords = 128 << 10;
-#endif
-bool finished = false;
-bool memcmp_fail = false;
-unsigned int memcmp_count = 0;
 
 int srcAllocs[BUFFER_COUNT];
 int dstAllocs[BUFFER_COUNT];
@@ -176,12 +168,13 @@ int main(int argc, const char **argv)
 	sleep(1);
 	
 	for ( int i = 0; i < 8192/4; i++ ) {
-		printf( "0 %d\n", dstBuffers[0][i] );
-		printf( "1 %d\n", dstBuffers[1][i] );
+		for ( int j = 0; j < BUFFER_COUNT; j++ ) {
+			printf( "%d %d\n", j, dstBuffers[j][i] );
+		}
 	}
 
 	//runtest(argc, argv);
 	while(1) sleep(1);
 
-	exit(memcmp_fail);
+	exit(0);
 }

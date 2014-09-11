@@ -3,7 +3,7 @@ import FIFO::*;
 import Vector::*;
 import BRAM::*;
 
-typedef 8 WordBytes;
+typedef 16 WordBytes;
 typedef TMul#(8,WordBytes) WordSz;
 typedef 8192 PageBytes;
 typedef TDiv#(PageBytes,WordBytes) PageWords;

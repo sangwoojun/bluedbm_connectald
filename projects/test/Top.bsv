@@ -55,8 +55,10 @@ interface Top_Pins;
 	interface Aurora_Clock_Pins aurora_clk_fmc1;
 endinterface
 
+typedef 128 WordSz;
+
 //module mkPortalTop(StdPortalDmaTop#(PhysAddrWidth));
-module mkPortalTop#(HostType host) (PortalTop#(PhysAddrWidth,64,Top_Pins,1));
+module mkPortalTop#(HostType host) (PortalTop#(PhysAddrWidth,128,Top_Pins,1));
 
 	Clock clk250 = host.doubleClock;
 	Reset rst250 = host.doubleReset;
@@ -65,10 +67,10 @@ module mkPortalTop#(HostType host) (PortalTop#(PhysAddrWidth,64,Top_Pins,1));
    MainIfc hwmain <- mkMain(flashIndicationProxy.ifc, clk250, rst250);
    FlashRequestWrapper flashRequestWrapper <- mkFlashRequestWrapper(FlashRequest,hwmain.request);
 
-   Vector#(1,  ObjectReadClient#(64))   readClients = cons(hwmain.dmaReadClient, nil);
-   Vector#(1, ObjectWriteClient#(64))  writeClients = cons(hwmain.dmaWriteClient, nil);
+   Vector#(1,  ObjectReadClient#(WordSz))   readClients = cons(hwmain.dmaReadClient, nil);
+   Vector#(1, ObjectWriteClient#(WordSz))  writeClients = cons(hwmain.dmaWriteClient, nil);
    DmaIndicationProxy dmaIndicationProxy <- mkDmaIndicationProxy(DmaIndication);
-   MemServer#(PhysAddrWidth, 64, 1)   dma <- mkMemServer(dmaIndicationProxy.ifc, readClients, writeClients);
+   MemServer#(PhysAddrWidth, WordSz, 1)   dma <- mkMemServer(dmaIndicationProxy.ifc, readClients, writeClients);
    DmaConfigWrapper dmaRequestWrapper <- mkDmaConfigWrapper(DmaConfig,dma.request);
 
    Vector#(4,StdPortal) portals;

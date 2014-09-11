@@ -40,6 +40,12 @@ import PageCache::*;
 import BRAMFIFOVector::*;
 
 
+typedef 8192 PageBytes;
+//typedef 16 WordBytes;
+typedef 16 WordBytes;
+typedef TMul#(8,WordBytes) WordSz;
+typedef 128 BufferCount;
+
 interface FlashRequest;
 	method Action readPage(Bit#(32) channel, Bit#(32) chip, Bit#(32) block, Bit#(32) page, Bit#(32) tag);
 	method Action writePage(Bit#(32) channel, Bit#(32) chip, Bit#(32) block, Bit#(32) page, Bit#(32) tag);
@@ -57,8 +63,8 @@ endinterface
 
 interface MainIfc;
 	interface FlashRequest request;
-	interface ObjectReadClient#(64) dmaReadClient;
-	interface ObjectWriteClient#(64) dmaWriteClient;
+	interface ObjectReadClient#(WordSz) dmaReadClient;
+	interface ObjectWriteClient#(WordSz) dmaWriteClient;
 
 	interface Aurora_Pins#(4) aurora_fmc1;
 	interface Aurora_Clock_Pins aurora_clk_fmc1;
@@ -66,11 +72,6 @@ endinterface
 
 typedef enum {Read,Write,Erase} CmdType deriving (Bits,Eq);
 typedef struct { Bit#(5) channel; Bit#(5) chip; Bit#(8) block; Bit#(8) page; CmdType cmd; Bit#(8) tag;} FlashCmd deriving (Bits,Eq);
-
-typedef 8192 PageBytes;
-//typedef 16 WordBytes;
-typedef 8 WordBytes;
-typedef 128 BufferCount;
 
 module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 	
@@ -84,7 +85,7 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 	GtxClockImportIfc gtx_clk_fmc1 <- mkGtxClockImport;
 	AuroraIfc auroraIntra1 <- mkAuroraIntra(gtx_clk_fmc1.gtx_clk_p_ifc, gtx_clk_fmc1.gtx_clk_n_ifc, clk250);
    
-   BRAMFIFOVectorIfc#(7, 32, Bit#(64)) writeBuffer <- mkBRAMFIFOVector(8);
+   BRAMFIFOVectorIfc#(7, 32, Bit#(WordSz)) writeBuffer <- mkBRAMFIFOVector(8);
 
 /*
 	Reg#(Bit#(16)) curTestData <- mkReg(0);
@@ -111,8 +112,8 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 		indication.hexDump(truncate(data));
 	endrule
 
-   MemreadEngineV#(64,1,2)  re <- mkMemreadEngine;
-   MemwriteEngineV#(64,1,2) we <- mkMemwriteEngine;
+   MemreadEngineV#(WordSz,1,2)  re <- mkMemreadEngine;
+   MemwriteEngineV#(WordSz,1,2) we <- mkMemwriteEngine;
 
    rule read_finish;
       let rv0 <- re.readServers[0].response.get;

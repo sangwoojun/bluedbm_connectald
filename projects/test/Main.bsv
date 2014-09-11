@@ -52,7 +52,7 @@ interface FlashRequest;
 	method Action writePage(Bit#(32) channel, Bit#(32) chip, Bit#(32) block, Bit#(32) page, Bit#(32) tag);
 	method Action erasePage(Bit#(32) channel, Bit#(32) chip, Bit#(32) block);
 	method Action sendTest(Bit#(32) data);
-	method Action addWriteHostBuffer(Bit#(32) pointer);
+	method Action addWriteHostBuffer(Bit#(32) pointer, Bit#(32) idx);
 	method Action addReadHostBuffer(Bit#(32) pointer, Bit#(32) idx);
 endinterface
 
@@ -117,6 +117,13 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
    Vector#(BufferCount, Reg#(Bit#(32))) dmaReadRefs <- replicateM(mkReg(0));
 
 	DMAWriteEngineIfc#(WordSz) dmaWriter <- mkDmaWriteEngine(we.writeServers[0], we.dataPipes[0]);
+	rule dmaWriteData;
+		let r <- pageCache.readWord;
+		let d = tpl_1(r);
+		let t = tpl_2(r);
+		//$display ( "data:%d %d", d[31:0], t );
+		dmaWriter.write(d,truncate(t));
+	endrule
 	rule dmaWriteDone;
 		let tag <- dmaWriter.done;
 		indication.readDone(zeroExtend(tag));
@@ -237,13 +244,13 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 	method Action sendTest(Bit#(32) data);
 		auroraIntra1.send(zeroExtend({16'hc001, data[15:0]}), 7);
 	endmethod
-	method Action addWriteHostBuffer(Bit#(32) pointer);
-		dmaWriter.addBuffer(pointer);
+	method Action addWriteHostBuffer(Bit#(32) pointer, Bit#(32) idx);
 		//writeBufferFreeQ.enq(truncate(idx));
+		dmaReadRefs[idx] <= pointer;
 	endmethod
 	method Action addReadHostBuffer(Bit#(32) pointer, Bit#(32) idx);
 		//readBufferFreeQ.enq(truncate(idx));
-		dmaReadRefs[idx] <= pointer;
+		dmaWriter.addBuffer(pointer);
 	endmethod
    endinterface
 

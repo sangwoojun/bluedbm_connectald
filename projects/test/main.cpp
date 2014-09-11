@@ -120,7 +120,7 @@ int main(int argc, const char **argv)
 		ref_dstAllocs[i] = dma->reference(dstAllocs[i]);
 
 		device->addReadHostBuffer(ref_dstAllocs[i], i);
-		device->addWriteHostBuffer(ref_srcAllocs[i]);
+		device->addWriteHostBuffer(ref_srcAllocs[i], i);
 	}
 
 	srcBuffer = (unsigned int *)portalMmap(srcAlloc, alloc_sz);
@@ -133,7 +133,7 @@ int main(int argc, const char **argv)
 
 	for ( int i = 0; i < 8192/4; i++ ) {
 		for ( int j = 0; j < BUFFER_COUNT; j++ ) {
-			dstBuffers[j][i] = 0;
+			dstBuffers[j][i] = 8192/4-i;
 			srcBuffers[j][i] = i;
 		}
 	}
@@ -158,6 +158,7 @@ int main(int argc, const char **argv)
 	
 	for ( int i = 0; i < 8192/4; i++ ) {
 		for ( int j = 0; j < BUFFER_COUNT; j++ ) {
+			if ( i > 8192/4 - 16 )
 			printf( "%d %d\n", j, dstBuffers[j][i] );
 		}
 	}

@@ -51,7 +51,7 @@
 pthread_mutex_t flashReqMutex;
 pthread_cond_t flashReqCond;
 
-bool verbose = true;
+bool verbose = false;
 char* log_prefix = "\t\tLOG: ";
 
 sem_t done_sem;

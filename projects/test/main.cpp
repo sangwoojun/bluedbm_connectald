@@ -45,13 +45,13 @@
 #define LARGE_NUMBER (1024*1024/8)
 #else
 #define BUFFER_COUNT 8
-#define LARGE_NUMBER (32)
+#define LARGE_NUMBER 1
 #endif
 
 pthread_mutex_t flashReqMutex;
 pthread_cond_t flashReqCond;
 
-bool verbose = false;
+bool verbose = true;
 char* log_prefix = "\t\tLOG: ";
 
 sem_t done_sem;
@@ -64,7 +64,7 @@ unsigned int* dstBuffers[BUFFER_COUNT];
 bool srcBufferBusy[BUFFER_COUNT];
 bool readTagBusy[TAG_COUNT];
 
-int numBytes = 2 << (10+3); // 8KB buffer
+int numBytes = 1 << (10+5); // 32KB buffer, to be safe
 size_t alloc_sz = numBytes*sizeof(unsigned char);
 
 int curReqsInFlight = 0;
@@ -114,6 +114,7 @@ public:
 	}
 
 	srcBufferBusy[bufidx] = false;
+	if ( verbose ) printf( "%s received write done buffer: %d \n", log_prefix, bufidx );
 
 	pthread_cond_broadcast(&flashReqCond);
 	pthread_mutex_unlock(&flashReqMutex);
@@ -127,7 +128,7 @@ public:
 		fprintf(stderr, "Requests in flight cannot be negative\n" );
 	}
 	readyReadBuffer.push_front(rbuf);
-	if ( verbose ) printf( "%s received read page tag: %d buffer: %d (%d)\n", log_prefix, tag, rbuf, finishedReadBuffer.back() );
+	if ( verbose ) printf( "%s received read page tag: %d buffer: %d\n", log_prefix, tag, rbuf );
 
 	readTagBusy[tag] = false;
 	pthread_cond_broadcast(&flashReqCond);
@@ -274,7 +275,7 @@ int main(int argc, const char **argv)
 		device->sendTest(i);
 	}
 
-	for ( int i = 0; i < 8192/4; i++ ) {
+	for ( int i = 0; i < (8192+64)/4; i++ ) {
 		for ( int j = 0; j < BUFFER_COUNT; j++ ) {
 			dstBuffers[j][i] = 8192/4-i;
 			srcBuffers[j][i] = i;
@@ -303,11 +304,11 @@ int main(int argc, const char **argv)
 		flushFinishedReadBuffers(device);
 		if ( getNumReqsInFlight() == 0 ) break;
 	}
+	printf( "finished reading from page!\n" );
 
-	for ( int i = 0; i < 8192/4; i++ ) {
-		for ( int j = 0; j < BUFFER_COUNT; j++ ) {
-			if ( i > 8192/4 - 16 )
-			printf( "%d %d\n", j, dstBuffers[j][i] );
+	for ( int i = 0; i < (8192+64)/4; i++ ) {
+		for ( int j = 0; j < 1; j++ ) {
+			printf( "%d %d %d\n", j, i, dstBuffers[j][i] );
 		}
 	}
 

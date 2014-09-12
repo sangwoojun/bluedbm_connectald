@@ -40,7 +40,7 @@ import PageCache::*;
 import BRAMFIFOVector::*;
 
 
-typedef 8192 PageBytes;
+typedef TAdd#(8192,64) PageBytes;
 //typedef 16 WordBytes;
 typedef 16 WordBytes;
 typedef TMul#(8,WordBytes) WordSz;
@@ -120,11 +120,11 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 		let r <- pageCache.readWord;
 		let d = tpl_1(r);
 		let t = tpl_2(r);
-		//$display ( "data:%d %d", d[31:0], t );
+		//$display ( "reading %d %d", d[31:0], t );
 		dmaWriter.write(d,t);
 	endrule
 	rule dmaWriteDone;
-		let r <- dmaWriter.done; ////////////TODO
+		let r <- dmaWriter.done;
 		let rbuf = tpl_1(r);
 		let tag = tpl_2(r);
 		indication.readDone(zeroExtend(rbuf), zeroExtend(tag));
@@ -140,6 +140,7 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 		let d = tpl_1(r);
 		let t = tpl_2(r);
 		pageCache.writeWord(d,t);
+		//$display( "writing %d %d", d[31:0], t );
 	endrule
 
 
@@ -209,8 +210,6 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 		auroraIntra1.send(zeroExtend({16'hc001, data[15:0]}), 7);
 	endmethod
 	method Action addWriteHostBuffer(Bit#(32) pointer, Bit#(32) idx);
-		//writeBufferFreeQ.enq(truncate(idx));
-		//dmaReadRefs[idx] <= pointer;
 		dmaReader.addBuffer(truncate(idx), pointer);
 	endmethod
 	method Action addReadHostBuffer(Bit#(32) pointer, Bit#(32) idx);
@@ -253,14 +252,13 @@ module mkDmaReadEngine#(
 	Vector#(BufferCount, Reg#(Bit#(32))) dmaReadRefs <- replicateM(mkReg(0));
 	
 	Reg#(Bit#(32)) dmaReadCount <- mkReg(0);
-	Reg#(Bit#(5)) dmaReadBurstCount <- mkReg(0);
 
-	FIFO#(Bit#(8)) readBurstIdxQ <- mkSizedFIFO(8);
+	FIFO#(Tuple2#(Bit#(8),Bit#(8))) readBurstIdxQ <- mkSizedFIFO(8);
 	FIFO#(Bit#(8)) readIdxQ <- mkFIFO;
 
-   rule read_finish;
-      let rv0 <- rServer.response.get;
-   endrule
+	rule read_finish;
+		let rv0 <- rServer.response.get;
+	endrule
 
 	rule driveHostDmaReq (dmaReadCount > 0);
 		let bufIdx = readIdxQ.first;
@@ -271,18 +269,28 @@ module mkDmaReadEngine#(
 		rServer.request.put(MemengineCmd{pointer:rdRef, base:extend(dmaReadOffset), len:fromInteger(burstBytes), burstLen:fromInteger(burstBytes)});
 
 
-		dmaReadCount <= dmaReadCount - fromInteger(burstBytes);
-		if ( dmaReadCount == fromInteger(burstBytes)) readIdxQ.deq;
+		if ( dmaReadCount > fromInteger(burstBytes) ) begin
+			dmaReadCount <= dmaReadCount - fromInteger(burstBytes);
+			readBurstIdxQ.enq(tuple2(readIdxQ.first, 
+				fromInteger(burstWords)));
+		end else begin
+			dmaReadCount <= 0;
+			readIdxQ.deq;
+			readBurstIdxQ.enq(tuple2(readIdxQ.first, 
+				truncate(dmaReadCount/fromInteger(wordBytes))));
+		end
 
-		readBurstIdxQ.enq(readIdxQ.first);
 	endrule
 
 	FIFO#(Tuple2#(Bit#(wordSz), Bit#(8))) readQ <- mkSizedFIFO(8);
 	
+	Reg#(Bit#(8)) dmaReadBurstCount <- mkReg(0);
 	FIFO#(Bit#(8)) readDoneQ <- mkFIFO;
 	Reg#(Bit#(32)) pageWriteCount <- mkReg(0);
 	rule flushHostRead;
-		let bufidx = readBurstIdxQ.first;
+		let ri = readBurstIdxQ.first;
+		let bufidx = tpl_1(ri);
+		let burstr = tpl_2(ri);
 		if ( dmaReadBurstCount >= fromInteger(burstWords)-1 ) begin
 			dmaReadBurstCount <= 0;
 			readBurstIdxQ.deq;
@@ -299,8 +307,7 @@ module mkDmaReadEngine#(
 		end
 
       let v <- toGet(rPipe).get;
-	  //pageCache.writeWord(v, bufidx);
-	  readQ.enq(tuple2(v, bufidx));
+	  if ( dmaReadBurstCount < burstr ) readQ.enq(tuple2(v, bufidx));
 	endrule
 	
 	method ActionValue#(Tuple2#(Bit#(wordSz), Bit#(8))) read;
@@ -308,7 +315,7 @@ module mkDmaReadEngine#(
 		return readQ.first;
 	endmethod
 	method Action startRead(Bit#(8) bufidx, Bit#(32) wordCount) if ( dmaReadCount == 0 );
-			dmaReadCount <= fromInteger(pageBytes);
+			dmaReadCount <= wordCount*fromInteger(wordBytes);
 			readIdxQ.enq(bufidx);
 	endmethod
 	method ActionValue#(Bit#(8)) done;

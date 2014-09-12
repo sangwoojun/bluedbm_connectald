@@ -355,17 +355,16 @@ module mkDmaWriteEngine# (
    
 	FIFO#(Bit#(8)) writeBufferFreeQ <- mkSizedFIFO(bufferCount); // bufidx
 
-	Reg#(Maybe#(Bit#(8))) curWriteBuf <- mkReg(tagged Invalid);
-	Reg#(Bit#(5)) burstCount <- mkReg(0);
 	Reg#(Bit#(32)) writeCount <- mkReg(0);
 
+	FIFO#(Bit#(8)) startWriteBufQ <- mkFIFO;
 	FIFO#(Bit#(8)) startDmaFlushQ <- mkFIFO;
-	rule startFlushDma ( burstCount == 0 && !isValid(curWriteBuf) );
+	rule startFlushDma;
 		let rbuf <- writeBuffer.getReadyIdx;
 		let rcount = writeBuffer.getDataCount(rbuf);
 		//$display ( "datacount: %d", rcount );
 		if ( rcount >= fromInteger(burstWords) ) begin
-			curWriteBuf <= tagged Valid zeroExtend(rbuf);
+			startWriteBufQ.enq(zeroExtend(rbuf));
 			startDmaFlushQ.enq(zeroExtend(rbuf));
 		end
 	endrule
@@ -378,20 +377,20 @@ module mkDmaWriteEngine# (
 		let offset = tpl_2(s);
 		dmaWriteStatus[rbuf] <= tuple2(tag,offset+fromInteger(burstBytes));
 		let wrRef = dmaWriteRefs[rbuf];
-		burstCount <= 1;
 	  
 		//$display( "%d: starting burst %d", rbuf, offset );
 		wServer.request.put(MemengineCmd{pointer:wrRef, base:zeroExtend(offset), len:fromInteger(burstBytes), burstLen:fromInteger(burstBytes)});
 	endrule
 
 	FIFO#(Bit#(8)) curWriteBufQ <- mkSizedFIFO(5);
-	rule flushDma ( burstCount > 0 && isValid(curWriteBuf));
-		if ( burstCount >= fromInteger(burstWords) ) begin
+	Reg#(Bit#(5)) burstCount <- mkReg(0);
+	rule flushDma;
+		if ( burstCount+1 >= fromInteger(burstWords) ) begin
 			burstCount <= 0;
-			curWriteBuf <= tagged Invalid;
+			startWriteBufQ.deq;
 		end else burstCount <= burstCount + 1;
-		let rbuf = fromMaybe(0,curWriteBuf);
-		
+		let rbuf = startWriteBufQ.first;
+
 		writeBuffer.reqDeq(truncate(rbuf));
 		curWriteBufQ.enq(rbuf);
 		//$display( "%d: requesting burst data  %d %d", rbuf, burstCount, writeCount );
@@ -414,8 +413,6 @@ module mkDmaWriteEngine# (
 		if ( writeCount + 1 >= writeCountQ.first ) begin
 			writeCount <= 0;
 			writeDoneQ.enq(tuple2(rbuf, tag));
-			//dmaWriteStatus[rbuf] <= tuple2(tag,0);
-			//writeBufferFreeQ.enq(rbuf);
 			writeCountQ.deq;
 		end else begin
 			writeCount <= writeCount + 1;
@@ -436,7 +433,6 @@ module mkDmaWriteEngine# (
 	method Action startWrite(Bit#(8) tag, Bit#(32) wordCount);
 		let freeidx = writeBufferFreeQ.first;
 		writeBufferFreeQ.deq;
-		//Bit#(32) writeRef = dmaWriteRefs[freeidx];
 		dmaWriteStatus[freeidx] <= tuple2(tag, 0);
 		
 		requestBufferIdx[tag] <= freeidx;

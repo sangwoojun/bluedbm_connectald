@@ -45,7 +45,7 @@
 #define LARGE_NUMBER (1024*1024/8)
 #else
 #define BUFFER_COUNT 8
-#define LARGE_NUMBER 1
+#define LARGE_NUMBER 16
 #endif
 
 pthread_mutex_t flashReqMutex;
@@ -307,7 +307,8 @@ int main(int argc, const char **argv)
 	printf( "finished reading from page!\n" );
 
 	for ( int i = 0; i < (8192+64)/4; i++ ) {
-		for ( int j = 0; j < 1; j++ ) {
+		for ( int j = 0; j < BUFFER_COUNT; j++ ) {
+			if ( i > (8192+64)/4 - 32 )
 			printf( "%d %d %d\n", j, i, dstBuffers[j][i] );
 		}
 	}

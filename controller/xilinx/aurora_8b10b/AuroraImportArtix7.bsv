@@ -1,11 +1,13 @@
 package AuroraImportArtix7;
 
+import FIFO::*;
+
 import Clocks :: *;
 import DefaultValue :: *;
 import Xilinx :: *;
 import XilinxCells :: *;
 
-import FIFO::*;
+import AuroraGearbox::*;
 
 typedef 8 HeaderSz;
 typedef TSub#(128,8) BodySz;
@@ -83,54 +85,14 @@ module mkAuroraIntra#(Clock gtp_clk) (AuroraIfc);
 	Clock aclk = auroraIntraImport.aurora_clk;
 	Reset arst = auroraIntraImport.aurora_rst;
 
-	SyncFIFOIfc#(Tuple2#(DataIfc,PacketType)) sendQ <- mkSyncFIFOFromCC(8, auroraIntraImport.aurora_clk);
-	SyncFIFOIfc#(Tuple2#(DataIfc,PacketType)) recvQ <- mkSyncFIFOToCC(8, auroraIntraImport.aurora_clk, auroraIntraImport.aurora_rst);
-	//FIFO#(DataIfc) sendQ <- mkSizedFIFO(32, clocked_by aclk, reset_by arst);
-	//FIFO#(DataIfc) recvQ <- mkSizedFIFO(32, clocked_by aclk, reset_by arst);
-	Reg#(Maybe#(Tuple2#(Bit#(BodySz), PacketType))) packetSendBuffer <- mkReg(tagged Invalid, clocked_by aclk, reset_by arst);
-	rule sendPacketPart;
-		if ( isValid(packetSendBuffer) ) begin
-			let btpl = fromMaybe(?, packetSendBuffer);
-			auroraIntraImport.user.send({2'b10,
-				tpl_2(btpl), tpl_1(btpl)
-				});
-			packetSendBuffer <= tagged Invalid;
-		end else begin
-			sendQ.deq;
-			let data = sendQ.first;
-			packetSendBuffer <= tagged Valid 
-				tuple2(
-					truncate(tpl_1(data)>>valueOf(BodySz)),
-					tpl_2(data)
-				);
-			auroraIntraImport.user.send({2'b00, tpl_2(data),truncate(tpl_1(data))});
-		end
+	AuroraGearboxIfc auroraGearbox <- mkAuroraGearbox(aclk, arst);
+	rule auroraOut;
+		let d <- auroraGearbox.auroraSend;
+		auroraIntraImport.user.send(d);
 	endrule
-
-	Reg#(Maybe#(Bit#(BodySz))) packetRecvBuffer <- mkReg(tagged Invalid, clocked_by aclk, reset_by arst);
-	Reg#(Bit#(1)) curRecvOffset <- mkReg(0, clocked_by aclk, reset_by arst);
-	rule recvPacketPart;
-		let crdata <- auroraIntraImport.user.receive;
-		//recvQ.enq(zeroExtend(crdata));
-		Bit#(BodySz) cdata = truncate(crdata);
-		Bit#(8) header = truncate(crdata>>valueOf(BodySz));
-		Bit#(1) idx = header[7];
-		PacketType ptype = truncate(header);
-
-		if ( isValid(packetRecvBuffer) ) begin
-			let pdata = fromMaybe(0, packetRecvBuffer);
-			if ( idx == 1 ) begin
-				packetRecvBuffer <= tagged Invalid;
-				recvQ.enq( tuple2({cdata, pdata}, ptype) );
-			end
-			else begin
-				packetRecvBuffer <= tagged Valid cdata;
-			end
-		end
-		else begin
-			if ( idx == 0 ) 
-				packetRecvBuffer <= tagged Valid cdata;
-		end
+	rule auroraIn;
+		let d <- auroraIntraImport.user.receive;
+		auroraGearbox.auroraRecv(d);
 	endrule
 
 /*
@@ -141,11 +103,11 @@ module mkAuroraIntra#(Clock gtp_clk) (AuroraIfc);
 */
 
 	method Action send(DataIfc data, PacketType ptype);
-		sendQ.enq(tuple2(data, ptype));
+		auroraGearbox.send(data, ptype);
 	endmethod
 	method ActionValue#(Tuple2#(DataIfc, PacketType)) receive;
-		recvQ.deq;
-		return recvQ.first;
+		let d <- auroraGearbox.recv;
+		return d;
 	endmethod
 	method channel_up = auroraIntraImport.user.channel_up;
 	method lane_up = auroraIntraImport.user.lane_up;

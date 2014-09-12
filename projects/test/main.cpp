@@ -271,9 +271,7 @@ int main(int argc, const char **argv)
 
 	fprintf(stderr, "Main::flush and invalidate complete\n");
   
-	for ( int i = 0; i < 32; i++ ) {
-		device->sendTest(i);
-	}
+	device->sendTest(8192);
 
 	for ( int i = 0; i < (8192+64)/4; i++ ) {
 		for ( int j = 0; j < BUFFER_COUNT; j++ ) {

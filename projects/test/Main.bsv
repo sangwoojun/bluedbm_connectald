@@ -95,6 +95,12 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 		curTestData <= curTestData + 1;
 	endrule
 	*/
+	Reg#(Bit#(32)) auroraTestIdx <- mkReg(0);
+	rule sendAuroraTest(auroraTestIdx > 0);
+		auroraIntra1.send(zeroExtend(auroraTestIdx), 7);
+		
+		auroraTestIdx <= auroraTestIdx - 1;
+	endrule
 	FIFO#(Bit#(32)) dataQ <- mkSizedFIFO(32);
 	rule recvTestData;
 		let datao <- auroraIntra1.receive;
@@ -107,7 +113,8 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 		dataQ.deq;
 		let data = dataQ.first;
 
-		indication.hexDump(truncate(data));
+		if ( data[7:0] == 0 )
+			indication.hexDump(truncate(data));
 	endrule
 
    MemreadEngineV#(WordSz,1,1)  re <- mkMemreadEngine;
@@ -207,7 +214,7 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 		flashCmdQ.enq(fcmd);
 	endmethod
 	method Action sendTest(Bit#(32) data);
-		auroraIntra1.send(zeroExtend({16'hc001, data[15:0]}), 7);
+		auroraTestIdx <= data;
 	endmethod
 	method Action addWriteHostBuffer(Bit#(32) pointer, Bit#(32) idx);
 		dmaReader.addBuffer(truncate(idx), pointer);

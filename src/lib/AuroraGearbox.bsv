@@ -1,4 +1,5 @@
 import FIFO::*;
+import FIFOF::*;
 import Clocks :: *;
 
 typedef 8 HeaderSz;
@@ -18,28 +19,49 @@ interface AuroraGearboxIfc;
 endinterface
 
 module mkAuroraGearbox#(Clock aclk, Reset arst) (AuroraGearboxIfc);
-	SyncFIFOIfc#(Tuple2#(DataIfc,PacketType)) sendQ <- mkSyncFIFOFromCC(8, aclk);
-	SyncFIFOIfc#(Tuple2#(DataIfc,PacketType)) recvQ <- mkSyncFIFOToCC(8, aclk, arst);
+	SyncFIFOIfc#(Tuple2#(DataIfc,PacketType)) sendQ <- mkSyncFIFOFromCC(4, aclk);
+
+	Integer recvQDepth = 32;
+	Integer windowSize = 16;
+	SyncFIFOIfc#(Tuple2#(DataIfc,PacketType)) recvQ <- mkSyncFIFOToCC(recvQDepth, aclk, arst);
+	Reg#(Bit#(16)) maxInFlight <- mkReg(0);
+	Reg#(Bit#(16)) curInQ <- mkReg(0);
+	FIFOF#(Bit#(8)) flowControlQ <- mkFIFOF;
+	rule emitFlowControlPacket
+		(maxInFlight+curInQ+fromInteger(windowSize) < fromInteger(recvQDepth));
+
+		flowControlQ.enq(fromInteger(windowSize));
+		maxInFlight <= maxInFlight + fromInteger(windowSize);
+	endrule
+
+	Reg#(Bit#(16)) curSendBudget <- mkReg(0);
 
 	FIFO#(Bit#(AuroraWidth)) auroraOutQ <- mkFIFO(clocked_by aclk, reset_by arst);
 	Reg#(Maybe#(Tuple2#(Bit#(BodySz), PacketType))) packetSendBuffer <- mkReg(tagged Invalid, clocked_by aclk, reset_by arst);
 	rule sendPacketPart;
-		if ( isValid(packetSendBuffer) ) begin
-			let btpl = fromMaybe(?, packetSendBuffer);
-			//auroraIntraImport.user.send({2'b10,
-			auroraOutQ.enq({2'b10,
-				tpl_2(btpl), tpl_1(btpl)
-				});
-			packetSendBuffer <= tagged Invalid;
-		end else begin
-			sendQ.deq;
-			let data = sendQ.first;
-			packetSendBuffer <= tagged Valid 
-				tuple2(
-					truncate(tpl_1(data)>>valueOf(BodySz)),
-					tpl_2(data)
-				);
-			auroraOutQ.enq({2'b00, tpl_2(data),truncate(tpl_1(data))});
+		if ( flowControlQ.notEmpty ) begin
+			flowControlQ.deq;
+			PacketType ptype = 0;
+			auroraOutQ.enq({2'b01, ptype, zeroExtend(flowControlQ.first)});
+		end else
+		if ( curSendBudget > 0 ) begin
+			if ( isValid(packetSendBuffer) ) begin
+				let btpl = fromMaybe(?, packetSendBuffer);
+				//auroraIntraImport.user.send({2'b10,
+				auroraOutQ.enq({2'b10,
+					tpl_2(btpl), tpl_1(btpl)
+					});
+				packetSendBuffer <= tagged Invalid;
+			end else begin
+				sendQ.deq;
+				let data = sendQ.first;
+				packetSendBuffer <= tagged Valid 
+					tuple2(
+						truncate(tpl_1(data)>>valueOf(BodySz)),
+						tpl_2(data)
+					);
+				auroraOutQ.enq({2'b00, tpl_2(data),truncate(tpl_1(data))});
+			end
 		end
 	endrule
 
@@ -49,17 +71,23 @@ module mkAuroraGearbox#(Clock aclk, Reset arst) (AuroraGearboxIfc);
 	rule recvPacketPart;
 		let crdata = auroraInQ.first;
 		auroraInQ.deq;
-		//recvQ.enq(zeroExtend(crdata));
 		Bit#(BodySz) cdata = truncate(crdata);
 		Bit#(8) header = truncate(crdata>>valueOf(BodySz));
 		Bit#(1) idx = header[7];
+		Bit#(1) control = header[6];
 		PacketType ptype = truncate(header);
 
+		if ( control == 1 ) begin
+			curSendBudget <= curSendBudget + truncate(cdata);
+		end else
 		if ( isValid(packetRecvBuffer) ) begin
 			let pdata = fromMaybe(0, packetRecvBuffer);
 			if ( idx == 1 ) begin
 				packetRecvBuffer <= tagged Invalid;
 				recvQ.enq( tuple2({cdata, pdata}, ptype) );
+
+				maxInFlight <= maxInFlight - 1;
+				curInQ <= curInQ + 1;
 			end
 			else begin
 				packetRecvBuffer <= tagged Valid cdata;
@@ -75,6 +103,8 @@ module mkAuroraGearbox#(Clock aclk, Reset arst) (AuroraGearboxIfc);
 		sendQ.enq(tuple2(data, ptype));
 	endmethod
 	method ActionValue#(Tuple2#(DataIfc, PacketType)) recv;
+		curInQ <= curInQ - 1;
+
 		recvQ.deq;
 		return recvQ.first;
 	endmethod

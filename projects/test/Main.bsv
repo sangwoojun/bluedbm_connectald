@@ -71,7 +71,7 @@ interface MainIfc;
 endinterface
 
 typedef enum {Read,Write,Erase} CmdType deriving (Bits,Eq);
-typedef struct { Bit#(5) channel; Bit#(5) chip; Bit#(8) block; Bit#(8) page; CmdType cmd; Bit#(8) tag; Bit#(8) bufidx} FlashCmd deriving (Bits,Eq);
+typedef struct { Bit#(5) channel; Bit#(5) chip; Bit#(8) block; Bit#(8) page; CmdType cmd; Bit#(8) tag; Bit#(8) bufidx;} FlashCmd deriving (Bits,Eq);
 
 module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 	

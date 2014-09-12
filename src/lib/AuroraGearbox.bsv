@@ -23,10 +23,11 @@ module mkAuroraGearbox#(Clock aclk, Reset arst) (AuroraGearboxIfc);
 
 	Integer recvQDepth = 32;
 	Integer windowSize = 16;
-	SyncFIFOIfc#(Tuple2#(DataIfc,PacketType)) recvQ <- mkSyncFIFOToCC(recvQDepth, aclk, arst);
-	Reg#(Bit#(16)) maxInFlight <- mkReg(0);
-	Reg#(Bit#(16)) curInQ <- mkReg(0);
-	FIFOF#(Bit#(8)) flowControlQ <- mkFIFOF;
+	SyncFIFOIfc#(Tuple2#(DataIfc,PacketType)) recvQ <- mkSyncFIFOToCC(4, aclk, arst);
+	FIFO#(Tuple2#(DataIfc,PacketType)) recvBufferQ <- mkSizedFIFO(recvQDepth, clocked_by aclk, reset_by arst);
+	Reg#(Bit#(16)) maxInFlight <- mkReg(0, clocked_by aclk, reset_by arst);
+	Reg#(Bit#(16)) curInQ <- mkReg(0, clocked_by aclk, reset_by arst);
+	FIFOF#(Bit#(8)) flowControlQ <- mkFIFOF(clocked_by aclk, reset_by arst);
 	rule emitFlowControlPacket
 		(maxInFlight+curInQ+fromInteger(windowSize) < fromInteger(recvQDepth));
 
@@ -34,7 +35,7 @@ module mkAuroraGearbox#(Clock aclk, Reset arst) (AuroraGearboxIfc);
 		maxInFlight <= maxInFlight + fromInteger(windowSize);
 	endrule
 
-	Reg#(Bit#(16)) curSendBudget <- mkReg(0);
+	Reg#(Bit#(16)) curSendBudget <- mkReg(0, clocked_by aclk, reset_by arst);
 
 	FIFO#(Bit#(AuroraWidth)) auroraOutQ <- mkFIFO(clocked_by aclk, reset_by arst);
 	Reg#(Maybe#(Tuple2#(Bit#(BodySz), PacketType))) packetSendBuffer <- mkReg(tagged Invalid, clocked_by aclk, reset_by arst);
@@ -84,7 +85,7 @@ module mkAuroraGearbox#(Clock aclk, Reset arst) (AuroraGearboxIfc);
 			let pdata = fromMaybe(0, packetRecvBuffer);
 			if ( idx == 1 ) begin
 				packetRecvBuffer <= tagged Invalid;
-				recvQ.enq( tuple2({cdata, pdata}, ptype) );
+				recvBufferQ.enq( tuple2({cdata, pdata}, ptype) );
 
 				maxInFlight <= maxInFlight - 1;
 				curInQ <= curInQ + 1;
@@ -98,12 +99,17 @@ module mkAuroraGearbox#(Clock aclk, Reset arst) (AuroraGearboxIfc);
 				packetRecvBuffer <= tagged Valid cdata;
 		end
 	endrule
+	rule flushReadBuffer;
+		curInQ <= curInQ - 1;
+
+		recvBufferQ.deq;
+		recvQ.enq(recvBufferQ.first);
+	endrule
 
 	method Action send(DataIfc data, PacketType ptype);
 		sendQ.enq(tuple2(data, ptype));
 	endmethod
 	method ActionValue#(Tuple2#(DataIfc, PacketType)) recv;
-		curInQ <= curInQ - 1;
 
 		recvQ.deq;
 		return recvQ.first;

@@ -49,6 +49,7 @@ typedef TLog#(BufferCount) BufferCountLog;
 
 interface FlashRequest;
 	method Action readPage(Bit#(32) channel, Bit#(32) chip, Bit#(32) block, Bit#(32) page, Bit#(32) tag);
+	method Action returnReadHostBuffer(Bit#(32) idx);
 	method Action writePage(Bit#(32) channel, Bit#(32) chip, Bit#(32) block, Bit#(32) page, Bit#(32) tag);
 	method Action erasePage(Bit#(32) channel, Bit#(32) chip, Bit#(32) block);
 	method Action sendTest(Bit#(32) data);
@@ -57,7 +58,7 @@ interface FlashRequest;
 endinterface
 
 interface FlashIndication;
-	method Action readDone(Bit#(32) tag);
+	method Action readDone(Bit#(32) rbuf, Bit#(32) tag);
 	method Action writeDone(Bit#(32) tag);
 	method Action hexDump(Bit#(32) data);
 endinterface
@@ -123,8 +124,10 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 		dmaWriter.write(d,t);
 	endrule
 	rule dmaWriteDone;
-		let tag <- dmaWriter.done;
-		indication.readDone(zeroExtend(tag));
+		let r <- dmaWriter.done; ////////////TODO
+		let rbuf = tpl_1(r);
+		let tag = tpl_2(r);
+		indication.readDone(zeroExtend(rbuf), zeroExtend(tag));
 	endrule
 
 	DMAReadEngineIfc#(WordSz) dmaReader <- mkDmaReadEngine(re.readServers[0], re.dataPipes[0]);
@@ -212,6 +215,9 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 	endmethod
 	method Action addReadHostBuffer(Bit#(32) pointer, Bit#(32) idx);
 		dmaWriter.addBuffer(pointer);
+	endmethod
+	method Action returnReadHostBuffer(Bit#(32) idx);
+		dmaWriter.returnFreeBuf(truncate(idx));
 	endmethod
    endinterface
 
@@ -320,8 +326,9 @@ endmodule
 interface DMAWriteEngineIfc#(numeric type wordSz);
 	method Action write(Bit#(wordSz) word, Bit#(8) tag); 
 	method Action startWrite(Bit#(8) tag, Bit#(32) wordCount);
-	method ActionValue#(Bit#(8)) done;
+	method ActionValue#(Tuple2#(Bit#(8),Bit#(8))) done;
 	method Action addBuffer(Bit#(32) bref);
+	method Action returnFreeBuf(Bit#(8) idx);
 endinterface
 module mkDmaWriteEngine# (
 	Server#(MemengineCmd,Bool) wServer,
@@ -384,7 +391,7 @@ module mkDmaWriteEngine# (
 	endrule
 
 	FIFO#(Bit#(32)) writeCountQ <- mkFIFO;
-	FIFO#(Bit#(8)) writeDoneQ <- mkFIFO;
+	FIFO#(Tuple2#(Bit#(8), Bit#(8))) writeDoneQ <- mkFIFO;
 
 	rule flushDma2;
 		let rbuf = curWriteBufQ.first;
@@ -399,9 +406,9 @@ module mkDmaWriteEngine# (
 
 		if ( writeCount + 1 >= writeCountQ.first ) begin
 			writeCount <= 0;
-			writeDoneQ.enq(rbuf);
+			writeDoneQ.enq(tuple2(rbuf, tag));
 			//dmaWriteStatus[rbuf] <= tuple2(tag,0);
-			writeBufferFreeQ.enq(rbuf);
+			//writeBufferFreeQ.enq(rbuf);
 			writeCountQ.deq;
 		end else begin
 			writeCount <= writeCount + 1;
@@ -429,7 +436,7 @@ module mkDmaWriteEngine# (
 
 		writeCountQ.enq(wordCount);
 	endmethod
-	method ActionValue#(Bit#(8)) done;
+	method ActionValue#(Tuple2#(Bit#(8),Bit#(8))) done;
 		writeDoneQ.deq;
 		return writeDoneQ.first;
 	endmethod
@@ -437,5 +444,8 @@ module mkDmaWriteEngine# (
 		addBufferIdx <= addBufferIdx + 1;
 		writeBufferFreeQ.enq(addBufferIdx);
 		dmaWriteRefs[addBufferIdx] <= bref;
+	endmethod
+	method Action returnFreeBuf(Bit#(8) idx);
+		writeBufferFreeQ.enq(idx);
 	endmethod
 endmodule

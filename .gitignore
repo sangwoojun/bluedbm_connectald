@@ -17,3 +17,7 @@ bluesim
 build
 
 *.tgz
+
+obj
+*.aux
+*.log

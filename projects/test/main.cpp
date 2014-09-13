@@ -41,12 +41,15 @@
 #define MAX_REQS_INFLIGHT 32
 
 #ifndef BSIM
-#define BUFFER_COUNT 16
+#define DMA_BUFFER_COUNT 16
 #define LARGE_NUMBER (1024*1024/8)
 #else
-#define BUFFER_COUNT 8
+#define DMA_BUFFER_COUNT 8
 #define LARGE_NUMBER 16
 #endif
+#define BUFFER_WAYS 8
+#define BUFFER_COUNT (DMA_BUFFER_COUNT*BUFFER_WAYS)
+
 
 pthread_mutex_t flashReqMutex;
 pthread_cond_t flashReqCond;
@@ -55,14 +58,17 @@ bool verbose = false;
 char* log_prefix = "\t\tLOG: ";
 
 sem_t done_sem;
-int srcAllocs[BUFFER_COUNT];
-int dstAllocs[BUFFER_COUNT];
-unsigned int ref_srcAllocs[BUFFER_COUNT];
-unsigned int ref_dstAllocs[BUFFER_COUNT];
-unsigned int* srcBuffers[BUFFER_COUNT];
-unsigned int* dstBuffers[BUFFER_COUNT];
+int srcAllocs[DMA_BUFFER_COUNT];
+int dstAllocs[DMA_BUFFER_COUNT];
+unsigned int ref_srcAllocs[DMA_BUFFER_COUNT];
+unsigned int ref_dstAllocs[DMA_BUFFER_COUNT];
+unsigned int* srcBuffers[DMA_BUFFER_COUNT];
+unsigned int* dstBuffers[DMA_BUFFER_COUNT];
 bool srcBufferBusy[BUFFER_COUNT];
 bool readTagBusy[TAG_COUNT];
+
+unsigned int* writeBuffers[BUFFER_COUNT];
+unsigned int* readBuffers[BUFFER_COUNT];
 
 int numBytes = 1 << (10 +3+1 +3); //8 * 16KB buffer, to be safe
 size_t alloc_sz = numBytes*sizeof(unsigned char);
@@ -244,14 +250,14 @@ int main(int argc, const char **argv)
 
 	fprintf(stderr, "Main::allocating memory...\n");
 
-	for ( int i = 0; i < BUFFER_COUNT; i++ ) {
+	for ( int i = 0; i < DMA_BUFFER_COUNT; i++ ) {
 		srcAllocs[i] = portalAlloc(alloc_sz);
 		dstAllocs[i] = portalAlloc(alloc_sz);
 		srcBuffers[i] = (unsigned int *)portalMmap(srcAllocs[i], alloc_sz);
 		dstBuffers[i] = (unsigned int *)portalMmap(dstAllocs[i], alloc_sz);
 	}
 	portalExec_start();
-	for ( int i = 0; i < BUFFER_COUNT; i++ ) {
+	for ( int i = 0; i < DMA_BUFFER_COUNT; i++ ) {
 		portalDCacheFlushInval(srcAllocs[i], alloc_sz, srcBuffers[i]);
 		portalDCacheFlushInval(dstAllocs[i], alloc_sz, dstBuffers[i]);
 		ref_srcAllocs[i] = dma->reference(srcAllocs[i]);
@@ -264,10 +270,17 @@ int main(int argc, const char **argv)
 	pthread_mutex_init(&flashReqMutex, NULL);
 	pthread_cond_init(&flashReqCond, NULL);
 
-	for ( int i = 0; i < BUFFER_COUNT; i++ ) {
-		srcBufferBusy[i] = false;
-		device->addReadHostBuffer(ref_dstAllocs[i], i);
-		device->addWriteHostBuffer(ref_srcAllocs[i], i);
+	for ( int i = 0; i < DMA_BUFFER_COUNT; i++ ) {
+		for ( int j = 0; j < BUFFER_WAYS; j++ ) {
+			int idx = i*BUFFER_WAYS+j;
+			srcBufferBusy[idx] = false;
+
+			int offset = j*1024*16;
+			device->addReadHostBuffer(ref_dstAllocs[i], offset, idx);
+			device->addWriteHostBuffer(ref_srcAllocs[i], offset, idx);
+			writeBuffers[idx] = srcBuffers[i] + (offset/sizeof(unsigned int));
+			readBuffers[idx] = dstBuffers[i] + (offset/sizeof(unsigned int));
+		}
 	}
 	for ( int i = 0; i > TAG_COUNT; i++ ) {
 		readTagBusy[i] = false;
@@ -276,12 +289,12 @@ int main(int argc, const char **argv)
 
 	fprintf(stderr, "Main::flush and invalidate complete\n");
   
-	device->sendTest(8192);
+	device->sendTest(LARGE_NUMBER*1024);
 
 	for ( int i = 0; i < (8192+64)/4; i++ ) {
 		for ( int j = 0; j < BUFFER_COUNT; j++ ) {
-			dstBuffers[j][i] = 8192/4-i;
-			srcBuffers[j][i] = i;
+			readBuffers[j][i] = 8192/4-i;
+			writeBuffers[j][i] = i;
 		}
 	}
 
@@ -312,8 +325,8 @@ int main(int argc, const char **argv)
 
 	for ( int i = 0; i < (8192+64)/4; i++ ) {
 		for ( int j = 0; j < BUFFER_COUNT; j++ ) {
-			if ( i > (8192+64)/4 - 32 )
-			printf( "%d %d %d\n", j, i, dstBuffers[j][i] );
+			if ( i > (8192+64)/4 - 2 )
+			printf( "%d %d %d\n", j, i, readBuffers[j][i] );
 		}
 	}
 

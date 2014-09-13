@@ -51,8 +51,8 @@ interface FlashRequest;
 	method Action writePage(Bit#(32) channel, Bit#(32) chip, Bit#(32) block, Bit#(32) page, Bit#(32) tag);
 	method Action erasePage(Bit#(32) channel, Bit#(32) chip, Bit#(32) block);
 	method Action sendTest(Bit#(32) data);
-	method Action addWriteHostBuffer(Bit#(32) pointer, Bit#(32) idx);
-	method Action addReadHostBuffer(Bit#(32) pointer, Bit#(32) idx);
+	method Action addWriteHostBuffer(Bit#(32) pointer, Bit#(32) offset, Bit#(32) idx);
+	method Action addReadHostBuffer(Bit#(32) pointer, Bit#(32) offset, Bit#(32) idx);
 endinterface
 
 interface FlashIndication;
@@ -108,7 +108,7 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 		dataQ.deq;
 		let data = dataQ.first;
 
-		if ( data[7:0] == 0 )
+		if ( data[10:0] == 0 )
 			indication.hexDump(truncate(data));
 	endrule
 
@@ -213,11 +213,11 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 	method Action sendTest(Bit#(32) data);
 		auroraTestIdx <= data;
 	endmethod
-	method Action addWriteHostBuffer(Bit#(32) pointer, Bit#(32) idx);
-		dmaReader.addBuffer(truncate(idx), pointer);
+	method Action addWriteHostBuffer(Bit#(32) pointer, Bit#(32) offset, Bit#(32) idx);
+		dmaReader.addBuffer(truncate(idx), offset, pointer);
 	endmethod
-	method Action addReadHostBuffer(Bit#(32) pointer, Bit#(32) idx);
-		dmaWriter.addBuffer(pointer);
+	method Action addReadHostBuffer(Bit#(32) pointer, Bit#(32) offset, Bit#(32) idx);
+		dmaWriter.addBuffer(offset, pointer);
 	endmethod
 	method Action returnReadHostBuffer(Bit#(32) idx);
 		dmaWriter.returnFreeBuf(truncate(idx));

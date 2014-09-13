@@ -21,7 +21,7 @@ interface DMAReadEngineIfc#(numeric type wordSz);
 	method ActionValue#(Tuple2#(Bit#(wordSz), Bit#(8))) read;
 	method Action startRead(Bit#(8) bufidx, Bit#(32) wordCount);
 	method ActionValue#(Bit#(8)) done;
-	method Action addBuffer(Bit#(8) idx, Bit#(32) bref);
+	method Action addBuffer(Bit#(8) idx, Bit#(32) offset, Bit#(32) bref);
 endinterface
 module mkDmaReadEngine#(
 	Server#(MemengineCmd,Bool) rServer,
@@ -37,7 +37,7 @@ module mkDmaReadEngine#(
 	
 	Integer pageWords = pageBytes/wordBytes;
 	
-	Vector#(BufferCount, Reg#(Bit#(32))) dmaReadRefs <- replicateM(mkReg(0));
+	Vector#(BufferCount, Reg#(Tuple2#(Bit#(32),Bit#(32)))) dmaReadRefs <- replicateM(mkReg(?));
 	
 	Reg#(Bit#(32)) dmaReadCount <- mkReg(0);
 
@@ -50,8 +50,10 @@ module mkDmaReadEngine#(
 
 	rule driveHostDmaReq (dmaReadCount > 0);
 		let bufIdx = readIdxQ.first;
-		let rdRef = dmaReadRefs[bufIdx];
-		let dmaReadOffset = fromInteger(pageBytes)-dmaReadCount;
+		let rd = dmaReadRefs[bufIdx];
+		let rdRef = tpl_1(rd);
+		let rdOff = tpl_2(rd);
+		let dmaReadOffset = rdOff+fromInteger(pageBytes)-dmaReadCount;
 
 
 		rServer.request.put(MemengineCmd{pointer:rdRef, base:extend(dmaReadOffset), len:fromInteger(burstBytes), burstLen:fromInteger(burstBytes)});
@@ -110,8 +112,8 @@ module mkDmaReadEngine#(
 		readDoneQ.deq;
 		return readDoneQ.first;
 	endmethod
-	method Action addBuffer(Bit#(8) idx, Bit#(32) bref);
-		dmaReadRefs[idx] <= bref;
+	method Action addBuffer(Bit#(8) idx, Bit#(32) offset, Bit#(32) bref);
+		dmaReadRefs[idx] <= tuple2(bref, offset);
 	endmethod
 endmodule
 	
@@ -122,7 +124,7 @@ interface DMAWriteEngineIfc#(numeric type wordSz);
 	method Action write(Bit#(wordSz) word, Bit#(8) tag); 
 	method Action startWrite(Bit#(8) tag, Bit#(32) wordCount);
 	method ActionValue#(Tuple2#(Bit#(8),Bit#(8))) done;
-	method Action addBuffer(Bit#(32) bref);
+	method Action addBuffer(Bit#(32) offset, Bit#(32) bref);
 	method Action returnFreeBuf(Bit#(8) idx);
 endinterface
 module mkDmaWriteEngine# (
@@ -139,7 +141,7 @@ module mkDmaWriteEngine# (
 	BRAMFIFOVectorIfc#(BufferCountLog, 32, Bit#(wordSz)) writeBuffer <- mkBRAMFIFOVector(4);
 	Vector#(BufferCount, Reg#(Tuple2#(Bit#(8), Bit#(32)))) dmaWriteStatus <- replicateM(mkReg(tuple2(0,0))); // bufferidx -> tag, curoffset
 	Vector#(BufferCount, Reg#(Bit#(8))) requestBufferIdx <- replicateM(mkReg(0)); // tag->bufferidx
-   Vector#(BufferCount, Reg#(Bit#(32))) dmaWriteRefs <- replicateM(mkReg(0));
+   Vector#(BufferCount, Reg#(Tuple2#(Bit#(32),Bit#(32)))) dmaWriteRefs <- replicateM(mkReg(?));
    
 	FIFO#(Bit#(8)) writeBufferFreeQ <- mkSizedFIFO(bufferCount); // bufidx
 
@@ -164,10 +166,14 @@ module mkDmaWriteEngine# (
 		let tag = tpl_1(s);
 		let offset = tpl_2(s);
 		dmaWriteStatus[rbuf] <= tuple2(tag,offset+fromInteger(burstBytes));
-		let wrRef = dmaWriteRefs[rbuf];
+		let wr = dmaWriteRefs[rbuf];
+		let wrRef = tpl_1(wr);
+		let wrOff = tpl_2(wr);
+
+		let burstOff = wrOff + offset;
 	  
 		//$display( "%d: starting burst %d", rbuf, offset );
-		wServer.request.put(MemengineCmd{pointer:wrRef, base:zeroExtend(offset), len:fromInteger(burstBytes), burstLen:fromInteger(burstBytes)});
+		wServer.request.put(MemengineCmd{pointer:wrRef, base:zeroExtend(burstOff), len:fromInteger(burstBytes), burstLen:fromInteger(burstBytes)});
 	endrule
 
 	FIFO#(Bit#(8)) curWriteBufQ <- mkSizedFIFO(5);
@@ -231,10 +237,10 @@ module mkDmaWriteEngine# (
 		writeDoneQ.deq;
 		return writeDoneQ.first;
 	endmethod
-	method Action addBuffer(Bit#(32) bref);
+	method Action addBuffer(Bit#(32) offset, Bit#(32) bref);
 		addBufferIdx <= addBufferIdx + 1;
 		writeBufferFreeQ.enq(addBufferIdx);
-		dmaWriteRefs[addBufferIdx] <= bref;
+		dmaWriteRefs[addBufferIdx] <= tuple2(bref, offset);
 	endmethod
 	method Action returnFreeBuf(Bit#(8) idx);
 		writeBufferFreeQ.enq(idx);

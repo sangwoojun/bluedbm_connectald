@@ -23,3 +23,6 @@
 	[flashemul], [simple] : projects for an older version of xbsv. Read if you
 		want.
 
+3. Tools
+	Vivado 2014.1 and Bluespec-2014.03.beta2 were used.
+	They are installed in the CSG group tools directory in afs.

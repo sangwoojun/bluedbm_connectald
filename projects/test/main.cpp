@@ -64,7 +64,7 @@ unsigned int* dstBuffers[BUFFER_COUNT];
 bool srcBufferBusy[BUFFER_COUNT];
 bool readTagBusy[TAG_COUNT];
 
-int numBytes = 1 << (10+5); // 32KB buffer, to be safe
+int numBytes = 1 << (10 +3+1 +3); //8 * 16KB buffer, to be safe
 size_t alloc_sz = numBytes*sizeof(unsigned char);
 
 int curReqsInFlight = 0;

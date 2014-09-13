@@ -38,14 +38,14 @@
 //#include "testmemcpy2.h"
 
 #define TAG_COUNT 128
-#define MAX_REQS_INFLIGHT 32
+//#define MAX_REQS_INFLIGHT 32
 
 #ifndef BSIM
 #define DMA_BUFFER_COUNT 16
 #define LARGE_NUMBER (1024*1024/8)
 #else
 #define DMA_BUFFER_COUNT 8
-#define LARGE_NUMBER 16
+#define LARGE_NUMBER 256
 #endif
 #define BUFFER_WAYS 8
 #define BUFFER_COUNT (DMA_BUFFER_COUNT*BUFFER_WAYS)
@@ -73,11 +73,14 @@ unsigned int* readBuffers[BUFFER_COUNT];
 int numBytes = 1 << (10 +3+1 +3); //8 * 16KB buffer, to be safe
 size_t alloc_sz = numBytes*sizeof(unsigned char);
 
-int curReqsInFlight = 0;
+int curWritesInFlight = 0;
+int curReadsInFlight = 0;
 std::list<int> finishedReadBuffer;
 std::list<int> readyReadBuffer;
 
 pthread_mutex_t freeListMutex;
+pthread_mutex_t cmdReqMutex;
+pthread_cond_t cmdReqCond;
 void setFinishedReadBuffer(int idx) {
 	pthread_mutex_lock(&freeListMutex);
 	finishedReadBuffer.push_front(idx);
@@ -104,6 +107,7 @@ int popReadyReadBuffer() {
 	return ret;
 }
 
+int curCmdCountBudget = 0;
 class FlashIndication : public FlashIndicationWrapper
 {
 
@@ -112,33 +116,57 @@ public:
 
   virtual void writeDone(unsigned int bufidx) {
 	pthread_mutex_lock(&flashReqMutex);
+	curWritesInFlight --;
+	srcBufferBusy[bufidx] = false;
+	pthread_cond_broadcast(&flashReqCond);
+	pthread_mutex_unlock(&flashReqMutex);
+	
+	if ( curWritesInFlight < 0 ) {
+		curWritesInFlight = 0;
+		fprintf(stderr, "Write requests in flight cannot be negative\n" );
+	}
 
+/*
 	curReqsInFlight --;
 	if ( curReqsInFlight < 0 ) {
 		curReqsInFlight = 0;
 		fprintf(stderr, "Requests in flight cannot be negative\n" );
 	}
+*/
+	if ( verbose ) printf( "%s received write done buffer: %d curWritesInFlight: %d\n", log_prefix, bufidx, curWritesInFlight );
 
-	srcBufferBusy[bufidx] = false;
-	if ( verbose ) printf( "%s received write done buffer: %d \n", log_prefix, bufidx );
-
-	pthread_cond_broadcast(&flashReqCond);
-	pthread_mutex_unlock(&flashReqMutex);
   }
   virtual void readDone(unsigned int rbuf, unsigned int tag) {
 	pthread_mutex_lock(&flashReqMutex);
+	curReadsInFlight --;
+	readTagBusy[tag] = false;
+	readyReadBuffer.push_front(rbuf);
+	pthread_cond_broadcast(&flashReqCond);
+	pthread_mutex_unlock(&flashReqMutex);
 
+	if ( curReadsInFlight < 0 ) {
+		curReadsInFlight = 0;
+		fprintf(stderr, "Read requests in flight cannot be negative\n" );
+	}
+
+/*
 	curReqsInFlight --;
 	if ( curReqsInFlight < 0 ) {
 		curReqsInFlight = 0;
 		fprintf(stderr, "Requests in flight cannot be negative\n" );
 	}
-	readyReadBuffer.push_front(rbuf);
-	if ( verbose ) printf( "%s received read page tag: %d buffer: %d\n", log_prefix, tag, rbuf );
+	*/
+	if ( verbose ) printf( "%s received read page tag: %d buffer: %d %d\n", log_prefix, tag, rbuf, curReadsInFlight );
 
-	readTagBusy[tag] = false;
-	pthread_cond_broadcast(&flashReqCond);
-	pthread_mutex_unlock(&flashReqMutex);
+  }
+
+  virtual void reqFlashCmd(unsigned int inQ, unsigned int count) {
+	pthread_mutex_lock(&cmdReqMutex);
+	curCmdCountBudget += count;
+	pthread_cond_broadcast(&cmdReqCond);
+	pthread_mutex_unlock(&cmdReqMutex);
+
+	if ( verbose ) printf( "\t%s increase flash cmd budget: %d (%d)\n", log_prefix, curCmdCountBudget, inQ );
   }
   virtual void hexDump(unsigned int data) {
   	printf( "%x--\n", data );
@@ -146,23 +174,30 @@ public:
   }
 };
 
-int getNumReqsInFlight() { return curReqsInFlight; }
+int getNumWritesInFlight() { return curWritesInFlight; }
+int getNumReadsInFlight() { return curReadsInFlight; }
 
 void writePage(FlashRequestProxy* device, int channel, int chip, int block, int page, int bufidx) {
 	if ( bufidx > BUFFER_COUNT ) return;
 
-	pthread_mutex_lock(&flashReqMutex);
 	if ( verbose ) printf( "%s requesting write page\n", log_prefix );
 	
-	while (curReqsInFlight >= MAX_REQS_INFLIGHT ) {
-		pthread_cond_wait(&flashReqCond, &flashReqMutex);
+	//while (curReqsInFlight >= MAX_REQS_INFLIGHT ) {
+	pthread_mutex_lock(&cmdReqMutex);
+	while (curCmdCountBudget <= 0) {
+		//if ( verbose ) printf( "%s too many reqs in flight %d\n", log_prefix, curCmdCountBudget );
+		pthread_cond_wait(&cmdReqCond, &cmdReqMutex);
 	}
+	pthread_mutex_unlock(&cmdReqMutex);
 
-	if ( verbose ) printf( "%s sending write req to device\n", log_prefix );
-	curReqsInFlight ++;
+	pthread_mutex_lock(&flashReqMutex);
+	curWritesInFlight ++;
+	curCmdCountBudget--; 
+	pthread_mutex_unlock(&flashReqMutex);
+
+	if ( verbose ) printf( "%s sending write req to device %d\n", log_prefix, curWritesInFlight );
 	device->writePage(channel,chip,block,page,bufidx);
 
-	pthread_mutex_unlock(&flashReqMutex);
 }
 
 int getIdleWriteBuffer() {
@@ -190,12 +225,15 @@ int waitIdleWriteBuffer() {
 
 
 void readPage(FlashRequestProxy* device, int channel, int chip, int block, int page) {
-	pthread_mutex_lock(&flashReqMutex);
-	while (curReqsInFlight >= MAX_REQS_INFLIGHT ) {
-		pthread_cond_wait(&flashReqCond, &flashReqMutex);
+	//while (curReqsInFlight >= MAX_REQS_INFLIGHT ) {
+	pthread_mutex_lock(&cmdReqMutex);
+	while (curCmdCountBudget <= 0) {
+		pthread_cond_wait(&cmdReqCond, &cmdReqMutex);
 	}
+	pthread_mutex_unlock(&cmdReqMutex);
 	int availTag = -1;
 	if ( verbose ) printf( "%s finding new tag\n", log_prefix );
+	pthread_mutex_lock(&flashReqMutex);
 	while (true) {
 		int rrb = popReadyReadBuffer();
 		while (rrb >= 0 ) {
@@ -218,7 +256,9 @@ void readPage(FlashRequestProxy* device, int channel, int chip, int block, int p
 			break;
 		}
 	}
-	curReqsInFlight ++;
+	//curReqsInFlight ++;
+	curReadsInFlight ++;
+	curCmdCountBudget --;
 	readTagBusy[availTag] = true;
 
 	if ( verbose ) printf( "%s sending read page request\n", log_prefix );
@@ -265,10 +305,13 @@ int main(int argc, const char **argv)
 	}
 
 	// Storage system init /////////////////////////////////
-	curReqsInFlight = 0;
+	curWritesInFlight = 0;
+	curCmdCountBudget = 0;
 	pthread_mutex_init(&freeListMutex, NULL);
 	pthread_mutex_init(&flashReqMutex, NULL);
+	pthread_mutex_init(&cmdReqMutex, NULL);
 	pthread_cond_init(&flashReqCond, NULL);
+	pthread_cond_init(&cmdReqCond, NULL);
 
 	for ( int i = 0; i < DMA_BUFFER_COUNT; i++ ) {
 		for ( int j = 0; j < BUFFER_WAYS; j++ ) {
@@ -288,6 +331,7 @@ int main(int argc, const char **argv)
 	/////////////////////////////////////////////////////////
 
 	fprintf(stderr, "Main::flush and invalidate complete\n");
+	device->start(0);
   
 	device->sendTest(LARGE_NUMBER*1024);
 
@@ -298,9 +342,11 @@ int main(int argc, const char **argv)
 		}
 	}
 
+	printf( "writing pages to flash!\n" );
 	for ( int i = 0; i < LARGE_NUMBER; i++ ) writePage(device, 0,0,0,i,waitIdleWriteBuffer());
 
-	while ( getNumReqsInFlight() > 0 ) usleep(1000);
+	printf( "waiting for writing pages to flash!\n" );
+	while ( getNumWritesInFlight() > 0 ) usleep(1000);
 
 	printf( "wrote pages to flash!\n" );
   
@@ -319,7 +365,7 @@ int main(int argc, const char **argv)
 		}
 
 		flushFinishedReadBuffers(device);
-		if ( getNumReqsInFlight() == 0 ) break;
+		if ( getNumReadsInFlight() == 0 ) break;
 	}
 	printf( "finished reading from page!\n" );
 

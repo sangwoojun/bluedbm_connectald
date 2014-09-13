@@ -1,9 +1,9 @@
 
 #BSCFLAGS = -show-schedule -aggressive-conditions --wait-for-license -bdir $(DTOP)/obj -vdir $(DTOP)/verilog/top -simdir $(DTOP)/obj  -D TimeStamp=1402968878 
-BSCFLAGS = -show-schedule --wait-for-license -bdir ./build/obj -vdir ./build/verilog/top -simdir ./build/obj -info-dir ./build
-#BSCFLAGS = -show-schedule -aggressive-conditions --wait-for-license -bdir ./build/obj -vdir ./build/verilog/top -simdir ./build/obj -info-dir ./build
+#BSCFLAGS = -show-schedule --wait-for-license -bdir ./build/obj -vdir ./build/verilog/top -simdir ./build/obj -info-dir ./build
+BSCFLAGS = -show-schedule -aggressive-conditions --wait-for-license -bdir ./build/obj -vdir ./build/verilog/top -simdir ./build/obj -info-dir ./build
  
-BSVPATH = ../xilinx/aurora_8b10b/:../../src/lib:#/home/wjun/bluedbm_work/xbsv/lib/bsv:/home/wjun/bluedbm_work/bluedbm/src/hardware_controller/dram/raw_64:/home/wjun/bluedbm_work/xbsv/generated/xilinx:/home/wjun/bluedbm_work/bluedbm/src/hardware_controller/flash/emulated:/home/wjun/bluedbm_work/xbsv/bsv:/home/wjun/bluedbm_work/bluedbm/flashemul:/home/wjun/bluedbm_work/bluedbm/src/bluedbm_platform/test_platform
+BSVPATH = ../xilinx/aurora_8b10b/:../../src/lib:
 
 all:
 	mkdir -p build/obj

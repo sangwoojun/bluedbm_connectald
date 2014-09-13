@@ -191,6 +191,11 @@ void readPage(FlashRequestProxy* device, int channel, int chip, int block, int p
 	int availTag = -1;
 	if ( verbose ) printf( "%s finding new tag\n", log_prefix );
 	while (true) {
+		int rrb = popReadyReadBuffer();
+		while (rrb >= 0 ) {
+			setFinishedReadBuffer(rrb);
+			rrb = popReadyReadBuffer();
+		}
 		flushFinishedReadBuffers(device);
 
 		availTag = -1;
@@ -288,6 +293,7 @@ int main(int argc, const char **argv)
   
 	for ( int i = 0; i < LARGE_NUMBER; i++ ) {
 		readPage(device, 0,0,0,i);
+		if ( i % 1024 == 0 ) printf( "reading page %d\n", i );
 	}
 	
 	printf( "trying reading from page!\n" );

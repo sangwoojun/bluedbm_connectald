@@ -198,7 +198,7 @@ module mkAuroraImport_8b10b#(Clock gtx_clk_in, Clock init_clk, Reset init_rst_n,
 
 	schedule (user_receive) CF (aurora_rxn_in, aurora_rxp_in, aurora_txn_out, aurora_txp_out, user_channel_up, user_lane_up, user_hard_err, user_soft_err, user_data_err_count);
 
-	schedule (user_receive) CF (user_send);
+	schedule (user_receive) SB (user_send);
 	schedule (user_send) C (user_send);
 	schedule (user_receive) C (user_receive);
 

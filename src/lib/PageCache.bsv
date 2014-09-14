@@ -9,14 +9,14 @@ typedef TAdd#(8192,64) PageBytes;
 typedef TDiv#(PageBytes,WordBytes) PageWords;
 typedef TLog#(PageWords) PageWordsLog;
 
-interface PageCacheIfc#(numeric type tBufferSizeLog, numeric type MaxTag);
+interface PageCacheIfc#(numeric type tBufferSizeLog, numeric type tMaxTag);
 	method Action readPage(Bit#(64) pageIdx, Bit#(8) tag);
 	method ActionValue#(Tuple2#(Bit#(WordSz), Bit#(8))) readWord;
 	method Action writePage (Bit#(64) pageIdx, Bit#(8) tag);
 	method Action writeWord (Bit#(WordSz) data, Bit#(8) tag);
 endinterface
 
-module mkPageCache (PageCacheIfc#(tBufferSizeLog, MaxTag))
+module mkPageCache (PageCacheIfc#(tBufferSizeLog, tMaxTag))
 provisos ( Add#(a__, TAdd#(PageWordsLog, tBufferSizeLog), 64),Add#(b__, tBufferSizeLog, 64));
 	BRAM2Port#(Bit#(TAdd#(PageWordsLog,tBufferSizeLog)), Bit#(WordSz)) pageBuffer <- mkBRAM2Server(defaultValue); // 8k pages 
 
@@ -26,14 +26,14 @@ provisos ( Add#(a__, TAdd#(PageWordsLog, tBufferSizeLog), 64),Add#(b__, tBufferS
 	Integer pageWords = valueOf(PageWords);
 	Integer pageWordsLog = valueOf(PageWordsLog);
 
-	Integer maxTag = valueOf(MaxTag);
+	Integer maxTag = valueOf(tMaxTag);
 
 	Reg#(Bit#(64)) curReadIdx <- mkReg(0);
 	Reg#(Bit#(8)) curReadTag <- mkReg(0);
 	Reg#(Bit#(32)) readCount <- mkReg(99999999);
 	
 	//Reg#(Bit#(64)) curWriteIdx <- mkReg(0);
-	Vector#(MaxTag, Reg#(Tuple2#(Bit#(tBufferSizeLog), Bit#(16)))) writeIdx <- replicateM(mkReg(tuple2(0, 99999)));
+	Vector#(tMaxTag, Reg#(Tuple2#(Bit#(tBufferSizeLog), Bit#(16)))) writeIdx <- replicateM(mkReg(tuple2(0, 65530)));
 	Reg#(Bit#(8)) curWriteTag <- mkReg(0);
 	Reg#(Bit#(32)) writeCount <- mkReg(99999999);
 
@@ -71,8 +71,7 @@ provisos ( Add#(a__, TAdd#(PageWordsLog, tBufferSizeLog), 64),Add#(b__, tBufferS
 	endrule
 	
 	method Action readPage (Bit#(64) pageIdx, Bit#(8) tag) 
-		if ( readCount >= fromInteger(pageWords) && 
-		( tag < fromInteger(maxTag) ) );
+		if ( readCount >= fromInteger(pageWords));
 
 		curReadTag <= tag;
 		Bit#(tBufferSizeLog) pageIdxt = truncate(pageIdx);
@@ -89,8 +88,7 @@ provisos ( Add#(a__, TAdd#(PageWordsLog, tBufferSizeLog), 64),Add#(b__, tBufferS
 		return tuple2(v, readTagQ.first);
 	endmethod
 	
-	method Action writePage (Bit#(64) pageIdx, Bit#(8) tag)
-		if ( tag < fromInteger(maxTag) );
+	method Action writePage (Bit#(64) pageIdx, Bit#(8) tag);
 
 		writePageQ.enq(tuple2(pageIdx, tag));
 		//if ( tpl_2(writeIdx[tag]) < 4096/8) fakeQ_wp.deq;

@@ -28,6 +28,7 @@
 #include <semaphore.h>
 
 #include <list>
+#include <time.h>
 
 #include "StdDmaIndication.h"
 #include "DmaConfigProxy.h"
@@ -35,26 +36,31 @@
 #include "FlashIndicationWrapper.h"
 #include "FlashRequestProxy.h"
 
-//#include "testmemcpy2.h"
-
 #define TAG_COUNT 128
 //#define MAX_REQS_INFLIGHT 32
 
 #ifndef BSIM
 #define DMA_BUFFER_COUNT 16
 #define LARGE_NUMBER (1024*1024/8)
+bool verbose = false;
 #else
 #define DMA_BUFFER_COUNT 8
 #define LARGE_NUMBER 256
+bool verbose = true;
 #endif
-#define BUFFER_WAYS 8
+
+#define BUFFER_WAYS (128/DMA_BUFFER_COUNT)
 #define BUFFER_COUNT (DMA_BUFFER_COUNT*BUFFER_WAYS)
 
+double timespec_diff_sec( timespec start, timespec end ) {
+	double t = end.tv_sec - start.tv_sec;
+	t += ((double)(end.tv_nsec - start.tv_nsec)/1000000000L);
+	return t;
+}
 
 pthread_mutex_t flashReqMutex;
 pthread_cond_t flashReqCond;
 
-bool verbose = false;
 char* log_prefix = "\t\tLOG: ";
 
 sem_t done_sem;
@@ -70,7 +76,7 @@ bool readTagBusy[TAG_COUNT];
 unsigned int* writeBuffers[BUFFER_COUNT];
 unsigned int* readBuffers[BUFFER_COUNT];
 
-int numBytes = 1 << (10 +3+1 +3); //8 * 16KB buffer, to be safe
+int numBytes = (1 << (10 +4))*BUFFER_WAYS; //16KB buffer, to be safe
 size_t alloc_sz = numBytes*sizeof(unsigned char);
 
 int curWritesInFlight = 0;
@@ -107,6 +113,15 @@ int popReadyReadBuffer() {
 	return ret;
 }
 
+
+timespec readstart[TAG_COUNT];
+int readstartidx = 0;
+int readdoneidx = 0;
+timespec readnow;
+
+int timecheckidx = 0;
+float timecheck[2048];
+
 int curCmdCountBudget = 0;
 class FlashIndication : public FlashIndicationWrapper
 {
@@ -136,11 +151,16 @@ public:
 	if ( verbose ) printf( "%s received write done buffer: %d curWritesInFlight: %d\n", log_prefix, bufidx, curWritesInFlight );
 
   }
-  virtual void readDone(unsigned int rbuf, unsigned int tag) {
+  virtual void pageReadDone(unsigned int rbuf, unsigned int tag) {
+	if ( verbose ) printf( "%s received read page tag: %d buffer: %d %d\n", log_prefix, tag, rbuf, curReadsInFlight );
 	pthread_mutex_lock(&flashReqMutex);
 	curReadsInFlight --;
-	readTagBusy[tag] = false;
+	if ( tag < TAG_COUNT ) readTagBusy[tag] = false;
+	else fprintf(stderr, "WARNING: done tag larger than tag count\n" );
+	pthread_mutex_lock(&freeListMutex);
 	readyReadBuffer.push_front(rbuf);
+	pthread_mutex_unlock(&freeListMutex);
+
 	pthread_cond_broadcast(&flashReqCond);
 	pthread_mutex_unlock(&flashReqMutex);
 
@@ -148,6 +168,16 @@ public:
 		curReadsInFlight = 0;
 		fprintf(stderr, "Read requests in flight cannot be negative\n" );
 	}
+	if ( verbose ) printf( "%s Finished pagedone: %d buffer: %d %d\n", log_prefix, tag, rbuf, curReadsInFlight );
+
+	if ( timecheckidx < 2048 ) {
+		clock_gettime(CLOCK_REALTIME, & readnow);
+		timecheck[timecheckidx] = timespec_diff_sec(readstart[readdoneidx], readnow);
+		readdoneidx++;
+		if ( readdoneidx >= TAG_COUNT ) readdoneidx = 0;
+		timecheckidx ++;
+	}
+
 
 /*
 	curReqsInFlight --;
@@ -156,7 +186,6 @@ public:
 		fprintf(stderr, "Requests in flight cannot be negative\n" );
 	}
 	*/
-	if ( verbose ) printf( "%s received read page tag: %d buffer: %d %d\n", log_prefix, tag, rbuf, curReadsInFlight );
 
   }
 
@@ -223,17 +252,27 @@ int waitIdleWriteBuffer() {
 	return bufidx;
 }
 
+unsigned int noCmdBudgetCount = 0;
+unsigned int noTagCount = 0;
+
 
 void readPage(FlashRequestProxy* device, int channel, int chip, int block, int page) {
-	//while (curReqsInFlight >= MAX_REQS_INFLIGHT ) {
+
+	clock_gettime(CLOCK_REALTIME, & readstart[readstartidx]);
+	readstartidx++;
+	if ( readstartidx >= TAG_COUNT ) readstartidx = 0;
+
 	pthread_mutex_lock(&cmdReqMutex);
 	while (curCmdCountBudget <= 0) {
+		noCmdBudgetCount++;
+		if ( verbose ) printf( "%s no cmd budget \n", log_prefix );
 		pthread_cond_wait(&cmdReqCond, &cmdReqMutex);
 	}
+	curCmdCountBudget --;
 	pthread_mutex_unlock(&cmdReqMutex);
+
 	int availTag = -1;
-	if ( verbose ) printf( "%s finding new tag\n", log_prefix );
-	pthread_mutex_lock(&flashReqMutex);
+	if ( verbose ) printf( "%s budget: %d finding new tag\n", log_prefix, curCmdCountBudget );
 	while (true) {
 		int rrb = popReadyReadBuffer();
 		while (rrb >= 0 ) {
@@ -242,28 +281,35 @@ void readPage(FlashRequestProxy* device, int channel, int chip, int block, int p
 		}
 		flushFinishedReadBuffers(device);
 
+		pthread_mutex_lock(&flashReqMutex);
 		availTag = -1;
 		for ( int i = 0; i < TAG_COUNT; i++ ) {
 			if ( readTagBusy[i] == false ) {
 				availTag = i;
+				curReadsInFlight ++;
+				readTagBusy[availTag] = true;
 				break;
 			}
 		}
+
 		if ( availTag < 0 ) {
 			if ( verbose ) printf( "%s no tags!\n", log_prefix );
+			noTagCount++;
 			pthread_cond_wait(&flashReqCond, &flashReqMutex);
+			//usleep(100);
 		} else {
+			pthread_mutex_unlock(&flashReqMutex);
 			break;
 		}
 	}
+	
+	//if ( verbose ) printf( "%s using tag %d\n", log_prefix, availTag );
+
+
 	//curReqsInFlight ++;
-	curReadsInFlight ++;
-	curCmdCountBudget --;
-	readTagBusy[availTag] = true;
 
 	if ( verbose ) printf( "%s sending read page request\n", log_prefix );
 	device->readPage(channel,chip,block,page,availTag);
-	pthread_mutex_unlock(&flashReqMutex);
 }
 
 int main(int argc, const char **argv)
@@ -342,17 +388,30 @@ int main(int argc, const char **argv)
 		}
 	}
 
+	timespec start, now;
 	printf( "writing pages to flash!\n" );
-	for ( int i = 0; i < LARGE_NUMBER; i++ ) writePage(device, 0,0,0,i,waitIdleWriteBuffer());
-
+	clock_gettime(CLOCK_REALTIME, & start);
+	for ( int i = 0; i < LARGE_NUMBER/2; i++ ) {
+		for ( int j = 0; j < 2; j++ ) {
+			writePage(device, j*8,0,0,i,waitIdleWriteBuffer());
+			if ( i % 1024 == 0 ) printf( "writing page %d\n", i );
+		}
+	}
 	printf( "waiting for writing pages to flash!\n" );
 	while ( getNumWritesInFlight() > 0 ) usleep(1000);
+	clock_gettime(CLOCK_REALTIME, & now);
+	printf( "finished writing to page! %f\n", timespec_diff_sec(start, now) );
 
 	printf( "wrote pages to flash!\n" );
   
-	for ( int i = 0; i < LARGE_NUMBER; i++ ) {
-		readPage(device, 0,0,0,i);
-		if ( i % 1024 == 0 ) printf( "reading page %d\n", i );
+	clock_gettime(CLOCK_REALTIME, & start);
+	for ( int i = 0; i < LARGE_NUMBER/2; i++ ) {
+		for ( int j = 0; j < 2; j++ ) {
+
+			readPage(device, j*8,0,0,i);
+			if ( i % 1024 == 0 ) 
+				printf( "reading page %d\n", i );
+		}
 	}
 	
 	printf( "trying reading from page!\n" );
@@ -367,7 +426,8 @@ int main(int argc, const char **argv)
 		flushFinishedReadBuffers(device);
 		if ( getNumReadsInFlight() == 0 ) break;
 	}
-	printf( "finished reading from page!\n" );
+	clock_gettime(CLOCK_REALTIME, & now);
+	printf( "finished reading from page! %f\n", timespec_diff_sec(start, now) );
 
 	for ( int i = 0; i < (8192+64)/4; i++ ) {
 		for ( int j = 0; j < BUFFER_COUNT; j++ ) {
@@ -375,6 +435,10 @@ int main(int argc, const char **argv)
 			printf( "%d %d %d\n", j, i, readBuffers[j][i] );
 		}
 	}
+	for ( int i = 0; i < 2048; i++ ) {
+		printf( "%d: %f\n", i, timecheck[i] );
+	}
+	printf( "Command buget was gone:%d \nTag was busy:%d\n", noCmdBudgetCount, noTagCount );
 
 	exit(0);
 }

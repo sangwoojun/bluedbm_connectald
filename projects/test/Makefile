@@ -14,7 +14,9 @@ ifeq ($(BOARD), vc707)
 EXTRA_XBSVFLAGS += \
 	--verilog ../../xilinx/aurora_8b10b_fmc1/ \
 	--xci $(XBSVDIR)/out/$(BOARD)/aurora_8b10b_fmc1/aurora_8b10b_fmc1.xci \
-	--constraint ../../xilinx/aurora_8b10b_fmc1/aurora_8b10b_fmc1_exdes.xdc
+	--constraint ../../xilinx/aurora_8b10b_fmc1/aurora_8b10b_fmc1_exdes.xdc \
+	--clib rt
+
 
 AURORA_V = $(XBSVDIR)/out/$(BOARD)/aurora_8b10b_fmc1/aurora_8b10b_fmc1_stub.v
 prebuild:: $(AURORA_V) 

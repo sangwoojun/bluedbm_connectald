@@ -77,6 +77,7 @@ provisos ( Add#(a__, TAdd#(PageWordsLog, tBufferSizeLog), 64),Add#(b__, tBufferS
 		Bit#(tBufferSizeLog) pageIdxt = truncate(pageIdx);
 		curReadIdx <= zeroExtend(pageIdxt);
 		readCount <= 0;
+		$display ( "PageCache starting read @ page %d with tag %d", pageIdxt, tag );
 	endmethod
 	method ActionValue#(Tuple2#(Bit#(WordSz), Bit#(8))) readWord;
 		//let v <- pageBuffer.portB.response.get();

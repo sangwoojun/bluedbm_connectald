@@ -39,7 +39,6 @@ import AuroraImportFmc1::*;
 import PageCache::*;
 import DMABurstHelper::*;
 
-typedef 2 NumDmaChannels;
 
 typedef TAdd#(8192,64) PageBytes;
 //typedef 16 WordBytes;
@@ -59,9 +58,10 @@ interface FlashRequest;
 endinterface
 
 interface FlashIndication;
-	method Action pageReadDone(Bit#(32) rbuf, Bit#(32) tag);
+	method Action readDone(Bit#(32) rbuf, Bit#(32) tag);
 	method Action writeDone(Bit#(32) tag);
 	method Action reqFlashCmd(Bit#(32) inq, Bit#(32) count);
+	method Action hexDump(Bit#(32) data);
 endinterface
 
 interface MainIfc;
@@ -111,20 +111,23 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 
 		dataQ.enq({2'b0,ptype,data[23:0]});
 	endrule
+
+	Reg#(Bit#(32)) auroraDataCheck <- mkReg(0);
 	rule dumpD;
 		dataQ.deq;
 		let data = dataQ.first;
+		auroraDataCheck <= data;
 
-/*
-		if ( data[10:0] == 0 )
+		if ( auroraDataCheck - 1 != data )
 			indication.hexDump(truncate(data));
-*/
+		else if ( data[15:0] == 0 ) 
+			indication.hexDump(truncate(data));
 	endrule
 
 
-	Vector#(NumDmaChannels, PageCacheIfc#(3,128)) pageCaches;
+	Vector#(NumDmaChannels, PageCacheIfc#(2,WriteTagCount)) pageCaches;
 	for ( Integer wIdx = 0; wIdx < numDmaChannels; wIdx = wIdx + 1 ) begin
-		PageCacheIfc#(3, 128) pageCache <- mkPageCache; // 8 pages
+		let pageCache <- mkPageCache; // 8 pages
 		pageCaches[wIdx] = pageCache;
 	end
 
@@ -152,7 +155,7 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 		let r <- writeBufMan.done;
 		let rbuf = tpl_1(r);
 		let tag = tpl_2(r);
-		indication.pageReadDone(zeroExtend(rbuf), zeroExtend(tag));
+		indication.readDone(zeroExtend(rbuf), zeroExtend(tag));
 		
 	endrule
 /////////////////////////////////////////////////////////////////////////////////////
@@ -200,12 +203,8 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 			let freebuf <- writeBufMan.getFreeBufIdx;
 
 			// temporary stuff
-			let dmaWriter = dmaWriters[0];
-			let pageCache = pageCaches[0];
-			if ( cmd.channel >= 8 ) begin
-				dmaWriter = dmaWriters[1];
-				pageCache = pageCaches[1];
-			end
+			let dmaWriter = dmaWriters[cmd.channel];
+			let pageCache = pageCaches[cmd.channel];
 
 			dmaWriter.startWrite(cmd.tag, freebuf, fromInteger(pageWords));
 
@@ -215,17 +214,13 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 			curReqsInQ <= curReqsInQ -1;
 
 			flashCmdQ.deq;
-			let dmaReader = dmaReaders[0];
-			let pageCache = pageCaches[0];
-			if ( cmd.channel >= 8 ) begin
-				dmaReader = dmaReaders[1];
-				pageCache = pageCaches[1];
-			end
+			let dmaReader = dmaReaders[cmd.channel];
+			let pageCache = pageCaches[cmd.channel];
 
 			dmaReader.startRead(cmd.bufidx, fromInteger(pageWords));
 
 			pageCache.writePage(zeroExtend(cmd.page), cmd.bufidx);
-			//$display( "starting page write page %d at tag %d", cmd.page, cmd.tag );
+			$display( "starting page write page %d at tag %d", cmd.page, cmd.tag );
 		end
 	endrule
 

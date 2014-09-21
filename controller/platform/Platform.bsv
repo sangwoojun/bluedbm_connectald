@@ -4,7 +4,6 @@ import FIFO::*;
 import Clocks::*;
 
 import AuroraImportArtix7 :: *;
-import I2CSimple::*;
 
 interface ControllerPlatformIfc;
 endinterface

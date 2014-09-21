@@ -62,13 +62,6 @@ provisos ( Add#(a__, TAdd#(PageWordsLog, tBufferSizeLog), 64),Add#(b__, tBufferS
 
 	FIFO#(Bool) fakeQ_wp <- mkFIFO();
 	FIFO#(Tuple2#(Bit#(64), Bit#(8))) writePageQ <- mkFIFO();
-	rule driveWritePage ( tpl_2(writeIdx[tpl_2(writePageQ.first)]) >= fromInteger(pageWords) );
-		writePageQ.deq;
-		let tag = tpl_2(writePageQ.first);
-		let idx = tpl_1(writePageQ.first);
-
-		writeIdx[tag] <= tuple2(truncate(idx), 0);
-	endrule
 	
 	method Action readPage (Bit#(64) pageIdx, Bit#(8) tag) 
 		if ( readCount >= fromInteger(pageWords));
@@ -90,11 +83,7 @@ provisos ( Add#(a__, TAdd#(PageWordsLog, tBufferSizeLog), 64),Add#(b__, tBufferS
 	endmethod
 	
 	method Action writePage (Bit#(64) pageIdx, Bit#(8) tag);
-
 		writePageQ.enq(tuple2(pageIdx, tag));
-		//if ( tpl_2(writeIdx[tag]) < 4096/8) fakeQ_wp.deq;
-
-		//writeIdx[tag] <= tuple2(truncate(pageIdx), 0);
 	endmethod
 	method Action writeWord (Bit#(WordSz) data, Bit#(8) tag);
 		let wi = writeIdx[tag];
@@ -102,12 +91,20 @@ provisos ( Add#(a__, TAdd#(PageWordsLog, tBufferSizeLog), 64),Add#(b__, tBufferS
 		Bit#(64) offset = zeroExtend(tpl_2(wi));
 		Bit#(64) idxoff = zeroExtend(idx)<<pageWordsLog;
 
-		writeIdx[tag] <= tuple2(tpl_1(wi), tpl_2(wi) + 1);
 		
-		if ( tpl_2(wi) < fromInteger(pageWords) ) begin
+		if ( offset < fromInteger(pageWords) ) begin
 			pageBuffer.portA.request.put(BRAMRequest{write:True, responseOnWrite:False, address:truncate(offset+idxoff), datain:data});
+			writeIdx[tag] <= tuple2(tpl_1(wi), tpl_2(wi) + 1);
 		end else begin
-			fakeQ_wp.deq;
+			//fakeQ_wp.deq;
+			writePageQ.deq;
+
+			let tag = tpl_2(writePageQ.first);
+			let idx = tpl_1(writePageQ.first);
+			Bit#(16) offset = 0;
+
+			writeIdx[tag] <= tuple2(truncate(idx), offset+1);
+			pageBuffer.portA.request.put(BRAMRequest{write:True, responseOnWrite:False, address:truncate(zeroExtend(offset)+idxoff), datain:data});
 		end
 	endmethod
 endmodule

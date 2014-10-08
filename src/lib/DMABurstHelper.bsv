@@ -13,16 +13,14 @@ import BRAMFIFOVector::*;
 
 typedef 4 NumDmaChannels;
 
-typedef TAdd#(8192,64) PageBytes;
+//typedef TAdd#(8192,64) PageBytes;
+typedef TAdd#(8192,128) PageBytes;
 typedef 16 WordBytes;
-typedef 128 WriteBufferCount;
-typedef 64 WriteTagCount;
+typedef 32 WriteBufferCount;
+typedef TMul#(WriteBufferCount, NumDmaChannels) WriteBufferTotal;
+typedef 32 WriteTagCount;
 typedef 64 ReadBufferCount;
-/*
-typedef 64 WriteBufferCount;
-typedef 64 WriteTagCount;
-typedef 64 ReadBufferCount;
-*/
+
 typedef TLog#(ReadBufferCount) ReadBufferCountLog;
 typedef TLog#(WriteBufferCount) WriteBufferCountLog;
 typedef TLog#(WriteTagCount) WriteTagCountLog;
@@ -41,7 +39,7 @@ module mkDmaReadEngine#(
 	Integer pageBytes = valueOf(PageBytes);
 	
 	Integer wordBytes = valueOf(WordBytes); 
-	Integer burstBytes = 16*4;
+	Integer burstBytes = 16*8;
 	Integer burstWords = burstBytes/wordBytes;
 	
 	Integer pageWords = pageBytes/wordBytes;
@@ -52,9 +50,19 @@ module mkDmaReadEngine#(
 
 	FIFO#(Tuple2#(Bit#(8),Bit#(8))) readBurstIdxQ <- mkSizedFIFO(8);
 	FIFO#(Bit#(8)) readIdxQ <- mkFIFO;
+	
+	FIFO#(Bit#(8)) readDoneQ <- mkFIFO;
 
+	FIFO#(Maybe#(Bit#(8))) pageDoneQ <- mkSizedFIFO(8);
 	rule read_finish;
 		let rv0 <- rServer.response.get;
+		let isdone = pageDoneQ.first;
+		pageDoneQ.deq;
+
+		if ( isValid(isdone) ) begin
+			let bufidx = fromMaybe(0,isdone);
+			readDoneQ.enq(bufidx);
+		end
 	endrule
 
 	rule driveHostDmaReq (dmaReadCount > 0);
@@ -72,11 +80,16 @@ module mkDmaReadEngine#(
 			dmaReadCount <= dmaReadCount - fromInteger(burstBytes);
 			readBurstIdxQ.enq(tuple2(readIdxQ.first, 
 				fromInteger(burstWords)));
+
+			pageDoneQ.enq(tagged Invalid);
 		end else begin
 			dmaReadCount <= 0;
 			readIdxQ.deq;
+
 			readBurstIdxQ.enq(tuple2(readIdxQ.first, 
 				truncate(dmaReadCount/fromInteger(wordBytes))));
+			
+			pageDoneQ.enq(tagged Valid bufIdx);
 		end
 
 	endrule
@@ -84,8 +97,7 @@ module mkDmaReadEngine#(
 	FIFO#(Tuple2#(Bit#(wordSz), Bit#(8))) readQ <- mkSizedFIFO(8);
 	
 	Reg#(Bit#(8)) dmaReadBurstCount <- mkReg(0);
-	FIFO#(Bit#(8)) readDoneQ <- mkFIFO;
-	Reg#(Bit#(32)) pageWriteCount <- mkReg(0);
+	//Reg#(Bit#(32)) pageWriteCount <- mkReg(0);
 	rule flushHostRead;
 		let ri = readBurstIdxQ.first;
 		let bufidx = tpl_1(ri);
@@ -94,13 +106,6 @@ module mkDmaReadEngine#(
 			dmaReadBurstCount <= 0;
 			readBurstIdxQ.deq;
 
-			if ( pageWriteCount + fromInteger(burstWords) >= fromInteger(pageWords) ) begin
-				pageWriteCount <= 0;
-				//indication.writeDone(zeroExtend(bufidx));
-				readDoneQ.enq(bufidx);
-			end else begin
-				pageWriteCount <= pageWriteCount + fromInteger(burstWords);
-			end
 		end else begin
 			dmaReadBurstCount <= dmaReadBurstCount + 1;
 		end
@@ -131,12 +136,12 @@ endmodule
 interface FreeBufferClientIfc;
 		method ActionValue#(Tuple2#(Bit#(8),Bit#(8))) done;
 		method ActionValue#(Bit#(8)) getDmaRefReq;
-		method Action dmaRefResp(Bit#(32) bref, Bit#(32) off);
+		method Action dmaRefResp(Bit#(32) bref, Bit#(16) off);
 endinterface
 
 interface DMAWriteEngineIfc#(numeric type wordSz);
 	method Action write(Bit#(wordSz) word, Bit#(8) tag); 
-	method Action startWrite(Bit#(8) tag, Bit#(8) freeidx, Bit#(32) wordCount);
+	method Action startWrite(Bit#(8) tag, Bit#(8) freeidx, Bit#(16) wordCount);
 	interface FreeBufferClientIfc bufClient;
 endinterface
 module mkDmaWriteEngine# (
@@ -147,41 +152,61 @@ module mkDmaWriteEngine# (
 	Integer bufferCount = valueOf(WriteBufferCount);
 	Integer tagCount = valueOf(WriteTagCount);
 	Integer wordBytes = valueOf(WordBytes); 
-	Integer burstBytes = 16*4;
+	Integer burstBytes = 32*4;
 	Integer burstWords = burstBytes/wordBytes;
 	
 	Integer pageBytes = valueOf(PageBytes);
 
-	BRAMFIFOVectorIfc#(WriteTagCountLog, 12, Bit#(wordSz)) writeBuffer <- mkBRAMFIFOVector(4);
-	Vector#(WriteTagCount, Reg#(Tuple2#(Bit#(32), Bit#(4)))) dmaWriteOffset <- replicateM(mkReg(tuple2(0,0))); // tag -> curoffset, writePhaseIdx
-	Vector#(WriteTagCount, Reg#(Bit#(4))) dmaWriteOffsetNew <- replicateM(mkReg(0)); // tag -> writePhaseIdx
-	Vector#(WriteTagCount, Reg#(Bit#(8))) dmaWriteBuf <- replicateM(mkReg(0)); // tag -> bufferidx
+	BRAMFIFOVectorIfc#(WriteTagCountLog, 12, Bit#(wordSz)) writeBuffer <- mkBRAMFIFOVector(8);
+	Vector#(WriteTagCount, Reg#(Tuple2#(Bit#(16), Bit#(4)))) dmaWriteOffset <- replicateM(mkReg(tuple2(0,0))); // tag -> curoffset, writeEpochIdx
+	Vector#(WriteTagCount, Reg#(Bit#(4))) dmaWriteOffsetNew <- replicateM(mkReg(0)); // tag -> writeEpochIdx
+	Vector#(WriteTagCount, Reg#(Tuple2#(Bit#(8),Bit#(16)))) dmaWriteBuf <- replicateM(mkReg(tuple2(0,0))); // tag -> bufferidx, writeCount
    
 	//Reg#(Bit#(32)) writeCount <- mkReg(0);
 
-	FIFO#(Bit#(32)) dmaBurstOffsetQ <- mkFIFO;
+	FIFO#(Bit#(16)) dmaBurstOffsetQ <- mkSizedFIFO(16);
 	FIFO#(Tuple2#(Bit#(8), Bit#(8))) dmaWriteLocQ <- mkSizedFIFO(16);
 
 	FIFO#(Bit#(8)) dmaRefReqQ <- mkFIFO; // idx
-	FIFO#(Tuple2#(Bit#(32),Bit#(32))) dmaRefRespQ <- mkFIFO; // dmaref, offset
+	FIFO#(Tuple2#(Bit#(32),Bit#(16))) dmaRefRespQ <- mkFIFO; // dmaref, offset
 
-	FIFO#(Bit#(8)) startWriteTagQ <- mkFIFO;
-	FIFO#(Bit#(8)) startDmaFlushQ <- mkFIFO;
+
+	FIFO#(Bit#(8)) startWriteTagQ <- mkSizedFIFO(8);
+	FIFO#(Bit#(8)) startDmaFlushQ <- mkSizedFIFO(8);
 	rule startFlushDma;
 		let tag <- writeBuffer.getReadyIdx;
 		let rcount = writeBuffer.getDataCount(tag);
 
-/*
-		totalDmaCount[rbuf] <= totalDmaCount[rbuf]+1;
-		$display ( "starting burst to buf %d -> %d", rbuf,
-			totalDmaCount[rbuf]);
-*/
 		if ( rcount >= fromInteger(burstWords) ) begin
 			startDmaFlushQ.enq(zeroExtend(tag));
-			let rbuf = dmaWriteBuf[tag];
+			let rbuf = tpl_1(dmaWriteBuf[tag]);
 			dmaRefReqQ.enq(rbuf);
+			writeBuffer.startBurst(fromInteger(burstWords), tag);
+			//$display( "Start burst at tag %d", tag );
 		end
 	endrule
+	/*
+	FIFO#(Bit#(8)) startWriteTestQ <- mkSizedFIFO(8);
+	Reg#(Bit#(16)) curTestWriteOff <- mkReg(0);
+	rule startFlushDma;
+		let tag = startWriteTestQ.first;
+		let wcount = tpl_2(dmaWriteBuf[tag]);
+		if ( curTestWriteOff < wcount/fromInteger(burstWords) ) begin
+			curTestWriteOff <= curTestWriteOff + 1;
+		end else begin
+			startWriteTestQ.deq;
+			curTestWriteOff <= 0;
+
+		end
+
+		startDmaFlushQ.enq(zeroExtend(tag));
+		let rbuf = tpl_1(dmaWriteBuf[tag]);
+		dmaRefReqQ.enq(rbuf);
+	endrule
+	*/
+
+	//Reg#(Bit#(16)) dummyOffset <- mkReg(0);
+
 	FIFO#(MemengineCmd) engineCmdQ <- mkSizedFIFO(4);
 	rule startFlushDma2;
 		let tag = startDmaFlushQ.first;
@@ -189,6 +214,7 @@ module mkDmaWriteEngine# (
 
 		let doff = dmaWriteOffset[tag];
 		let offset = tpl_1(doff);
+		//let offset = dummyOffset;
 		let phase = tpl_2(doff);
 		let nphase = dmaWriteOffsetNew[tag];
 		if ( phase != nphase ) begin
@@ -196,7 +222,7 @@ module mkDmaWriteEngine# (
 			phase = nphase;
 		end
 
-		let rbuf = dmaWriteBuf[tag];
+		let rbuf = tpl_1(dmaWriteBuf[tag]);
 		dmaWriteOffset[tag] <= tuple2(offset+fromInteger(burstBytes), phase);
 
 		//let wr = dmaWriteRefs[rbuf];
@@ -207,24 +233,29 @@ module mkDmaWriteEngine# (
 		let burstOff = wrOff + offset;
 	  
 		if ( offset < fromInteger(pageBytes) ) begin
-			//$display( "%d: starting burst %d", rbuf, offset );
-			wServer.request.put(MemengineCmd{pointer:wrRef, base:zeroExtend(burstOff), len:fromInteger(burstBytes), burstLen:fromInteger(burstBytes)});
+			engineCmdQ.enq(MemengineCmd{pointer:wrRef, base:zeroExtend(burstOff), len:fromInteger(burstBytes), burstLen:fromInteger(burstBytes)});
 
 			dmaWriteLocQ.enq(tuple2(rbuf, tag));
 			dmaBurstOffsetQ.enq(offset);
 			startWriteTagQ.enq(tag);
+
+			//$display( "Sending burst cmd tag %d", tag );
 		end
-		//engineCmdQ.enq(MemengineCmd{pointer:wrRef, base:zeroExtend(burstOff), len:fromInteger(burstBytes), burstLen:fromInteger(burstBytes)});
+
+/*
+		if ( dummyOffset+fromInteger(burstBytes) < fromInteger(pageBytes) ) begin
+			dummyOffset <= offset + fromInteger(burstBytes);
+		end else dummyOffset <= 0;
+*/
 	endrule
-	/*
+
 	rule driveEngineCmd;
 		let cmd = engineCmdQ.first;
 		engineCmdQ.deq;
 		wServer.request.put(cmd);
 	endrule
-	*/
 
-	FIFO#(Bit#(8)) curWriteTagQ <- mkSizedFIFO(5);
+	FIFO#(Bit#(8)) curWriteTagQ <- mkSizedFIFO(8);
 	Reg#(Bit#(5)) burstCount <- mkReg(0);
 	rule flushDma;
 		if ( burstCount+1 >= fromInteger(burstWords) ) begin
@@ -235,21 +266,19 @@ module mkDmaWriteEngine# (
 
 		writeBuffer.reqDeq(truncate(tag));
 		curWriteTagQ.enq(tag);
-		//$display( "%d: requesting burst data  %d %d", rbuf, burstCount, writeCount );
 	endrule
 
-	FIFO#(Bit#(32)) writeCountQ <- mkFIFO;
 	FIFO#(Tuple2#(Bit#(8), Bit#(8))) writeDoneQ <- mkFIFO;
 
 	rule flushDma2;
 		let tag = curWriteTagQ.first;
 		curWriteTagQ.deq;
 
+		//$display ( "enqing data at tag %d", tag );
+
 		let d <- writeBuffer.respDeq;
 
 		wPipe.enq(d);
-
-		//$display( "%d: writing burst data %d", rbuf, writeCount );
 	endrule
 
 	rule write_finish;
@@ -262,57 +291,92 @@ module mkDmaWriteEngine# (
 		let rbuf = tpl_1(bd);
 		let tag = tpl_2(bd);
 		
-
-		let wReqBytes = writeCountQ.first * fromInteger(wordBytes);
+		let wReqBytes = tpl_2(dmaWriteBuf[tag]) * fromInteger(wordBytes);
 		let nextOff = dmaOff + fromInteger(burstBytes);
+		//$display( "burst for off %d tag %d done (%d/%d)", dmaOff, tag, nextOff, wReqBytes );
 
 		if ( nextOff >= wReqBytes ) begin
 			writeDoneQ.enq(tuple2(rbuf, tag));
-			writeCountQ.deq;
+			//$display( "Sending write done at tag %d", tag );
+			//writeCountQ.deq;
 		end
 	endrule
 
-	method Action write(Bit#(wordSz) word, Bit#(8) tag); 
+	FIFO#(Bit#(8)) freeInternalTagQ <- mkSizedFIFO(tagCount);
+	Vector#(WriteTagCount, Reg#(Bit#(8))) internalTagMap <- replicateM(mkReg(0)); // internal tag -> external tag
+	Vector#(128, Reg#(Bit#(8))) externalTagMap <- replicateM(mkReg(0)); // external tag -> internal tag //FIXME
+
+	Reg#(Bit#(8)) freeInternalTagCounter <- mkReg(0);
+	rule fillFreeITag (freeInternalTagCounter < fromInteger(tagCount));
+		freeInternalTagCounter <= freeInternalTagCounter + 1;
+		freeInternalTagQ.enq(freeInternalTagCounter);
+	endrule
+	//TODO set "started" or something once this init is done
+
+	method Action write(Bit#(wordSz) word, Bit#(8) etag); 
+		let tag = externalTagMap[etag];
 		writeBuffer.enq(word,truncate(tag));
+		//$display ( "DMA writing to %d -> %d", etag, tag );
 	endmethod
-	method Action startWrite(Bit#(8) tag, Bit#(8) freeidx, Bit#(32) wordCount);
-		//dmaWriteStatus[freeidx] <= tuple2(tag, 0);
-		dmaWriteBuf[tag] <= freeidx;
-		dmaWriteOffsetNew[tag] <= dmaWriteOffsetNew[tag] + 1;
+	method Action startWrite(Bit#(8) etag, Bit#(8) freeidx, Bit#(16) wordCount);
 		
-		writeCountQ.enq(wordCount);
+		freeInternalTagQ.deq;
+		let tag = freeInternalTagQ.first;
+
+		internalTagMap[tag] <= etag;
+		externalTagMap[etag] <= tag;
+
+		dmaWriteBuf[tag] <= tuple2(freeidx, wordCount);
+		dmaWriteOffsetNew[tag] <= dmaWriteOffsetNew[tag] + 1;
+
+		//$display( "Starting writing %d -> %d", etag, tag );
+
+		//startWriteTestQ.enq(tag);
 	endmethod
 
 	interface FreeBufferClientIfc bufClient;
 		method ActionValue#(Tuple2#(Bit#(8),Bit#(8))) done;
+			let dr = writeDoneQ.first;
+			let tag = tpl_2(dr);
+			freeInternalTagQ.enq(tag);
+
 			writeDoneQ.deq;
-			return writeDoneQ.first;
+
+			let etag = internalTagMap[tag];
+			//$display( "Sending done ack tag %d -> %d", tag, etag );
+
+
+			return tuple2(tpl_1(dr), etag);
 		endmethod
 		method ActionValue#(Bit#(8)) getDmaRefReq;
 			dmaRefReqQ.deq;
 			return dmaRefReqQ.first;
 		endmethod
-		method Action dmaRefResp(Bit#(32) bref, Bit#(32) off);
+		method Action dmaRefResp(Bit#(32) bref, Bit#(16) off);
 			dmaRefRespQ.enq(tuple2(bref,off));
 		endmethod
 	endinterface
 endmodule
 
 interface FreeBufferManagerIfc;
-	method Action addBuffer(Bit#(32) offset, Bit#(32) bref);
-	method Action returnFreeBuf(Bit#(8) idx);
-	method ActionValue#(Bit#(8)) getFreeBufIdx;
+	method Action addBuffer(Bit#(16) offset, Bit#(32) bref);
+	method Action returnFreeBuf(Bit#(32) idx);
+	//method ActionValue#(Bit#(8)) getFreeBufIdx;
+	method ActionValue#(Bit#(8)) getFreeBufIdx(Bit#(8) cidx);
 	method ActionValue#(Tuple2#(Bit#(8),Bit#(8))) done;
 endinterface
 module mkFreeBufferManager#(Vector#(tNumClient, FreeBufferClientIfc) clients) (FreeBufferManagerIfc);
 	
 	Integer bufferCount = valueOf(WriteBufferCount);
+	Integer bufferCountLog = valueOf(WriteBufferCountLog);
 	Integer numClient = valueOf(tNumClient);
    
-	Vector#(WriteBufferCount, Reg#(Tuple2#(Bit#(32),Bit#(32)))) dmaWriteRefs <- replicateM(mkReg(?)); //bufferidx -> dmaref,offset
+	Vector#(WriteBufferTotal, Reg#(Tuple2#(Bit#(32),Bit#(16)))) dmaWriteRefs <- replicateM(mkReg(?)); //bufferidx -> dmaref,offset
 	
 	Reg#(Bit#(8)) addBufferIdx <- mkReg(0);
-	FIFO#(Bit#(8)) writeBufferFreeQ <- mkSizedFIFO(bufferCount); // bufidx
+	//FIFO#(Bit#(8)) writeBufferFreeQ <- mkSizedFIFO(bufferCount); // bufidx
+	Vector#(NumDmaChannels, FIFO#(Bit#(8))) writeBufferFreeQ <- replicateM(mkSizedFIFO(bufferCount));
+
 
 	FIFOF#(Tuple2#(Bit#(8), Bit#(8))) writeDoneQ <- mkFIFOF;
 	for ( Integer i = 0; i < numClient; i = i + 1) begin
@@ -332,38 +396,48 @@ module mkFreeBufferManager#(Vector#(tNumClient, FreeBufferClientIfc) clients) (F
 			clients[i].dmaRefResp(wrRef, wrOff);
 		endrule
 	end
+	function Bit#(8) getClientIdx(Bit#(8) bufidx);
+		let idx = bufidx>>bufferCountLog;
+		return idx;
+	endfunction
+	FIFO#(Bit#(8)) returnedFreeQ <- mkFIFO;
+//	Reg#(Bit#(32)) returnedFreeReg <- mkReg(0);
+//	Reg#(Bit#(4)) returnedQCount <- mkReg(9);
+	rule flushReturnedFreeQ;
+		Bit#(8) idx = returnedFreeQ.first;
+		returnedFreeQ.deq;
+		writeBufferFreeQ[getClientIdx(idx)].enq(idx);
 
 /*
-	FIFOF#(Tuple2#(Bit#(8), Bit#(8))) writeDoneQ2 <- mkFIFOF;
-	
-	rule checkDone2;
-		let done2 <- clients[1].done;
-		writeDoneQ2.enq(done2);
-	endrule
-	rule collectDone;
-		if ( writeDoneQ1.notEmpty ) begin
-			writeDoneQ.enq(writeDoneQ1.first);
-			writeDoneQ1.deq;
-		end else if 
-		( writeDoneQ2.notEmpty ) begin
-			writeDoneQ.enq(writeDoneQ2.first);
-			writeDoneQ2.deq;
+		if ( returnedQCount >= 4 ) begin
+			returnedQCount <= 0;
+			returnedFreeReg <= returnedFreeQ.first;
+			returnedFreeQ.deq;
+		end else begin
+			
+			Bit#(8) idx = truncate(returnedFreeReg);
+			returnedFreeReg <= (returnedFreeReg>>8);
+			writeBufferFreeQ[getClientIdx(idx)].enq(idx);
+			returnedQCount <= returnedQCount + 1;
 		end
+*/
 	endrule
-*/	
-	method Action addBuffer(Bit#(32) offset, Bit#(32) bref);
+
+
+	method Action addBuffer(Bit#(16) offset, Bit#(32) bref);
 		addBufferIdx <= addBufferIdx + 1;
-		writeBufferFreeQ.enq(addBufferIdx);
+		writeBufferFreeQ[getClientIdx(addBufferIdx)].enq(addBufferIdx);
 		dmaWriteRefs[addBufferIdx] <= tuple2(bref, offset);
 	endmethod
 
-	method ActionValue#(Bit#(8)) getFreeBufIdx;
-		writeBufferFreeQ.deq;
-		return writeBufferFreeQ.first;
+	method ActionValue#(Bit#(8)) getFreeBufIdx(Bit#(8) cidx);
+		writeBufferFreeQ[cidx].deq;
+		return writeBufferFreeQ[cidx].first;
 	endmethod
 	
-	method Action returnFreeBuf(Bit#(8) idx);
-		writeBufferFreeQ.enq(idx);
+	method Action returnFreeBuf(Bit#(32) idx);
+		returnedFreeQ.enq(truncate(idx));
+		//writeBufferFreeQ[getClientIdx(idx)].enq(idx);
 	endmethod
 	method ActionValue#(Tuple2#(Bit#(8),Bit#(8))) done;
 			writeDoneQ.deq;

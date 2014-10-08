@@ -17,6 +17,7 @@ interface BRAMFIFOVectorIfc#(numeric type vlog, numeric type fifosize, type fifo
 	method ActionValue#(fifotype) respDeq;
 	method Bit#(TAdd#(1,TLog#(fifosize))) getDataCount(Bit#(vlog) idx);
 	method ActionValue#(Bit#(vlog)) getReadyIdx;
+	method Action startBurst(Bit#(TAdd#(1,TLog#(fifosize))) burstCount, Bit#(vlog) idx);
 endinterface
 
 module mkBRAMFIFOVector#(Integer thresh) (BRAMFIFOVectorIfc#(vlog, fifosize, fifotype))
@@ -26,6 +27,10 @@ module mkBRAMFIFOVector#(Integer thresh) (BRAMFIFOVectorIfc#(vlog, fifosize, fif
 		//,
 		//Add#(a__, 11, TAdd#(vlog, TLog#(fifosize)))
 		);
+
+	Vector#(TExp#(vlog), Reg#(Bit#(TAdd#(1,TLog#(fifosize))))) enqTotal <- replicateM(mkReg(0));
+	Vector#(TExp#(vlog), Reg#(Bit#(TAdd#(1,TLog#(fifosize))))) deqTotal <- replicateM(mkReg(0)); //encluding all eventual deqs when burst starts
+
 
 	BRAM2Port#(Bit#(TAdd#(vlog,TAdd#(1,TLog#(fifosize)))), fifotype) fifoBuffer <- mkBRAM2Server(defaultValue); 
 
@@ -133,10 +138,12 @@ module mkBRAMFIFOVector#(Integer thresh) (BRAMFIFOVectorIfc#(vlog, fifosize, fif
 	method Action enq(fifotype data, Bit#(vlog) idx); 
 		if (isFull ( idx )) fakeQ0.deq;
 		enqQ.enq(tuple2(data,idx));
+		enqTotal[idx] <= enqTotal[idx] + 1;
 	endmethod
 	
 	method Bit#(TAdd#(1,TLog#(fifosize))) getDataCount(Bit#(vlog) idx);
-		return dataCount(idx);
+		//return dataCount(idx);
+		return enqTotal[idx] - deqTotal[idx];
 	endmethod
 
 	method Action reqDeq(Bit#(vlog) idx);
@@ -151,5 +158,8 @@ module mkBRAMFIFOVector#(Integer thresh) (BRAMFIFOVectorIfc#(vlog, fifosize, fif
 	method ActionValue#(Bit#(vlog)) getReadyIdx;
 		readyIdxQ.deq;
 		return readyIdxQ.first;
+	endmethod
+	method Action startBurst(Bit#(TAdd#(1,TLog#(fifosize))) burstCount, Bit#(vlog) idx);
+		deqTotal[idx] <= deqTotal[idx] + burstCount;
 	endmethod
 endmodule

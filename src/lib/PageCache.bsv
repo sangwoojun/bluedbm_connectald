@@ -5,7 +5,8 @@ import BRAM::*;
 
 typedef 16 WordBytes;
 typedef TMul#(8,WordBytes) WordSz;
-typedef TAdd#(8192,64) PageBytes;
+//typedef TAdd#(8192,64) PageBytes;
+typedef TAdd#(8192,128) PageBytes;
 typedef TDiv#(PageBytes,WordBytes) PageWords;
 typedef TLog#(PageWords) PageWordsLog;
 

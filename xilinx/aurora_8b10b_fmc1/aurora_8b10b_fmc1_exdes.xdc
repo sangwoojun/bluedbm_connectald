@@ -51,7 +51,7 @@
 ################################################################################
 ## XDC generated for xc7vx485t-ffg1761-2 device
 # 275.0MHz GT Reference clock constraint
-create_clock -name GT_REFCLK1 -period 3.636	 [get_pins fmc1_gtx_clk_i/O]
+create_clock -name GT_REFCLK1 -period 3.636	 [get_pins */fmc1_gtx_clk_i/O]
 ####################### GT reference clock LOC #######################
 set_property LOC E9 [get_ports aurora_clk_fmc1_gtx_clk_n_v]
 set_property LOC E10 [get_ports aurora_clk_fmc1_gtx_clk_p_v]

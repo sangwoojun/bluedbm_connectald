@@ -6,7 +6,7 @@ import Clocks :: *;
 import DefaultValue :: *;
 import Xilinx :: *;
 import XilinxCells :: *;
-import XbsvXilinxCells::*;
+import ConnectalXilinxCells::*;
 
 typedef 4 AuroraExtCount;
 

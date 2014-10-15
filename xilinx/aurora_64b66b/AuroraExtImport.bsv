@@ -14,7 +14,7 @@ import Clocks :: *;
 import DefaultValue :: *;
 import Xilinx :: *;
 import XilinxCells :: *;
-import XbsvXilinxCells::*;
+import ConnectalXilinxCells::*;
 
 import AuroraCommon::*;
 import AuroraExtGearbox::*;

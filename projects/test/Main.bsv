@@ -47,10 +47,17 @@ import DMABurstHelper::*;
 typedef 16 WordBytes;
 typedef TMul#(8,WordBytes) WordSz;
 
+interface StorageBridgeRequest;
+	method Action addBridgeBuffer(Bit#(32) pointer, Bit#(32) offset, Bit#(32) idx);
+endinterface
+
+interface StorageBridgeIndication;
+	method Action writePage(Bit#(32) pageIdx, Bit#(32) bufidx);
+endinterface
+
 interface FlashRequest;
-	method Action readPage(Bit#(32) channel, Bit#(32) chip, Bit#(32) block, Bit#(32) page, Bit#(32) tag);
-	method Action returnReadHostBuffer(Bit#(32) idx);
-	method Action writePage(Bit#(32) channel, Bit#(32) chip, Bit#(32) block, Bit#(32) page, Bit#(32) tag);
+	method Action readPage(Bit#(32) channel, Bit#(32) chip, Bit#(32) block, Bit#(32) page, Bit#(32) bufidx);
+	method Action writePage(Bit#(32) channel, Bit#(32) chip, Bit#(32) block, Bit#(32) page, Bit#(32) bufidx);
 	method Action erasePage(Bit#(32) channel, Bit#(32) chip, Bit#(32) block);
 	method Action sendTest(Bit#(32) data);
 	method Action addWriteHostBuffer(Bit#(32) pointer, Bit#(32) offset, Bit#(32) idx);
@@ -60,7 +67,7 @@ interface FlashRequest;
 endinterface
 
 interface FlashIndication;
-	method Action readDone(Bit#(32) rbuf, Bit#(32) tag);
+	method Action readDone(Bit#(32) rbuf);
 	method Action writeDone(Bit#(32) tag);
 	method Action reqFlashCmd(Bit#(32) inq, Bit#(32) count);
 	method Action hexDump(Bit#(32) data);
@@ -68,12 +75,11 @@ endinterface
 
 interface MainIfc;
 	interface FlashRequest request;
-	/*
+	interface StorageBridgeRequest bridgeRequest;
 	interface Vector#(NumDmaChannels, ObjectReadClient#(WordSz)) dmaReadClient;
 	interface Vector#(NumDmaChannels, ObjectWriteClient#(WordSz)) dmaWriteClient;
-	*/
-	interface ObjectReadClient#(WordSz) dmaReadClient;
-	interface  ObjectWriteClient#(WordSz) dmaWriteClient;
+	//interface ObjectReadClient#(WordSz) dmaReadClient;
+	//interface ObjectWriteClient#(WordSz) dmaWriteClient;
 
 	interface Aurora_Pins#(4) aurora_fmc1;
 	interface Aurora_Clock_Pins aurora_clk_fmc1;
@@ -85,7 +91,8 @@ endinterface
 typedef enum {Read,Write,Erase} CmdType deriving (Bits,Eq);
 typedef struct { Bit#(5) channel; Bit#(5) chip; Bit#(8) block; Bit#(8) page; CmdType cmd; Bit#(8) tag; Bit#(8) bufidx;} FlashCmd deriving (Bits,Eq);
 
-module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
+module mkMain#(FlashIndication indication, StorageBridgeIndication bridge_indication
+	, Clock clk250, Reset rst250)(MainIfc);
 	
 	Integer pageBytes = valueOf(PageBytes);
 	Integer wordBytes = valueOf(WordBytes); 
@@ -169,23 +176,24 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 	end
 
 /////////////// DMA Writer with page cache //////////////////////////////////////
-/*
-	Vector#(NumDmaChannels, MemwriteEngine#(WordSz,1)) we <- replicateM(mkMemwriteEngine);
-	*/
 	Vector#(NumDmaChannels, DMAWriteEngineIfc#(WordSz)) dmaWriters;
 	Vector#(NumDmaChannels, FreeBufferClientIfc) dmaWriterFreeBufferClient;
-	MemwriteEngineV#(WordSz,1,NumDmaChannels) we <- mkMemwriteEngine;
+	//MemwriteEngineV#(WordSz,1,NumDmaChannels) we <- mkMemwriteEngine;
+	Vector#(NumDmaChannels, MemwriteEngine#(WordSz,1)) weV <- replicateM(mkMemwriteEngine);
 	for ( Integer wIdx = 0; wIdx < numDmaChannels; wIdx = wIdx + 1 ) begin
 		let pageCache = pageCaches[wIdx];
 
-		DMAWriteEngineIfc#(WordSz) dmaWriter <- mkDmaWriteEngine(we.writeServers[wIdx], we.dataPipes[wIdx]);
+		let we = weV[wIdx];
+
+		//DMAWriteEngineIfc#(WordSz) dmaWriter <- mkDmaWriteEngine(we.writeServers[wIdx], we.dataPipes[wIdx]);
+		DMAWriteEngineIfc#(WordSz) dmaWriter <- mkDmaWriteEngine(we.writeServers[0], we.dataPipes[0]);
 		dmaWriters[wIdx] = dmaWriter;
 
 		rule dmaWriteData;
 			let r <- pageCache.readWord;
 			let d = tpl_1(r);
 			let t = tpl_2(r);
-			//$display ( "reading %d %d @ %d", d[31:0], t, wIdx );
+			//$display ( "reading from pagecache %x %d @ %d", d, t, wIdx );
 			dmaWriter.write(d,t);
 		endrule
 
@@ -199,9 +207,11 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 	//FIXME done's don't always come in 4s!
 	rule dmaWriteDoneCheck;
 			let r <- writeBufMan.done;
+			/*
 			let rbuf = tpl_1(r);
 			let tag = tpl_2(r);
-			indication.readDone(zeroExtend(rbuf), zeroExtend(tag));
+			*/
+			indication.readDone(zeroExtend(r));
 
 /*
 		if ( readDoneCounter >= 4 ) begin
@@ -218,22 +228,26 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 	endrule
 /////////////////////////////////////////////////////////////////////////////////////
 
-/*
-	Vector#(NumDmaChannels, MemreadEngine#(WordSz,1))  re <- replicateM(mkMemreadEngine);
-	*/
+	FIFO#(Bool) dmaReadThrottleQ <- mkSizedFIFO(1);
+
 	Vector#(NumDmaChannels, DMAReadEngineIfc#(WordSz)) dmaReaders;
-	MemreadEngineV#(WordSz,1, NumDmaChannels)  re <- mkMemreadEngine;
+	//MemreadEngineV#(WordSz,1, NumDmaChannels)  re <- mkMemreadEngine;
+	Vector#(NumDmaChannels, MemreadEngine#(WordSz,2))  reV <- replicateM(mkMemreadEngine);
 	FIFO#(Bit#(8)) dmaReadDoneQ <- mkFIFO;
 	rule driveDmaReadDone;
 		let bufidx = dmaReadDoneQ.first;
 		dmaReadDoneQ.deq;
 		indication.writeDone(zeroExtend(bufidx));
+
+		dmaReadThrottleQ.deq;
 	endrule
 
 	for ( Integer rIdx = 0; rIdx < numDmaChannels; rIdx = rIdx + 1 ) begin
 		let pageCache = pageCaches[rIdx];
+		let re = reV[rIdx];
 
-		DMAReadEngineIfc#(WordSz) dmaReader <- mkDmaReadEngine(re.readServers[rIdx], re.dataPipes[rIdx]);
+		DMAReadEngineIfc#(WordSz) dmaReader <- mkDmaReadEngine(re.readServers[0], re.dataPipes[0]);
+		//DMAReadEngineIfc#(WordSz) dmaReader <- mkDmaReadEngine(re.readServers[rIdx], re.dataPipes[rIdx]);
 		dmaReaders[rIdx] = dmaReader;
 
 		rule dmaReadDone;
@@ -245,7 +259,7 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 			let d = tpl_1(r);
 			let t = tpl_2(r);
 			pageCache.writeWord(d,t);
-			//$display( "writing %d %d", d[31:0], t );
+			//$display( "writing to pagecache %x %d", d, t );
 		endrule
 	end // for loop
 
@@ -256,7 +270,7 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 	rule driveNewReqs(started&& curReqsInQ + numReqsRequested < 128-48 );
 		numReqsRequested <= numReqsRequested + 32;
 		indication.reqFlashCmd(curReqsInQ, 32);
-		$display( "Requesting more flash commands" );
+		//$display( "Requesting more flash commands" );
 	endrule
 
 	FIFO#(FlashCmd) flashCmdQ <- mkSizedFIFO(128);
@@ -268,43 +282,42 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 
 			flashCmdQ.deq;
 
-			let freebuf <- writeBufMan.getFreeBufIdx(zeroExtend(cmd.channel));
-
 			// temporary stuff
 			let dmaWriter = dmaWriters[cmd.channel];
 			let pageCache = pageCaches[cmd.channel];
 
-			dmaWriter.startWrite(cmd.tag, freebuf, fromInteger(pageWords));
+			dmaWriter.startWrite(cmd.bufidx, fromInteger(pageWords));
 
-			pageCache.readPage( zeroExtend(cmd.page), cmd.tag);
-			$display( "starting page read %d at tag %d in buffer %d", cmd.page, cmd.tag, freebuf );
+			pageCache.readPage( zeroExtend(cmd.page), cmd.bufidx);
+			$display( "starting page read %d at tag %d in buffer %d", cmd.page, cmd.tag, cmd.bufidx );
 		end else if ( cmd.cmd == Write ) begin
 			curReqsInQ <= curReqsInQ -1;
 
 			flashCmdQ.deq;
-			let dmaReader = dmaReaders[cmd.channel];
 
+			let dmaReader = dmaReaders[cmd.channel];
 			let pageCache = pageCaches[cmd.channel];
 
 			dmaReader.startRead(cmd.bufidx, fromInteger(pageWords));
 
 			pageCache.writePage(zeroExtend(cmd.page), cmd.bufidx);
+			bridge_indication.writePage(zeroExtend(cmd.page), zeroExtend(cmd.bufidx));
 			$display( "starting page write page %d at tag %d", cmd.page, cmd.bufidx );
+
+			dmaReadThrottleQ.enq(True);
 		end
 	endrule
 
-	//(* mutually_exclusive = "startFlushDma, driveFlashCmd" *)
    
-   /*
 	Vector#(NumDmaChannels, ObjectReadClient#(WordSz)) dmaReadClients;
 	Vector#(NumDmaChannels, ObjectWriteClient#(WordSz)) dmaWriteClients;
 	for ( Integer idx = 0; idx < numDmaChannels; idx = idx + 1 ) begin
-		dmaReadClients[idx] = re[idx].dmaClient;
-		dmaWriteClients[idx] = we[idx].dmaClient;
+		dmaReadClients[idx] = reV[idx].dmaClient;
+		dmaWriteClients[idx] = weV[idx].dmaClient;
 	end
-*/
+
    interface FlashRequest request;
-	method Action readPage(Bit#(32) channel, Bit#(32) chip, Bit#(32) block, Bit#(32) page, Bit#(32) tag);
+	method Action readPage(Bit#(32) channel, Bit#(32) chip, Bit#(32) block, Bit#(32) page, Bit#(32) bufidx);
 
 		CmdType cmd = Read;
 		FlashCmd fcmd = FlashCmd{
@@ -313,8 +326,8 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 			block: truncate(block),
 			page: truncate(page),
 			cmd: cmd,
-			bufidx: ?,
-			tag: truncate(tag)};
+			bufidx: truncate(bufidx),
+			tag: ?};
 
 		flashCmdQ.enq(fcmd);
 		curReqsInQ <= curReqsInQ +1;
@@ -362,9 +375,6 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 	method Action addReadHostBuffer(Bit#(32) pointer, Bit#(32) offset, Bit#(32) idx);
 		writeBufMan.addBuffer(truncate(offset), pointer);
 	endmethod
-	method Action returnReadHostBuffer(Bit#(32) idx);
-		writeBufMan.returnFreeBuf(idx);
-	endmethod
 	method Action start(Bit#(32) dummy);
 		indication.hexDump({8'hcc,0,
 			auroraExt.user[0].lane_up,
@@ -378,10 +388,17 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 			});
 		started <= True;
 	endmethod
-   endinterface
+	endinterface
 
-   interface ObjectReadClient dmaReadClient = re.dmaClient;
-   interface ObjectWriteClient dmaWriteClient = we.dmaClient;
+	interface StorageBridgeRequest bridgeRequest;
+		method Action addBridgeBuffer(Bit#(32) pointer, Bit#(32) offset, Bit#(32) idx);
+		endmethod
+	endinterface
+
+   //interface ObjectReadClient dmaReadClient = re.dmaClient;
+   //interface ObjectWriteClient dmaWriteClient = we.dmaClient;
+   interface ObjectReadClient dmaReadClient = dmaReadClients;
+   interface ObjectWriteClient dmaWriteClient = dmaWriteClients;
 
    interface Aurora_Pins aurora_fmc1 = auroraIntra1.aurora;
    interface Aurora_Clock_Pins aurora_clk_fmc1 = gtx_clk_fmc1.aurora_clk;

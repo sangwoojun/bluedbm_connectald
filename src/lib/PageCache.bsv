@@ -90,10 +90,10 @@ provisos ( Add#(a__, TAdd#(PageWordsLog, tBufferSizeLog), 64),Add#(b__, tBufferS
 		let wi = writeIdx[tag];
 		let idx = tpl_1(wi);
 		Bit#(64) offset = zeroExtend(tpl_2(wi));
-		Bit#(64) idxoff = zeroExtend(idx)<<pageWordsLog;
 
 		
 		if ( offset < fromInteger(pageWords) ) begin
+			Bit#(64) idxoff = zeroExtend(idx)<<pageWordsLog;
 			pageBuffer.portA.request.put(BRAMRequest{write:True, responseOnWrite:False, address:truncate(offset+idxoff), datain:data});
 			writeIdx[tag] <= tuple2(tpl_1(wi), tpl_2(wi) + 1);
 		end else begin
@@ -102,10 +102,11 @@ provisos ( Add#(a__, TAdd#(PageWordsLog, tBufferSizeLog), 64),Add#(b__, tBufferS
 
 			let tag = tpl_2(writePageQ.first);
 			let idx = tpl_1(writePageQ.first);
+			Bit#(64) idxoff = zeroExtend(idx)<<pageWordsLog;
 			Bit#(16) offset = 0;
 
-			writeIdx[tag] <= tuple2(truncate(idx), offset+1);
-			pageBuffer.portA.request.put(BRAMRequest{write:True, responseOnWrite:False, address:truncate(zeroExtend(offset)+idxoff), datain:data});
+			writeIdx[tag] <= tuple2(truncate(idx), 1);
+			pageBuffer.portA.request.put(BRAMRequest{write:True, responseOnWrite:False, address:truncate(idxoff), datain:data});
 		end
 	endmethod
 endmodule

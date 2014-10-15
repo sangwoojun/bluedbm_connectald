@@ -68,8 +68,10 @@
 	set_property LOC A9 [get_ports aurora_quad119_gtx_clk_n_v]
 
 	set_false_path -to [get_pins -hier *aurora_64b66b_X1Y24_cdc_to*/D]
+	set_false_path -from [get_cells portalTop_hwmain_auroraExt/rst50/*]
+	set_false_path -to [get_cells portalTop_hwmain_auroraExt/auroraExt_*_sendQ/*]
 
-	# set_false_path -to [get_cells -hier -filter {NAME =~ portalTop_hwmain_auroraExt/auroraExt_0_sendQ/*/CLR}]
+	#set_false_path -to [get_cells -hier -filter {NAME =~ portalTop_hwmain_auroraExt/auroraExt_0_sendQ/*/CLR}]
 	# set_false_path -to [get_cells -hier -filter {NAME =~ portalTop_hwmain_auroraExt/auroraExt_0_sendQ/*/PRE}]
 
 	# set_multicycle_path -from [get_cells -hier -filter {NAME =~ host_ep7/reset125/reset_hold_reg[?]_replica/C}] -to [get_cells -hier -filter {NAME =~ portalTop_hwmain_auroraExt/auroraExt_0_sendQ/*/*}] -hold 6

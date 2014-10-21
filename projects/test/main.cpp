@@ -42,7 +42,7 @@ void write_test() {
 	//for ( int i = 0; i < 4; i++ ) {
 	for ( int i = 0; i < LARGE_NUMBER/TEST_DMA_CHANNELS; i++ ) {
 		for ( int j = 0; j < TEST_DMA_CHANNELS; j++ ) {
-			if ( i % (1024*4) == 0 ) {
+			if ( verbose || i % (1024*4) == 0 ) {
 				printf( "writing page %d\n", i ); fflush(stdout);
 			}
 			writePage(j,0,0,i,waitIdleWriteBuffer(j));
@@ -65,7 +65,7 @@ void read_test() {
 	for ( int i = 0; i < LARGE_NUMBER/TEST_DMA_CHANNELS; i++ ) {
 		for ( int j = 0; j < TEST_DMA_CHANNELS; j++ ) {
 
-			if ( i % 1024 == 0 ) 
+			if ( verbose || i % 1024 == 0 ) 
 				printf( "reading page %d\n", i );
 
 			readPage(j,0,0,i, waitIdleReadBuffer());
@@ -128,7 +128,7 @@ int main(int argc, const char **argv)
 
 	printf ( "sending start msg\n" ); fflush(stdout);
 
-	flashifc_start();
+	flashifc_start(/*datasource*/1);
 
 	write_test();
 	

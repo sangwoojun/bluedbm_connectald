@@ -1,7 +1,7 @@
 #include "flashinterface.h"
 
 #ifndef BSIM
-	bool verbose = false;
+	bool verbose = true;
 #else
 	bool verbose = true;
 #endif
@@ -214,8 +214,8 @@ void flashifc_alloc(DmaManager* dma) {
 	}
 }
 
-void flashifc_start() {
-	device->start(0);
+void flashifc_start(int datasource) {
+	device->start(datasource);
 	
 	clock_gettime(CLOCK_REALTIME, & deviceIndication->aurorastart);
 	printf( "sending aurora test req\n" ); fflush(stdout);

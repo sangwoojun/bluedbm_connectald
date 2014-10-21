@@ -81,7 +81,11 @@ public:
   }
   virtual void readDone(unsigned int rbuf) {
 
-	//if ( verbose ) printf( "%s received read page buffer: %x %d\n", log_prefix, rbuf, curReadsInFlight );
+	if ( verbose ) {
+		printf( "%s received read page buffer: %d %d\n", log_prefix, rbuf, curReadsInFlight );
+		fflush(stdout);
+	}
+
 	pthread_mutex_lock(&flashReqMutex);
 	curReadsInFlight --;
 	if ( dstBufferBusy[rbuf] == false ) {
@@ -97,15 +101,29 @@ public:
 		curReadsInFlight = 0;
 	}
 
-	if ( verbose ) printf( "%s Finished pagedone: buffer: %d %d\n", log_prefix,  rbuf, curReadsInFlight );
+	if ( verbose ) {
+		int busycount = 0;
+		for ( int i = 0; i < READ_BUFFER_COUNT; i++ ) {
+			if ( dstBufferBusy[i] == true ) busycount++;
+		}
+		printf( "%s Finished pagedone: buffer: %d %d %d\n", log_prefix,  rbuf, curReadsInFlight, busycount );
+		fflush(stdout);
+	}
   }
 
   virtual void reqFlashCmd(unsigned int inQ, unsigned int count) {
-	if ( verbose ) printf( "\t%s increase flash cmd budget: %d (%d)\n", log_prefix, curCmdCountBudget, inQ );
+	if ( verbose ) {
+		printf( "\t%s increase flash cmd budget: %d (%d)\n", log_prefix, curCmdCountBudget, inQ );
+		fflush(stdout);
+	}
 	pthread_mutex_lock(&cmdReqMutex);
 	curCmdCountBudget += count;
 	pthread_cond_broadcast(&cmdReqCond);
 	pthread_mutex_unlock(&cmdReqMutex);
+	if ( verbose ) {
+		printf( "\t%s finished increase flash cmd budget: %d (%d)\n", log_prefix, curCmdCountBudget, inQ );
+		fflush(stdout);
+	}
 
   }
 
@@ -135,6 +153,6 @@ int waitIdleReadBuffer();
 
 void flashifc_init();
 void flashifc_alloc(DmaManager* dma);
-void flashifc_start();
+void flashifc_start(int datasource);
 
 #endif

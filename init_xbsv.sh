@@ -11,4 +11,7 @@ git reset --hard 3618398258e31297941a5fb4fe2734a540ad0d5d
 
 cd ../;
 git clone https://github.com/cambridgehackers/fpgamake.git
+cd fpgamake;
+git reset --hard 7cbe96eb18b72e99ff71cb34f361c85cfc375074
+cd ../;
 git clone https://github.com/cambridgehackers/buildcache.git

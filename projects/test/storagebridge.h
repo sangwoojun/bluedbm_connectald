@@ -6,12 +6,13 @@
 
 class StorageBridgeIndication : public StorageBridgeIndicationWrapper
 {
+private:
+	StorageBridgeRequestProxy* device;
 public:
-	StorageBridgeIndication(unsigned int id) : StorageBridgeIndicationWrapper(id) {}
+	StorageBridgeIndication(unsigned int id, StorageBridgeRequestProxy* _device) : StorageBridgeIndicationWrapper(id) {device = _device;}
 
-	virtual void writePage(unsigned int pageIdx, unsigned int bufidx) {
-		//printf( "Emulated flash write page %d %d\n", pageIdx, bufidx );
-	}
+	virtual void writePage(unsigned int channel, unsigned int chip, unsigned int block, unsigned int page, unsigned int bufidx);
+	virtual void readPage(unsigned int channel, unsigned int chip, unsigned int block, unsigned int page, unsigned int bufidx, unsigned int targetbufidx);
 };
 
 void storagebridge_init();

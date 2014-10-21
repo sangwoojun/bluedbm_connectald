@@ -34,6 +34,7 @@ module mkBRAMFIFOVector#(Integer thresh) (BRAMFIFOVectorIfc#(vlog, fifosize, fif
 	Vector#(TExp#(vlog), Reg#(Bit#(TAdd#(1,TLog#(fifosize))))) deqTotal <- replicateM(mkReg(0)); //including all eventual deqs when burst starts
 	//Vector#(TExp#(vlog), Reg#(Bit#(TAdd#(1,TLog#(fifosize))))) deqCurrent <- replicateM(mkReg(0));
 
+	//Vector#(TExp#(vlog), Reg#(Bit#(TAdd#(10,TLog#(fifosize))))) enqTotalT <- replicateM(mkReg(0));
 
 	BRAM2Port#(Bit#(TAdd#(vlog,TAdd#(1,TLog#(fifosize)))), fifotype) fifoBuffer <- mkBRAM2Server(defaultValue); 
 
@@ -130,6 +131,9 @@ module mkBRAMFIFOVector#(Integer thresh) (BRAMFIFOVectorIfc#(vlog, fifosize, fif
 		if ( dataCount(idx)+1 >= fromInteger(thresh) ) begin
 			readyIdxQ.enq(idx);
 		end
+
+		//enqTotalT[idx] <= enqTotalT[idx] + 1;
+		//$display("data enq %d @ %d", enqTotalT[idx]+1, idx);
 	endmethod
 	
 	method Bit#(TAdd#(1,TLog#(fifosize))) getDataCount(Bit#(vlog) idx);

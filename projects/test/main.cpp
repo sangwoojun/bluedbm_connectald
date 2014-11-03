@@ -84,6 +84,12 @@ void read_test() {
 
 int main(int argc, const char **argv)
 {
+	if ( argc < 2 ) {
+		fprintf(stderr, "usage: ./ubuntu.exe [nodeid]");
+		return 1;
+	}
+
+	int myid = atoi(argv[1]);
 
 	DmaDebugRequestProxy *hostDmaDebugRequest = new DmaDebugRequestProxy(IfcNames_HostDmaDebugRequest);
 	MMUConfigRequestProxy *dmap = new MMUConfigRequestProxy(IfcNames_HostMMUConfigRequest);
@@ -129,6 +135,8 @@ int main(int argc, const char **argv)
 	printf ( "sending start msg\n" ); fflush(stdout);
 
 	flashifc_start(/*datasource*/1);
+	printf( "initializing aurora with node id %d\n", myid );
+	auroraifc_start(myid);
 
 	write_test();
 	

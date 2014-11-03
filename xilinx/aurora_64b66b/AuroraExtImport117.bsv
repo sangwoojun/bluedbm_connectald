@@ -5,7 +5,7 @@ was changed to 1100 for higher voltage
 ***********************************/
 
 
-package AuroraExtImport;
+package AuroraExtImport117;
 
 import FIFO::*;
 import Vector::*;
@@ -16,29 +16,12 @@ import Xilinx :: *;
 import XilinxCells :: *;
 import ConnectalXilinxCells::*;
 
+import AuroraExtImport::*;
 import AuroraCommon::*;
 import AuroraExtGearbox::*;
 
-typedef 4 AuroraExtPerQuad;
-
-
-interface AuroraExtUserIfc;
-	method Action send(AuroraIfcType data);
-	method ActionValue#(AuroraIfcType) receive;
-	method Bit#(1) lane_up;
-	method Bit#(1) channel_up;
-endinterface
-
-interface AuroraExtIfc;
-	//method Action send(DataIfc data, PacketType ptype);
-	//method ActionValue#(Tuple2#(DataIfc, PacketType)) receive;
-
-	interface Vector#(AuroraExtPerQuad, Aurora_Pins#(1)) aurora;
-	interface Vector#(AuroraExtPerQuad, AuroraExtUserIfc) user;
-endinterface
-
 (* synthesize *)
-module mkAuroraExt#(Clock gtx_clk_p, Clock gtx_clk_n, Clock clk50) (AuroraExtIfc);
+module mkAuroraExt117#(Clock gtx_clk_p, Clock gtx_clk_n, Clock clk50) (AuroraExtIfc);
 	Reset defaultReset <- exposeCurrentReset;
 	Clock defaultClock <- exposeCurrentClock;
 `ifndef BSIM
@@ -50,7 +33,7 @@ module mkAuroraExt#(Clock gtx_clk_p, Clock gtx_clk_n, Clock clk50) (AuroraExtIfc
 	//Reset rst50_2 <- mkAsyncReset(2, defaultReset, clk50);
 	Clock auroraExt_gtx_clk <- mkClockIBUFDS_GTE2(True, gtx_clk_p, gtx_clk_n);
 
-	AuroraExtImportIfc#(AuroraExtPerQuad) auroraExtImport <- mkAuroraExtImport(auroraExt_gtx_clk, clk50, rst50, rst50_2);
+	AuroraExtImportIfc#(AuroraExtPerQuad) auroraExtImport <- mkAuroraExtImport117(auroraExt_gtx_clk, clk50, rst50, rst50_2);
 `else
 	AuroraExtImportIfc#(AuroraExtPerQuad) auroraExtImport <- mkAuroraExtImport_bsim(defaultClock, defaultClock, defaultReset, defaultReset);
 
@@ -92,142 +75,9 @@ module mkAuroraExt#(Clock gtx_clk_p, Clock gtx_clk_n, Clock clk50) (AuroraExtIfc
 	interface Vector aurora = auroraPins;
 endmodule
 
-module mkAuroraExtImport_bsim#(Clock gtx_clk_in, Clock init_clk, Reset init_rst_n, Reset gt_rst_n) (AuroraExtImportIfc#(AuroraExtPerQuad));
-	Clock clk <- exposeCurrentClock;
-	Reset rst <- exposeCurrentReset;
-	
-	FIFO#(Bit#(64)) mirrorQ0 <- mkFIFO;
-	FIFO#(Bit#(64)) mirrorQ1 <- mkFIFO;
-	FIFO#(Bit#(64)) mirrorQ2 <- mkFIFO;
-	FIFO#(Bit#(64)) mirrorQ3 <- mkFIFO;
-	
-	interface Clock aurora_clk0 = clk;
-	interface Clock aurora_clk1 = clk;
-	interface Clock aurora_clk2 = clk;
-	interface Clock aurora_clk3 = clk;
 
-	interface Reset aurora_rst0 = rst;
-	interface Reset aurora_rst1 = rst;
-	interface Reset aurora_rst2 = rst;
-	interface Reset aurora_rst3 = rst;
-	
-	interface AuroraControllerIfc user0;
-		interface Reset aurora_rst_n = rst;
-
-		method Bit#(1) channel_up;
-			return 1;
-		endmethod
-		method Bit#(1) lane_up;
-			return 1;
-		endmethod
-		method Bit#(1) hard_err;
-			return 0;
-		endmethod
-		method Bit#(1) soft_err;
-			return 0;
-		endmethod
-		method Bit#(8) data_err_count;
-			return 0;
-		endmethod
-
-		method Action send(Bit#(64) data);
-			mirrorQ0.enq(data);
-		endmethod
-		method ActionValue#(Bit#(64)) receive;
-			mirrorQ0.deq;
-			return mirrorQ0.first;
-		endmethod
-	endinterface
-	
-	interface AuroraControllerIfc user1;
-		interface Reset aurora_rst_n = rst;
-
-		method Bit#(1) channel_up;
-			return 1;
-		endmethod
-		method Bit#(1) lane_up;
-			return 1;
-		endmethod
-		method Bit#(1) hard_err;
-			return 0;
-		endmethod
-		method Bit#(1) soft_err;
-			return 0;
-		endmethod
-		method Bit#(8) data_err_count;
-			return 0;
-		endmethod
-
-		method Action send(Bit#(64) data);
-			mirrorQ1.enq(data);
-		endmethod
-		method ActionValue#(Bit#(64)) receive;
-			mirrorQ1.deq;
-			return mirrorQ1.first;
-		endmethod
-	endinterface
-	
-	interface AuroraControllerIfc user2;
-		interface Reset aurora_rst_n = rst;
-
-		method Bit#(1) channel_up;
-			return 1;
-		endmethod
-		method Bit#(1) lane_up;
-			return 1;
-		endmethod
-		method Bit#(1) hard_err;
-			return 0;
-		endmethod
-		method Bit#(1) soft_err;
-			return 0;
-		endmethod
-		method Bit#(8) data_err_count;
-			return 0;
-		endmethod
-
-		method Action send(Bit#(64) data);
-			mirrorQ2.enq(data);
-		endmethod
-		method ActionValue#(Bit#(64)) receive;
-			mirrorQ2.deq;
-			return mirrorQ2.first;
-		endmethod
-	endinterface
-	
-	interface AuroraControllerIfc user3;
-		interface Reset aurora_rst_n = rst;
-
-		method Bit#(1) channel_up;
-			return 1;
-		endmethod
-		method Bit#(1) lane_up;
-			return 1;
-		endmethod
-		method Bit#(1) hard_err;
-			return 0;
-		endmethod
-		method Bit#(1) soft_err;
-			return 0;
-		endmethod
-		method Bit#(8) data_err_count;
-			return 0;
-		endmethod
-
-		method Action send(Bit#(64) data);
-			mirrorQ3.enq(data);
-		endmethod
-		method ActionValue#(Bit#(64)) receive;
-			mirrorQ3.deq;
-			return mirrorQ3.first;
-		endmethod
-	endinterface
-
-endmodule
-
-
-import "BVI" aurora_64b66b_exdes =
-module mkAuroraExtImport#(Clock gtx_clk_in, Clock init_clk, Reset init_rst_n, Reset gt_rst_n) (AuroraExtImportIfc#(AuroraExtPerQuad));
+import "BVI" aurora_64b66b_117_exdes =
+module mkAuroraExtImport117#(Clock gtx_clk_in, Clock init_clk, Reset init_rst_n, Reset gt_rst_n) (AuroraExtImportIfc#(AuroraExtPerQuad));
 	default_clock no_clock;
 	default_reset no_reset;
 
@@ -393,4 +243,4 @@ module mkAuroraExtImport#(Clock gtx_clk_in, Clock init_clk, Reset init_rst_n, Re
 		user3_data_err_count
 		);
 endmodule
-endpackage: AuroraExtImport
+endpackage: AuroraExtImport117

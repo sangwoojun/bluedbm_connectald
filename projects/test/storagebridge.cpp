@@ -3,6 +3,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifndef BSIM
+	bool verbose = false;
+#else
+	bool verbose = true;
+#endif
+
 int bridgeBufferAlloc;
 unsigned int ref_bridgeBufferAlloc;
 unsigned int* bridgeBuffer;
@@ -61,7 +67,9 @@ void StorageBridgeIndication::writePage(unsigned int channel, unsigned int chip,
 	
 	device->writeBufferDone(channel, bufidx);
 
-	printf( "storagebridge writedone %d %d \n", channel, bufidx );
+	if ( verbose ) {
+		printf( "storagebridge writedone %d %d \n", channel, bufidx );
+	}
 }
 
 // Read data from emulated flash
@@ -76,5 +84,5 @@ void StorageBridgeIndication::readPage(unsigned int channel, unsigned int chip, 
 		pageSize);
 
 	device->readBufferReady(channel, bufidx, targetbufidx);
-	printf( "storagebridge readPage %d %d \n", channel, bufidx );
+	if ( verbose ) printf( "storagebridge readPage %d %d \n", channel, bufidx );
 }

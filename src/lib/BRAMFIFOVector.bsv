@@ -24,17 +24,14 @@ module mkBRAMFIFOVector#(Integer thresh) (BRAMFIFOVectorIfc#(vlog, fifosize, fif
 	provisos (
 		Literal#(fifotype), 
 		Bits#(fifotype, fifotypesz)
-		//,
-		//Add#(a__, 11, TAdd#(vlog, TLog#(fifosize)))
 		);
 	
 	Integer fifoSize = valueOf(fifosize);
 
 	Vector#(TExp#(vlog), Reg#(Bit#(TAdd#(1,TLog#(fifosize))))) enqTotal <- replicateM(mkReg(0));
-	Vector#(TExp#(vlog), Reg#(Bit#(TAdd#(1,TLog#(fifosize))))) deqTotal <- replicateM(mkReg(0)); //including all eventual deqs when burst starts
-	//Vector#(TExp#(vlog), Reg#(Bit#(TAdd#(1,TLog#(fifosize))))) deqCurrent <- replicateM(mkReg(0));
-
-	//Vector#(TExp#(vlog), Reg#(Bit#(TAdd#(10,TLog#(fifosize))))) enqTotalT <- replicateM(mkReg(0));
+	//including all eventual deqs when burst starts
+	Vector#(TExp#(vlog), Reg#(Bit#(TAdd#(1,TLog#(fifosize))))) deqTotal <- replicateM(mkReg(0)); 
+	Vector#(TExp#(vlog), Reg#(Bit#(TAdd#(1,TLog#(fifosize))))) deqCurrent <- replicateM(mkReg(0)); 
 
 	BRAM2Port#(Bit#(TAdd#(vlog,TAdd#(1,TLog#(fifosize)))), fifotype) fifoBuffer <- mkBRAM2Server(defaultValue); 
 
@@ -53,15 +50,8 @@ module mkBRAMFIFOVector#(Integer thresh) (BRAMFIFOVectorIfc#(vlog, fifosize, fif
 	function Bool isFull(Bit#(vlog) idx);
 		Bool res = False;
 
-/*
-		if ( enqTotal[idx] - deqCurrent[idx] >= fromInteger(fifoSize) )
-			res = True;
-			*/
-
-
-		Integer bufsize = valueOf(fifosize);
 		let head1 = headpointer[idx]+1;
-		if ( head1 >= fromInteger(bufsize) ) head1 = 0;
+		if ( head1 >= fromInteger(fifoSize) ) head1 = 0;
 
 		if ( head1 == tailpointer[idx] ) res = True;
 
@@ -73,13 +63,6 @@ module mkBRAMFIFOVector#(Integer thresh) (BRAMFIFOVectorIfc#(vlog, fifosize, fif
 		let deqt = deqTotal[idx];
 		let diff = enqt - deqt;
 
-/*
-		let head = headpointer[idx];
-		let tail = tailpointer[idx];
-		if ( head < tail ) head = head + fromInteger(valueOf(fifosize));
-		let diff = head - tail;
- */
-
 		return diff;
 	endfunction
 
@@ -89,24 +72,26 @@ module mkBRAMFIFOVector#(Integer thresh) (BRAMFIFOVectorIfc#(vlog, fifosize, fif
 	FIFO#(Bit#(vlog)) readyIdxQ <- mkSizedFIFO(32);
 
 	FIFO#(Tuple2#(fifotype, Bit#(vlog))) enqQ <- mkSizedFIFO(1);
-	FIFO#(Tuple2#(fifotype, Bit#(vlog))) enqQd <- mkSizedFIFO(1);
 	FIFO#(Bit#(vlog)) deqQ <- mkSizedFIFO(4);
-	FIFOF#(Bit#(vlog)) deqQd <- mkSizedFIFOF(1);
 
-	rule applyenq ( !isFull(tpl_2(enqQ.first)) );
-		enqQ.deq;
+	rule applyenq;
 		let cmdd = enqQ.first;
 		let idx = tpl_2(cmdd);
 		let data = tpl_1(cmdd);
 		
-		let head1 = headpointer[idx]+1;
-		if ( head1 >= fromInteger(fifoSize) ) head1 = 0;
-		headpointer[idx] <= head1;
+		if ( !isFull( idx ) ) begin
+			enqQ.deq;
+			let head1 = headpointer[idx]+1;
+			if ( head1 >= fromInteger(fifoSize) ) head1 = 0;
+			headpointer[idx] <= head1;
 
-		fifoBuffer.portB.request.put(BRAMRequest{write:True, responseOnWrite:False, address:zeroExtend(idx)*fromInteger(fifoSize)+zeroExtend(headpointer[idx]), datain:data});
-
+			fifoBuffer.portB.request.put(BRAMRequest{write:True, responseOnWrite:False, address:zeroExtend(idx)*fromInteger(fifoSize)+zeroExtend(headpointer[idx]), datain:data});
+		end
 	endrule
-	rule applydeq (headpointer[deqQ.first] != tailpointer[deqQ.first] );
+
+	//isEmpty no longer required because of enqTotal and deqTotal checks
+	// adding isEmpty will make this rule conflict with applyenq
+	rule applydeq;
 		let idx = deqQ.first;
 		deqQ.deq;
 
@@ -123,17 +108,17 @@ module mkBRAMFIFOVector#(Integer thresh) (BRAMFIFOVectorIfc#(vlog, fifosize, fif
 	endrule
 
 
+	// No guards here. All safety checking is done in applyenq
 	method Action enq(fifotype data, Bit#(vlog) idx); 
+		if ( dataCount(idx) + 1 == fromInteger(thresh*2) ) fakeQ1.deq;
 
 		enqQ.enq(tuple2(data,idx));
 		enqTotal[idx] <= enqTotal[idx] + 1;
-		
-		if ( dataCount(idx)+1 >= fromInteger(thresh) ) begin
+
+		if ( dataCount(idx)+1 == fromInteger(thresh) 
+			) begin
 			readyIdxQ.enq(idx);
 		end
-
-		//enqTotalT[idx] <= enqTotalT[idx] + 1;
-		//$display("data enq %d @ %d", enqTotalT[idx]+1, idx);
 	endmethod
 	
 	method Bit#(TAdd#(1,TLog#(fifosize))) getDataCount(Bit#(vlog) idx);
@@ -141,9 +126,9 @@ module mkBRAMFIFOVector#(Integer thresh) (BRAMFIFOVectorIfc#(vlog, fifosize, fif
 	endmethod
 
 	method Action reqDeq(Bit#(vlog) idx);
-		//if ( isEmpty( idx ) ) fakeQ1.deq;
-		
-		//deqCurrent[idx] <= deqCurrent[idx] + 1;
+		if ( deqTotal[idx] == deqCurrent[idx] ) fakeQ0.deq;
+		deqCurrent[idx] <= deqCurrent[idx] + 1;
+
 		deqQ.enq(idx);
 	endmethod
 
@@ -156,6 +141,9 @@ module mkBRAMFIFOVector#(Integer thresh) (BRAMFIFOVectorIfc#(vlog, fifosize, fif
 		readyIdxQ.deq;
 		return readyIdxQ.first;
 	endmethod
+
+	// No guards here. safety checking must be done in user code
+	// i.e. Only call when getReadyIdx returned
 	method Action startBurst(Bit#(TAdd#(1,TLog#(fifosize))) burstCount, Bit#(vlog) idx);
 		deqTotal[idx] <= deqTotal[idx] + burstCount;
 	endmethod

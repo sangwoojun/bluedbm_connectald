@@ -4,6 +4,8 @@
 
 #define BRIDGE_BUFFER_COUNT 128
 
+extern bool verbose;
+
 class StorageBridgeIndication : public StorageBridgeIndicationWrapper
 {
 private:

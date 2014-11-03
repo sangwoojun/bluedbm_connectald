@@ -155,4 +155,6 @@ void flashifc_init();
 void flashifc_alloc(DmaManager* dma);
 void flashifc_start(int datasource);
 
+void auroraifc_start(int myid);
+
 #endif

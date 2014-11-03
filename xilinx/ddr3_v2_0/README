@@ -1,0 +1,11 @@
+wjun:
+
+These files were copied from
+$BLUESPECDIR/board_support/bluenoc/xilinx/VC707/verilog/ddr3_v2_0/ddr3_v2_0/user_design/rtl/
+
+and the directory structure flattened.
+This was done only to reduce the number of --verilog flags in the connectal makefile.
+
+P.S.
+vc707_ddr3.xdc is also copied over from the connectal/xilinx/constraints directory, just in case it goes missing in later versions
+

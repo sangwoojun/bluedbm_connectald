@@ -66,32 +66,39 @@
  	# Shared across cores
 	set_property LOC A10 [get_ports aurora_quad119_gtx_clk_p_v]
 	set_property LOC A9 [get_ports aurora_quad119_gtx_clk_n_v]
+	
+	set_property LOC K8 [get_ports aurora_quad117_gtx_clk_p_v]
+	set_property LOC K7 [get_ports aurora_quad117_gtx_clk_n_v]
 
-	set_false_path -to [get_pins -hier *aurora_64b66b_X1Y24_cdc_to*/D]
 	set_false_path -from [get_cells portalTop_hwmain_auroraExt/rst50/*]
 	set_false_path -to [get_cells portalTop_hwmain_auroraExt/auroraExt_*_sendQ/*]
 
 	#set_false_path -to [get_cells -hier -filter {NAME =~ portalTop_hwmain_auroraExt/auroraExt_0_sendQ/*/CLR}]
-	# set_false_path -to [get_cells -hier -filter {NAME =~ portalTop_hwmain_auroraExt/auroraExt_0_sendQ/*/PRE}]
+	#set_false_path -to [get_cells -hier -filter {NAME =~ portalTop_hwmain_auroraExt/auroraExt_0_sendQ/*/PRE}]
 
 	# set_multicycle_path -from [get_cells -hier -filter {NAME =~ host_ep7/reset125/reset_hold_reg[?]_replica/C}] -to [get_cells -hier -filter {NAME =~ portalTop_hwmain_auroraExt/auroraExt_0_sendQ/*/*}] -hold 6
 	# set_multicycle_path -from [get_cells -hier -filter {NAME =~ host_ep7/reset125/reset_hold_reg[?]_replica/C}] -to [get_cells -hier -filter {NAME =~ portalTop_hwmain_auroraExt/auroraExt_0_sendQ/*/*}] -setup 2
 
-	create_clock -name init_clk_i -period 20.0 [get_pins portalTop_hwmain_auroraExt/auroraExtClockDiv5_slowbuf/O]
-	create_clock -name GTXQ0_left_i -period 1.600	 [get_pins portalTop_hwmain_auroraExt/auroraExt_gtx_clk/O]
+	create_clock -name init_clk_119_i -period 20.0 [get_pins portalTop_hwmain_auroraExtClockDiv5_slowbuf/O]
+	create_clock -name GTXQ0_left_119_i -period 1.600	 [get_pins portalTop_hwmain_auroraExt119/auroraExt_gtx_clk/O]
+	
+	create_clock -name init_clk_117_i -period 20.0 [get_pins portalTop_hwmain_auroraExtClockDiv5_slowbuf/O]
+	create_clock -name GTXQ0_left_117_i -period 1.600	 [get_pins portalTop_hwmain_auroraExt117/auroraExt_gtx_clk/O]
 
 
-
+######################################## Quad 119
+################ 24
 	# User Clock Contraint: the value is selected based on the line rate of the module
-	create_clock -name TS_user_clk_i_24 -period 6.400	 [get_pins portalTop_hwmain_auroraExt/auroraExtImport/aurora_64b66b_block_i/clock_module_i/user_clk_net_i/O]
-	create_clock -name TS_sync_clk_i_24 -period 3.200	 [get_pins portalTop_hwmain_auroraExt/auroraExtImport/aurora_64b66b_block_i/clock_module_i/sync_clock_net_i/O]
+	create_clock -name TS_user_clk_i_24 -period 6.400	 [get_pins portalTop_hwmain_auroraExt119/auroraExtImport/aurora_64b66b_block_i/clock_module_i/user_clk_net_i/O]
+	create_clock -name TS_sync_clk_i_24 -period 3.200	 [get_pins portalTop_hwmain_auroraExt119/auroraExtImport/aurora_64b66b_block_i/clock_module_i/sync_clock_net_i/O]
 
-	# create_clock -name TS_user_clk_i_24 -period 6.400	 [get_pins portalTop_hwmain_auroraExt/auroraExtImport/aurora_64b66b_block_i/gen_code_clock_module[0].clock_module_i/user_clk_net_i/O]
+	# create_clock -name TS_user_clk_i_24 -period 6.400	 [get_pins portalTop_hwmain_auroraExt119/auroraExtImport/aurora_64b66b_block_i/gen_code_clock_module[0].clock_module_i/user_clk_net_i/O]
 
 	# SYNC Clock Constraint
-	# create_clock -name TS_sync_clk_i_24 -period 3.200	 [get_pins portalTop_hwmain_auroraExt/auroraExtImport/aurora_64b66b_block_i/gen_code_clock_module[0].clock_module_i/sync_clock_net_i/O]
+	# create_clock -name TS_sync_clk_i_24 -period 3.200	 [get_pins portalTop_hwmain_auroraExt119/auroraExtImport/aurora_64b66b_block_i/gen_code_clock_module[0].clock_module_i/sync_clock_net_i/O]
 
-   set_property LOC GTXE2_CHANNEL_X1Y24 [get_cells  portalTop_hwmain_auroraExt/auroraExtImport/aurora_64b66b_block_i/aurora_64b66b_X1Y24_i/inst/aurora_64b66b_X1Y24_wrapper_i/aurora_64b66b_X1Y24_multi_gt_i/aurora_64b66b_X1Y24_gtx_inst/gtxe2_i]
+	set_false_path -to [get_pins -hier *aurora_64b66b_X1Y24_cdc_to*/D]
+   set_property LOC GTXE2_CHANNEL_X1Y24 [get_cells  portalTop_hwmain_auroraExt119/auroraExtImport/aurora_64b66b_block_i/aurora_64b66b_X1Y24_i/inst/aurora_64b66b_X1Y24_wrapper_i/aurora_64b66b_X1Y24_multi_gt_i/aurora_64b66b_X1Y24_gtx_inst/gtxe2_i]
 
 
  set_property LOC E2 [get_ports { aurora_ext_0_TXP }]
@@ -100,12 +107,13 @@
  set_property LOC D7 [get_ports { aurora_ext_0_rxn_i }]
 	
 ################# 25
-	# create_clock -name TS_user_clk_i_25 -period 6.400	 [get_pins portalTop_hwmain_auroraExt/auroraExtImport/aurora_64b66b_block_i/gen_code_clock_module[1].clock_module_i/user_clk_net_i/O]
+	# create_clock -name TS_user_clk_i_25 -period 6.400	 [get_pins portalTop_hwmain_auroraExt119/auroraExtImport/aurora_64b66b_block_i/gen_code_clock_module[1].clock_module_i/user_clk_net_i/O]
 
 	# SYNC Clock Constraint
-	# create_clock -name TS_sync_clk_i_25 -period 3.200	 [get_pins portalTop_hwmain_auroraExt/auroraExtImport/aurora_64b66b_block_i/gen_code_clock_module[1].clock_module_i/sync_clock_net_i/O]
+	# create_clock -name TS_sync_clk_i_25 -period 3.200	 [get_pins portalTop_hwmain_auroraExt119/auroraExtImport/aurora_64b66b_block_i/gen_code_clock_module[1].clock_module_i/sync_clock_net_i/O]
 
-   set_property LOC GTXE2_CHANNEL_X1Y25 [get_cells  portalTop_hwmain_auroraExt/auroraExtImport/aurora_64b66b_block_i/aurora_64b66b_X1Y25_i/inst/aurora_64b66b_X1Y25_wrapper_i/aurora_64b66b_X1Y25_multi_gt_i/aurora_64b66b_X1Y25_gtx_inst/gtxe2_i]
+	set_false_path -to [get_pins -hier *aurora_64b66b_X1Y25_cdc_to*/D]
+   set_property LOC GTXE2_CHANNEL_X1Y25 [get_cells  portalTop_hwmain_auroraExt119/auroraExtImport/aurora_64b66b_block_i/aurora_64b66b_X1Y25_i/inst/aurora_64b66b_X1Y25_wrapper_i/aurora_64b66b_X1Y25_multi_gt_i/aurora_64b66b_X1Y25_gtx_inst/gtxe2_i]
 
 
  set_property LOC D4 [get_ports { aurora_ext_1_TXP }]
@@ -113,12 +121,13 @@
  set_property LOC C6 [get_ports { aurora_ext_1_rxp_i }]
  set_property LOC C5 [get_ports { aurora_ext_1_rxn_i }]
 ################# 26
-	# create_clock -name TS_user_clk_i_26 -period 6.400	 [get_pins portalTop_hwmain_auroraExt/auroraExtImport/aurora_64b66b_block_i/gen_code_clock_module[2].clock_module_i/user_clk_net_i/O]
+	# create_clock -name TS_user_clk_i_26 -period 6.400	 [get_pins portalTop_hwmain_auroraExt119/auroraExtImport/aurora_64b66b_block_i/gen_code_clock_module[2].clock_module_i/user_clk_net_i/O]
 
 	# SYNC Clock Constraint
-	# create_clock -name TS_sync_clk_i_26 -period 3.200	 [get_pins portalTop_hwmain_auroraExt/auroraExtImport/aurora_64b66b_block_i/gen_code_clock_module[2].clock_module_i/sync_clock_net_i/O]
+	# create_clock -name TS_sync_clk_i_26 -period 3.200	 [get_pins portalTop_hwmain_auroraExt119/auroraExtImport/aurora_64b66b_block_i/gen_code_clock_module[2].clock_module_i/sync_clock_net_i/O]
 
-   set_property LOC GTXE2_CHANNEL_X1Y26 [get_cells  portalTop_hwmain_auroraExt/auroraExtImport/aurora_64b66b_block_i/aurora_64b66b_X1Y26_i/inst/aurora_64b66b_X1Y26_wrapper_i/aurora_64b66b_X1Y26_multi_gt_i/aurora_64b66b_X1Y26_gtx_inst/gtxe2_i]
+	set_false_path -to [get_pins -hier *aurora_64b66b_X1Y26_cdc_to*/D]
+   set_property LOC GTXE2_CHANNEL_X1Y26 [get_cells  portalTop_hwmain_auroraExt119/auroraExtImport/aurora_64b66b_block_i/aurora_64b66b_X1Y26_i/inst/aurora_64b66b_X1Y26_wrapper_i/aurora_64b66b_X1Y26_multi_gt_i/aurora_64b66b_X1Y26_gtx_inst/gtxe2_i]
 
 
  set_property LOC C2 [get_ports { aurora_ext_2_TXP }]
@@ -127,15 +136,82 @@
  set_property LOC B7 [get_ports { aurora_ext_2_rxn_i }]
 
 ################# 27
-	# create_clock -name TS_user_clk_i_27 -period 6.400	 [get_pins portalTop_hwmain_auroraExt/auroraExtImport/aurora_64b66b_block_i/gen_code_clock_module[3].clock_module_i/user_clk_net_i/O]
+	# create_clock -name TS_user_clk_i_27 -period 6.400	 [get_pins portalTop_hwmain_auroraExt119/auroraExtImport/aurora_64b66b_block_i/gen_code_clock_module[3].clock_module_i/user_clk_net_i/O]
 
 	# SYNC Clock Constraint
-	# create_clock -name TS_sync_clk_i_27 -period 3.200	 [get_pins portalTop_hwmain_auroraExt/auroraExtImport/aurora_64b66b_block_i/gen_code_clock_module[3].clock_module_i/sync_clock_net_i/O]
+	# create_clock -name TS_sync_clk_i_27 -period 3.200	 [get_pins portalTop_hwmain_auroraExt119/auroraExtImport/aurora_64b66b_block_i/gen_code_clock_module[3].clock_module_i/sync_clock_net_i/O]
 
-   set_property LOC GTXE2_CHANNEL_X1Y27 [get_cells  portalTop_hwmain_auroraExt/auroraExtImport/aurora_64b66b_block_i/aurora_64b66b_X1Y27_i/inst/aurora_64b66b_X1Y27_wrapper_i/aurora_64b66b_X1Y27_multi_gt_i/aurora_64b66b_X1Y27_gtx_inst/gtxe2_i]
+	set_false_path -to [get_pins -hier *aurora_64b66b_X1Y27_cdc_to*/D]
+   set_property LOC GTXE2_CHANNEL_X1Y27 [get_cells  portalTop_hwmain_auroraExt119/auroraExtImport/aurora_64b66b_block_i/aurora_64b66b_X1Y27_i/inst/aurora_64b66b_X1Y27_wrapper_i/aurora_64b66b_X1Y27_multi_gt_i/aurora_64b66b_X1Y27_gtx_inst/gtxe2_i]
 
 
  set_property LOC B4 [get_ports { aurora_ext_3_TXP }]
  set_property LOC B3 [get_ports { aurora_ext_3_TXN }]
  set_property LOC A6 [get_ports { aurora_ext_3_rxp_i }]
  set_property LOC A5 [get_ports { aurora_ext_3_rxn_i }]
+
+
+
+######################################## Quad 117
+################ 16
+	# User Clock Contraint: the value is selected based on the line rate of the module
+	create_clock -name TS_user_clk_i_16 -period 6.400	 [get_pins portalTop_hwmain_auroraExt117/auroraExtImport/aurora_64b66b_block_i/clock_module_i/user_clk_net_i/O]
+	create_clock -name TS_sync_clk_i_16 -period 3.200	 [get_pins portalTop_hwmain_auroraExt117/auroraExtImport/aurora_64b66b_block_i/clock_module_i/sync_clock_net_i/O]
+
+	# create_clock -name TS_user_clk_i_16 -period 6.400	 [get_pins portalTop_hwmain_auroraExt117/auroraExtImport/aurora_64b66b_block_i/gen_code_clock_module[0].clock_module_i/user_clk_net_i/O]
+
+	# SYNC Clock Constraint
+	# create_clock -name TS_sync_clk_i_16 -period 3.200	 [get_pins portalTop_hwmain_auroraExt117/auroraExtImport/aurora_64b66b_block_i/gen_code_clock_module[0].clock_module_i/sync_clock_net_i/O]
+
+	set_false_path -to [get_pins -hier *aurora_64b66b_X1Y16_cdc_to*/D]
+   set_property LOC GTXE2_CHANNEL_X1Y16 [get_cells  portalTop_hwmain_auroraExt117/auroraExtImport/aurora_64b66b_block_i/aurora_64b66b_X1Y16_i/inst/aurora_64b66b_X1Y16_wrapper_i/aurora_64b66b_X1Y16_multi_gt_i/aurora_64b66b_X1Y16_gtx_inst/gtxe2_i]
+
+
+ set_property LOC N2 [get_ports { aurora_ext_4_TXP }]
+ set_property LOC N1 [get_ports { aurora_ext_4_TXN }]
+ set_property LOC P8 [get_ports { aurora_ext_4_rxp_i }]
+ set_property LOC P7 [get_ports { aurora_ext_4_rxn_i }]
+	
+################# 17
+	# create_clock -name TS_user_clk_i_17 -period 6.400	 [get_pins portalTop_hwmain_auroraExt117/auroraExtImport/aurora_64b66b_block_i/gen_code_clock_module[1].clock_module_i/user_clk_net_i/O]
+
+	# SYNC Clock Constraint
+	# create_clock -name TS_sync_clk_i_17 -period 3.200	 [get_pins portalTop_hwmain_auroraExt117/auroraExtImport/aurora_64b66b_block_i/gen_code_clock_module[1].clock_module_i/sync_clock_net_i/O]
+
+	set_false_path -to [get_pins -hier *aurora_64b66b_X1Y17_cdc_to*/D]
+   set_property LOC GTXE2_CHANNEL_X1Y17 [get_cells  portalTop_hwmain_auroraExt117/auroraExtImport/aurora_64b66b_block_i/aurora_64b66b_X1Y17_i/inst/aurora_64b66b_X1Y17_wrapper_i/aurora_64b66b_X1Y17_multi_gt_i/aurora_64b66b_X1Y17_gtx_inst/gtxe2_i]
+
+
+ set_property LOC M4 [get_ports { aurora_ext_5_TXP }]
+ set_property LOC M3 [get_ports { aurora_ext_5_TXN }]
+ set_property LOC N6 [get_ports { aurora_ext_5_rxp_i }]
+ set_property LOC N5 [get_ports { aurora_ext_5_rxn_i }]
+################# 18
+	# create_clock -name TS_user_clk_i_18 -period 6.400	 [get_pins portalTop_hwmain_auroraExt117/auroraExtImport/aurora_64b66b_block_i/gen_code_clock_module[2].clock_module_i/user_clk_net_i/O]
+
+	# SYNC Clock Constraint
+	# create_clock -name TS_sync_clk_i_18 -period 3.200	 [get_pins portalTop_hwmain_auroraExt117/auroraExtImport/aurora_64b66b_block_i/gen_code_clock_module[2].clock_module_i/sync_clock_net_i/O]
+
+	set_false_path -to [get_pins -hier *aurora_64b66b_X1Y18_cdc_to*/D]
+   set_property LOC GTXE2_CHANNEL_X1Y18 [get_cells  portalTop_hwmain_auroraExt117/auroraExtImport/aurora_64b66b_block_i/aurora_64b66b_X1Y18_i/inst/aurora_64b66b_X1Y18_wrapper_i/aurora_64b66b_X1Y18_multi_gt_i/aurora_64b66b_X1Y18_gtx_inst/gtxe2_i]
+
+
+ set_property LOC L2 [get_ports { aurora_ext_6_TXP }]
+ set_property LOC L1 [get_ports { aurora_ext_6_TXN }]
+ set_property LOC L6 [get_ports { aurora_ext_6_rxp_i }]
+ set_property LOC L5 [get_ports { aurora_ext_6_rxn_i }]
+
+################# 19
+	# create_clock -name TS_user_clk_i_19 -period 6.400	 [get_pins portalTop_hwmain_auroraExt117/auroraExtImport/aurora_64b66b_block_i/gen_code_clock_module[3].clock_module_i/user_clk_net_i/O]
+
+	# SYNC Clock Constraint
+	# create_clock -name TS_sync_clk_i_19 -period 3.200	 [get_pins portalTop_hwmain_auroraExt117/auroraExtImport/aurora_64b66b_block_i/gen_code_clock_module[3].clock_module_i/sync_clock_net_i/O]
+
+	set_false_path -to [get_pins -hier *aurora_64b66b_X1Y19_cdc_to*/D]
+   set_property LOC GTXE2_CHANNEL_X1Y19 [get_cells  portalTop_hwmain_auroraExt117/auroraExtImport/aurora_64b66b_block_i/aurora_64b66b_X1Y19_i/inst/aurora_64b66b_X1Y19_wrapper_i/aurora_64b66b_X1Y19_multi_gt_i/aurora_64b66b_X1Y19_gtx_inst/gtxe2_i]
+
+
+ set_property LOC K4 [get_ports { aurora_ext_7_TXP }]
+ set_property LOC K3 [get_ports { aurora_ext_7_TXN }]
+ set_property LOC J6 [get_ports { aurora_ext_7_rxp_i }]
+ set_property LOC J5 [get_ports { aurora_ext_7_rxn_i }]

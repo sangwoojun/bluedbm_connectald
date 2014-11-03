@@ -8,7 +8,7 @@ import Xilinx :: *;
 import XilinxCells :: *;
 import ConnectalXilinxCells::*;
 
-typedef 4 AuroraExtCount;
+typedef 8 AuroraExtCount;
 
 (* always_enabled, always_ready *)
 interface Aurora_Clock_Pins;

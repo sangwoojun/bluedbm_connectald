@@ -28,6 +28,7 @@ import GetPut::*;
 import ClientServer::*;
 
 import Vector::*;
+import List::*;
 
 import PortalMemory::*;
 import MemTypes::*;
@@ -35,12 +36,23 @@ import MemreadEngine::*;
 import MemwriteEngine::*;
 import Pipe::*;
 
+import Clocks :: *;
+import Xilinx       :: *;
+`ifndef BSIM
+import XilinxCells ::*;
+`endif
+
 import AuroraImportFmc1::*;
+
+import AuroraExtArbiter::*;
 import AuroraExtImport::*;
+import AuroraExtImport117::*;
 import AuroraCommon::*;
 
 import PageCache::*;
 import DMABurstHelper::*;
+import DRAMImporter::*;
+import DRAMArbiter::*;
 
 
 //typedef TAdd#(8192,128) PageBytes;
@@ -63,10 +75,13 @@ interface FlashRequest;
 	method Action writePage(Bit#(32) channel, Bit#(32) chip, Bit#(32) block, Bit#(32) page, Bit#(32) bufidx);
 	method Action erasePage(Bit#(32) channel, Bit#(32) chip, Bit#(32) block);
 	method Action sendTest(Bit#(32) data);
+	method Action sendTestAuroraPacket(Bit#(32) dst, Bit#(32) ptype);
 	method Action addWriteHostBuffer(Bit#(32) pointer, Bit#(32) offset, Bit#(32) idx);
 	method Action addReadHostBuffer(Bit#(32) pointer, Bit#(32) offset, Bit#(32) idx);
 
 	method Action start(Bit#(32) dummy);
+	method Action setNetId(Bit#(32) netid);
+	method Action setAuroraExtRoutingTable(Bit#(32) node, Bit#(32) portidx);
 endinterface
 
 interface FlashIndication;
@@ -93,6 +108,7 @@ interface MainIfc;
 
 	interface Vector#(AuroraExtCount, Aurora_Pins#(1)) aurora_ext;
 	interface Aurora_Clock_Pins aurora_quad119;
+	interface Aurora_Clock_Pins aurora_quad117;
 endinterface
 
 typedef enum {Flash, Host, DRAM, PageCache} DataSource deriving (Bits,Eq);
@@ -101,7 +117,13 @@ typedef enum {Read,Write,Erase} CmdType deriving (Bits,Eq);
 typedef struct { Bit#(5) channel; Bit#(5) chip; Bit#(8) block; Bit#(8) page; CmdType cmd; Bit#(8) tag; Bit#(8) bufidx;} FlashCmd deriving (Bits,Eq);
 
 module mkMain#(FlashIndication indication, StorageBridgeIndication bridge_indication
+	, DRAM_User dram_user
 	, Clock clk250, Reset rst250)(MainIfc);
+
+	Clock curClk <- exposeCurrentClock;
+	Reset curRst <- exposeCurrentReset;
+
+	//Reset rst200 <- mkAsyncReset( 1, curRst, clk200 );
 	
 	Integer pageBytes = valueOf(PageBytes);
 	Integer wordBytes = valueOf(WordBytes); 
@@ -142,26 +164,91 @@ module mkMain#(FlashIndication indication, StorageBridgeIndication bridge_indica
 			indication.hexDump(truncate(data));
 	endrule
 */
+	Reg#(Bit#(HeaderFieldSz)) myNetIdx <- mkReg(1);
+
+`ifndef BSIM
+	ClockDividerIfc auroraExtClockDiv5 <- mkDCMClockDivider(5, 4, clocked_by clk250);
+	Clock clk50 = auroraExtClockDiv5.slowClock;
+`else
+	Clock clk50 = curClk;
+`endif
+
 	GtxClockImportIfc gtx_clk_119 <- mkGtxClockImport;
-	AuroraExtIfc auroraExt <- mkAuroraExt(gtx_clk_119.gtx_clk_p_ifc, gtx_clk_119.gtx_clk_n_ifc, clk250);
+	GtxClockImportIfc gtx_clk_117 <- mkGtxClockImport;
+	AuroraExtIfc auroraExt119 <- mkAuroraExt(gtx_clk_119.gtx_clk_p_ifc, gtx_clk_119.gtx_clk_n_ifc, clk50);
+	AuroraExtIfc auroraExt117 <- mkAuroraExt117(gtx_clk_117.gtx_clk_p_ifc, gtx_clk_117.gtx_clk_n_ifc, clk50);
+
+	AuroraEndpointIfc aend1 <- mkAuroraEndpoint(0);
+	AuroraEndpointIfc aend2 <- mkAuroraEndpoint(1);
+	AuroraEndpointIfc aend3 <- mkAuroraEndpoint(2);
+	//let alist1 = nil;
+	let alist1 = cons(aend1.cmd, nil);
+	let alist2 = cons(aend2.cmd, alist1);
+	let alist3 = cons(aend3.cmd, alist2);
+
+	AuroraExtArbiterIfc auroraExtArbiter <- mkAuroraExtArbiter(
+		append(auroraExt119.user, auroraExt117.user)
+		, alist3, myNetIdx);
+
 	Reg#(Bit#(32)) auroraTestIdx <- mkReg(0);
 	rule sendAuroraTest(auroraTestIdx > 0);
-		auroraExt.user[1].send({1,auroraTestIdx[30:0]});
-		auroraExt.user[3].send({0,auroraTestIdx[30:0]});
+		//auroraExt.user[1].send({1,auroraTestIdx[30:0]});
+		//auroraExt.user[3].send({0,auroraTestIdx[30:0]});
+		AuroraPacket packet1;
+		AuroraPacket packet2;
+		AuroraPacket packet3;
+		packet1.payload = {0, auroraTestIdx};
+		packet2.payload = {1, (~32'h0) - (auroraTestIdx)};
+		packet3.payload = {1, (~32'h0) - (auroraTestIdx)};
+		packet1.dst = 1;
+		packet2.dst = 1;
+		packet3.dst = 0;
+		packet1.ptype = 0;
+		packet2.ptype = 1;
+		packet3.ptype = 2;
+		packet1.src = 0; 
+		packet2.src = 0;
+		packet3.src = 1;
+		packet1.len = 0; 
+		packet2.len = 0;
+		packet3.len = 0;
+		aend1.user.send(packet1);
+		aend2.user.send(packet2);
+		aend3.user.send(packet3);
 		
 		auroraTestIdx <= auroraTestIdx - 1;
 	endrule
 	FIFO#(Bit#(32)) dataQ <- mkSizedFIFO(32);
-	rule recvTestData;
-		let data <- auroraExt.user[0].receive;
 
-		dataQ.enq(truncate(data));
+	rule recvTestData;
+		let data <- aend1.user.receive;
+		//let data <- auroraExt.user[0].receive;
+
+		dataQ.enq(truncate(data.payload));
+		/*
+		let p = data.payload;
+		if ( p[10:0] == 0 )
+		indication.hexDump({8'haa,truncate(p)});
+		*/
+	endrule
+	rule recvTestData2;
+		let data <- aend2.user.receive;
+		//let data <- auroraExt.user[2].receive;
+
+		//dataQ.enq(truncate(data.payload));
+
+/*
+		let p = data.payload;
+		if ( p[10:0] == 0 )
+		indication.hexDump({8'hbb,truncate(p)});
+		*/
 	endrule
 	
 	rule recvTestData3;
-		let data <- auroraExt.user[2].receive;
+		let data <- aend3.user.receive;
+		//let data <- auroraExt.user[2].receive;
 
-		dataQ.enq(truncate(data));
+		dataQ.enq(truncate(data.payload));
 	endrule
 
 	Reg#(Bit#(32)) auroraDataCheck <- mkReg(0);
@@ -170,13 +257,109 @@ module mkMain#(FlashIndication indication, StorageBridgeIndication bridge_indica
 		let data = dataQ.first;
 		auroraDataCheck <= data;
 
-/*
-		if ( auroraDataCheck - 1 != data )
-			indication.hexDump(truncate(data));
-		else */
+		//if ( auroraDataCheck - 1 != data )
+		//	indication.hexDump({8'haa,truncate(data)});
+		//else
 		if ( data[17:0] == 0 ) 
-			indication.hexDump(truncate(data));
+			indication.hexDump({8'hbb,truncate(data)});
 	endrule
+
+
+// Aurora Example done /////////////////////////////////////
+
+
+// DRAM access start ///////////////////////////////////////
+   
+
+	DRAMEndpointIfc memuser1 <- mkDRAMUser;
+	DRAMEndpointIfc memuser2 <- mkDRAMUser;
+	let list1 = nil;
+	let list2 = cons(memuser1.cmd, list1);
+	let list3 = cons(memuser2.cmd, list2);
+	DRAMArbiterIfc dramArbiter <- mkDRAMArbiter(dram_user,list3);
+
+	Reg#(Bit#(32)) dramTestIdx <- mkReg(0);
+	rule writeMem ( dramTestIdx < 2*1024  && started);
+		dramTestIdx <= dramTestIdx + 1;
+		DRAMUserIfc user = memuser2.user;
+		Bit#(512) wdata = {
+		32'hdeadbeef,
+		32'h12345678,
+		32'h98765432,
+		32'hc001d00d,
+		32'hcafecafe,
+		32'hf00df00d,
+		32'haaaaaaaa,
+		32'hcccccccc,
+			dramTestIdx,
+			dramTestIdx,
+			dramTestIdx,
+			dramTestIdx,
+			dramTestIdx,
+			dramTestIdx,
+			dramTestIdx,
+			dramTestIdx
+		};
+		if ( dramTestIdx < 1024 ) begin
+			user.writeReq(dramTestIdx, wdata);
+		end else begin
+			user.readReq(dramTestIdx-(1024));
+		end
+	endrule
+	rule flushDRAMDataRead;
+		DRAMUserIfc user = memuser2.user;
+		let d <- user.readResp;
+		//$display ( "read data at 2" );
+		//if ( d[6:0] == 0 ) begin
+			indication.hexDump({8'hff, d[23:0]});
+		//end
+	endrule
+
+	Reg#(Bit#(32)) dramTestIdx2 <- mkReg(0);
+	rule writeMem1 ( dramTestIdx2 < 1024 && started);
+		dramTestIdx2 <= dramTestIdx2 + 1;
+		DRAMUserIfc user = memuser1.user;
+		Bit#(512) wdata = {
+		32'hdeadbeef,
+		32'h12345678,
+		32'h98765432,
+		32'hc001d00d,
+		32'hcafecafe,
+		32'hf00df00d,
+		32'haaaaaaaa,
+		32'hcccccccc,
+			dramTestIdx2>>1,
+			dramTestIdx2>>1,
+			dramTestIdx2>>1,
+			dramTestIdx2>>1,
+			dramTestIdx2>>1,
+			dramTestIdx2>>1,
+			dramTestIdx2>>1,
+			dramTestIdx2>>1
+		};
+		if ( dramTestIdx2[0] == 0 ) begin
+			user.writeReq((dramTestIdx2>>1)+1024*10, wdata);
+		end else begin
+			user.readReq((dramTestIdx2>>1)+1024*10);
+		end
+	endrule
+	rule flushDRAMDataRead1;
+		DRAMUserIfc user = memuser1.user;
+		let d <- user.readResp;
+		//$display ( "read data at 1" );
+		//if ( d[6:0] == 0 ) begin
+			indication.hexDump({8'hee, d[23:0]});
+		//end
+	endrule
+
+// DRAM access end /////////////////////////////////////////
+
+
+
+
+
+// Host memory access start ////////////////////////////////
+	Reg#(DataSource) dataSource <- mkReg(PageCache);
 	
 	Vector#(NumDmaChannels, MemwriteEngineV#(WordSz,1,2)) weV <- replicateM(mkMemwriteEngine);
 	Vector#(NumDmaChannels, MemreadEngineV#(WordSz,1,2))  reV <- replicateM(mkMemreadEngine);
@@ -199,7 +382,6 @@ module mkMain#(FlashIndication indication, StorageBridgeIndication bridge_indica
 	
 
 /////////////// DMA Writer with page cache //////////////////////////////////////
-	Reg#(DataSource) dataSource <- mkReg(PageCache);
 
 	Vector#(NumDmaChannels, DMAWriteEngineIfc#(WordSz)) dmaWriters;
 	Vector#(NumDmaChannels, FreeBufferClientIfc) dmaWriterFreeBufferClient;
@@ -263,7 +445,7 @@ module mkMain#(FlashIndication indication, StorageBridgeIndication bridge_indica
 		dmaReadDoneQ.deq;
 		indication.writeDone(zeroExtend(bufidx));
 
-		dmaReadThrottleQ.deq;
+		if ( dataSource == Host ) dmaReadThrottleQ.deq;
 	endrule
 	
 	Vector#(NumDmaChannels, FIFO#(FlashCmd)) storageBridgeWritingQs <- replicateM(mkSizedFIFO(4));
@@ -375,7 +557,7 @@ module mkMain#(FlashIndication indication, StorageBridgeIndication bridge_indica
 			//bridge_indication.writePage(zeroExtend(cmd.page), zeroExtend(cmd.bufidx));
 			$display( "starting page write page %d at tag %d", cmd.page, cmd.bufidx );
 
-			dmaReadThrottleQ.enq(True);
+			if ( dataSource == Host ) dmaReadThrottleQ.enq(True);
 		end
 	endrule
 
@@ -445,6 +627,18 @@ module mkMain#(FlashIndication indication, StorageBridgeIndication bridge_indica
 	method Action sendTest(Bit#(32) data);
 		auroraTestIdx <= data;
 	endmethod
+	method Action setAuroraExtRoutingTable(Bit#(32) node, Bit#(32) portmap);
+		auroraExtArbiter.setRoutingTable(truncate(node), truncate(portmap));
+	endmethod
+	method Action sendTestAuroraPacket(Bit#(32) dst, Bit#(32) ptype);
+		AuroraPacket packet1;
+		packet1.payload = {0, auroraTestIdx<<1};
+		packet1.dst = truncate(dst);
+		packet1.ptype = truncate(ptype);
+		packet1.src = 0; 
+		packet1.len = 0;
+		aend1.user.send(packet1);
+	endmethod
 	method Action addWriteHostBuffer(Bit#(32) pointer, Bit#(32) offset, Bit#(32) idx);
 		for (Integer i = 0; i < numDmaChannels; i = i + 1) begin
 			dmaReaders[i].addBuffer(truncate(idx), offset, pointer);
@@ -461,16 +655,28 @@ module mkMain#(FlashIndication indication, StorageBridgeIndication bridge_indica
 		end
 
 		indication.hexDump({8'hcc,0,
-			auroraExt.user[0].lane_up,
-			auroraExt.user[0].channel_up,
-			auroraExt.user[1].lane_up,
-			auroraExt.user[1].channel_up,
-			auroraExt.user[2].lane_up,
-			auroraExt.user[2].channel_up,
-			auroraExt.user[3].lane_up,
-			auroraExt.user[3].channel_up
+			auroraExt119.user[0].lane_up,
+			auroraExt119.user[0].channel_up,
+			auroraExt119.user[1].lane_up,
+			auroraExt119.user[1].channel_up,
+			auroraExt119.user[2].lane_up,
+			auroraExt119.user[2].channel_up,
+			auroraExt119.user[3].lane_up,
+			auroraExt119.user[3].channel_up,
+
+			auroraExt117.user[0].lane_up,
+			auroraExt117.user[0].channel_up,
+			auroraExt117.user[1].lane_up,
+			auroraExt117.user[1].channel_up,
+			auroraExt117.user[2].lane_up,
+			auroraExt117.user[2].channel_up,
+			auroraExt117.user[3].lane_up,
+			auroraExt117.user[3].channel_up
 			});
 		started <= True;
+	endmethod
+	method Action setNetId(Bit#(32) netid);
+		myNetIdx <= truncate(netid);
 	endmethod
 	endinterface
 
@@ -500,7 +706,8 @@ module mkMain#(FlashIndication indication, StorageBridgeIndication bridge_indica
    interface Aurora_Pins aurora_fmc1 = auroraIntra1.aurora;
    interface Aurora_Clock_Pins aurora_clk_fmc1 = gtx_clk_fmc1.aurora_clk;
 
-	interface Aurora_Pins aurora_ext = auroraExt.aurora;
+	interface Aurora_Pins aurora_ext = append(auroraExt119.aurora, auroraExt117.aurora);
 	interface Aurora_Clock_Pins aurora_quad119 = gtx_clk_119.aurora_clk;
+	interface Aurora_Clock_Pins aurora_quad117 = gtx_clk_117.aurora_clk;
 endmodule
 

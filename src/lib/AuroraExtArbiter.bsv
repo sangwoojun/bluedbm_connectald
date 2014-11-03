@@ -233,7 +233,7 @@ interface AuroraExtArbiterIfc;
 	method Action setRoutingTable(Bit#(6) node, Bit#(8) portidx);
 endinterface
 
-module mkAuroraExtArbiter#(Vector#(tPortCount, AuroraExtUserIfc) extports, Vector#(tEndpointCount, AuroraEndpointCmdIfc) endpoints, Bit#(HeaderFieldSz) myIdx) (AuroraExtArbiterIfc)
+module mkAuroraExtArbiter#(Vector#(tPortCount, AuroraExtUserIfc) extports, Vector#(tEndpointCount, AuroraEndpointCmdIfc) endpoints, Reg#(Bit#(HeaderFieldSz)) myIdx) (AuroraExtArbiterIfc)
 	provisos(
 	NumAlias#(TAdd#(tPortCount,tEndpointCount),tTotalInCount));
 

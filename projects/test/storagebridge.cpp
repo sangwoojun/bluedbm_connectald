@@ -3,11 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifndef BSIM
-	bool verbose = false;
-#else
-	bool verbose = true;
-#endif
 
 int bridgeBufferAlloc;
 unsigned int ref_bridgeBufferAlloc;

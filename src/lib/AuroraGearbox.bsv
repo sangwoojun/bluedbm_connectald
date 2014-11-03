@@ -16,6 +16,8 @@ interface AuroraGearboxIfc;
 
 	method Action auroraRecv(Bit#(AuroraWidth) word);
 	method ActionValue#(Bit#(AuroraWidth)) auroraSend;
+
+	method Action resetLink;
 endinterface
 
 module mkAuroraGearbox#(Clock aclk, Reset arst) (AuroraGearboxIfc);
@@ -128,5 +130,12 @@ module mkAuroraGearbox#(Clock aclk, Reset arst) (AuroraGearboxIfc);
 	method ActionValue#(Bit#(AuroraWidth)) auroraSend;
 		auroraOutQ.deq;
 		return auroraOutQ.first;
+	endmethod
+	
+	method Action resetLink;
+		maxInFlightUp <= 0;
+		maxInFlightDown <= 0;
+		curInQUp <= 0;
+		curInQDown <= 0;
 	endmethod
 endmodule

@@ -200,9 +200,17 @@ module mkMain#(FlashIndication indication, StorageBridgeIndication bridge_indica
 		packet1.payload = {0, auroraTestIdx};
 		packet2.payload = {1, (~32'h0) - (auroraTestIdx)};
 		packet3.payload = {1, (~32'h0) - (auroraTestIdx)};
-		packet1.dst = 1;
-		packet2.dst = 1;
-		packet3.dst = 0;
+
+		if ( myNetIdx == 0 ) begin
+			packet1.dst = 0;
+			packet2.dst = 1;
+			packet3.dst = 1;
+		end else begin
+			packet1.dst = 1;
+			packet2.dst = 0;
+			packet3.dst = 0;
+		end
+
 		packet1.ptype = 0;
 		packet2.ptype = 1;
 		packet3.ptype = 2;
@@ -348,7 +356,7 @@ module mkMain#(FlashIndication indication, StorageBridgeIndication bridge_indica
 		let d <- user.readResp;
 		//$display ( "read data at 1" );
 		//if ( d[6:0] == 0 ) begin
-			indication.hexDump({8'hee, d[23:0]});
+			indication.hexDump({8'hee, d[23+256:0+256]});
 		//end
 	endrule
 

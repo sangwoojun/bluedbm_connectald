@@ -75,7 +75,7 @@ module mkDRAMArbiter#(DRAM_User dram, Vector#(tPortCount, DRAMCommandIfc) userLi
 			let cmd <- user.writeReq;
 			wcmdQ.enq(cmd);
 		endrule
-		rule applyRead ( dram.init_done 
+		rule applyRead ( dram.init_done  == True
 			&& rcmdQ.first.idx == nextIdx );
 			let rcmd = rcmdQ.first;
 			if ( rcmd.idx == nextIdx ) begin
@@ -88,7 +88,7 @@ module mkDRAMArbiter#(DRAM_User dram, Vector#(tPortCount, DRAMCommandIfc) userLi
 				dram.request(truncate(addr<<3), 0, 0);
 			end
 		endrule
-		rule applyWrite ( dram.init_done 
+		rule applyWrite ( dram.init_done == True
 			&& wcmdQ.first.idx == nextIdx); 
 
 			let wcmd = wcmdQ.first;

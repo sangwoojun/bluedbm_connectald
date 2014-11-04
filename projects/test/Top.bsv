@@ -117,8 +117,8 @@ module mkPortalTop#(HostType host) (PortalTop#(PhysAddrWidth,WordSz,Top_Pins,1))
 
    ClockGenerator7 clk_gen <- mkClockGenerator7(clk_params, clocked_by clk200, reset_by rst200);
    Clock ddr_clk = clk_gen.clkout0;
-   Reset rst_n <- mkAsyncReset( 1, rst200, ddr_clk );
-   Reset ddr3ref_rst_n <- mkAsyncReset( 1, rst_n, clk_gen.clkout1 );
+   Reset rst_n <- mkAsyncReset( 4, rst200, ddr_clk );
+   Reset ddr3ref_rst_n <- mkAsyncReset( 4, rst_n, clk_gen.clkout1 );
    Clock ddr_buf = clk_gen.clkout1;
    /////////////////////////////////////////////////////
 `endif

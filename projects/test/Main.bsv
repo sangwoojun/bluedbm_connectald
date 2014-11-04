@@ -178,9 +178,9 @@ module mkMain#(FlashIndication indication, StorageBridgeIndication bridge_indica
 	AuroraExtIfc auroraExt119 <- mkAuroraExt(gtx_clk_119.gtx_clk_p_ifc, gtx_clk_119.gtx_clk_n_ifc, clk50);
 	AuroraExtIfc auroraExt117 <- mkAuroraExt117(gtx_clk_117.gtx_clk_p_ifc, gtx_clk_117.gtx_clk_n_ifc, clk50);
 
-	AuroraEndpointIfc aend1 <- mkAuroraEndpoint(0);
-	AuroraEndpointIfc aend2 <- mkAuroraEndpoint(1);
-	AuroraEndpointIfc aend3 <- mkAuroraEndpoint(2);
+	AuroraEndpointIfc#(Bit#(32)) aend1 <- mkAuroraEndpoint(0, myNetIdx);
+	AuroraEndpointIfc#(Bit#(32)) aend2 <- mkAuroraEndpoint(1, myNetIdx);
+	AuroraEndpointIfc#(Bit#(32)) aend3 <- mkAuroraEndpoint(2, myNetIdx);
 	//let alist1 = nil;
 	let alist1 = cons(aend1.cmd, nil);
 	let alist2 = cons(aend2.cmd, alist1);
@@ -192,47 +192,27 @@ module mkMain#(FlashIndication indication, StorageBridgeIndication bridge_indica
 
 	Reg#(Bit#(32)) auroraTestIdx <- mkReg(0);
 	rule sendAuroraTest(auroraTestIdx > 0);
-		//auroraExt.user[1].send({1,auroraTestIdx[30:0]});
-		//auroraExt.user[3].send({0,auroraTestIdx[30:0]});
-		AuroraPacket packet1;
-		AuroraPacket packet2;
-		AuroraPacket packet3;
-		packet1.payload = {0, auroraTestIdx};
-		packet2.payload = {1, (~32'h0) - (auroraTestIdx)};
-		packet3.payload = {1, (~32'h0) - (auroraTestIdx)};
 
 		if ( myNetIdx == 0 ) begin
-			packet1.dst = 0;
-			packet2.dst = 1;
-			packet3.dst = 1;
+			aend1.user.send(auroraTestIdx, 1);
+			aend2.user.send(~32'h0 - auroraTestIdx, 0);
+			aend3.user.send(~32'h0 - auroraTestIdx, 1);
 		end else begin
-			packet1.dst = 1;
-			packet2.dst = 0;
-			packet3.dst = 0;
+			aend1.user.send(auroraTestIdx, 0);
+			aend2.user.send(~32'h0 - auroraTestIdx, 1);
+			aend3.user.send(~32'h0 - auroraTestIdx, 0);
 		end
-
-		packet1.ptype = 0;
-		packet2.ptype = 1;
-		packet3.ptype = 2;
-		packet1.src = 0; 
-		packet2.src = 0;
-		packet3.src = 1;
-		packet1.len = 0; 
-		packet2.len = 0;
-		packet3.len = 0;
-		aend1.user.send(packet1);
-		aend2.user.send(packet2);
-		aend3.user.send(packet3);
 		
 		auroraTestIdx <= auroraTestIdx - 1;
 	endrule
 	FIFO#(Bit#(32)) dataQ <- mkSizedFIFO(32);
 
 	rule recvTestData;
-		let data <- aend1.user.receive;
+		let rst <- aend1.user.receive;
+		let data = tpl_1(rst);
 		//let data <- auroraExt.user[0].receive;
 
-		dataQ.enq(truncate(data.payload));
+		dataQ.enq(truncate(data));
 		/*
 		let p = data.payload;
 		if ( p[10:0] == 0 )
@@ -253,10 +233,11 @@ module mkMain#(FlashIndication indication, StorageBridgeIndication bridge_indica
 	endrule
 	
 	rule recvTestData3;
-		let data <- aend3.user.receive;
+		let rst <- aend3.user.receive;
+		let data = tpl_1(rst);
 		//let data <- auroraExt.user[2].receive;
 
-		dataQ.enq(truncate(data.payload));
+		dataQ.enq(truncate(data));
 	endrule
 
 	Reg#(Bit#(32)) auroraDataCheck <- mkReg(0);
@@ -298,8 +279,8 @@ module mkMain#(FlashIndication indication, StorageBridgeIndication bridge_indica
 		32'hcafecafe,
 		32'hf00df00d,
 		32'haaaaaaaa,
-		32'hcccccccc,
 			dramTestIdx,
+		32'hcccccccc,
 			dramTestIdx,
 			dramTestIdx,
 			dramTestIdx,
@@ -319,7 +300,8 @@ module mkMain#(FlashIndication indication, StorageBridgeIndication bridge_indica
 		let d <- user.readResp;
 		//$display ( "read data at 2" );
 		//if ( d[6:0] == 0 ) begin
-			indication.hexDump({8'hff, d[23:0]});
+			//indication.hexDump({8'hff, d[23:0]});
+			indication.hexDump({8'hff,8'h0, d[7+256:256], d[7:0]});
 		//end
 	endrule
 
@@ -335,8 +317,8 @@ module mkMain#(FlashIndication indication, StorageBridgeIndication bridge_indica
 		32'hcafecafe,
 		32'hf00df00d,
 		32'haaaaaaaa,
-		32'hcccccccc,
 			dramTestIdx2>>1,
+		32'hcccccccc,
 			dramTestIdx2>>1,
 			dramTestIdx2>>1,
 			dramTestIdx2>>1,
@@ -356,7 +338,7 @@ module mkMain#(FlashIndication indication, StorageBridgeIndication bridge_indica
 		let d <- user.readResp;
 		//$display ( "read data at 1" );
 		//if ( d[6:0] == 0 ) begin
-			indication.hexDump({8'hee, d[23+256:0+256]});
+			indication.hexDump({8'hee,8'h0, d[7+256:256], d[7:0]});
 		//end
 	endrule
 
@@ -639,13 +621,7 @@ module mkMain#(FlashIndication indication, StorageBridgeIndication bridge_indica
 		auroraExtArbiter.setRoutingTable(truncate(node), truncate(portmap));
 	endmethod
 	method Action sendTestAuroraPacket(Bit#(32) dst, Bit#(32) ptype);
-		AuroraPacket packet1;
-		packet1.payload = {0, auroraTestIdx<<1};
-		packet1.dst = truncate(dst);
-		packet1.ptype = truncate(ptype);
-		packet1.src = 0; 
-		packet1.len = 0;
-		aend1.user.send(packet1);
+		aend1.user.send(32'hcccccccc, truncate(dst));
 	endmethod
 	method Action addWriteHostBuffer(Bit#(32) pointer, Bit#(32) offset, Bit#(32) idx);
 		for (Integer i = 0; i < numDmaChannels; i = i + 1) begin

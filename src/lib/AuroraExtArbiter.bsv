@@ -37,8 +37,8 @@ function AuroraPacket unpackPacket(Bit#(AuroraIfcWidth) d);
 endfunction
 
 interface AuroraEndpointUserIfc#(type t);
-	method Action send(t data);
-	method ActionValue#(t) receive;
+	method Action send(t data, Bit#(HeaderFieldSz) dst);
+	method ActionValue#(Tuple2#(t, Bit#(HeaderFieldSz))) receive;
 endinterface
 interface AuroraEndpointCmdIfc;
 	interface AuroraExtUserIfc user;
@@ -47,21 +47,34 @@ interface AuroraEndpointCmdIfc;
 	method Bit#(6) portIdx;
 endinterface
 
-interface AuroraEndpointIfc;
-interface AuroraEndpointUserIfc#(AuroraPacket) user;
+interface AuroraEndpointIfc#(type t);
+interface AuroraEndpointUserIfc#(t) user;
 interface AuroraEndpointCmdIfc cmd;
 endinterface
-module mkAuroraEndpoint#(Integer pidx) ( AuroraEndpointIfc );
+module mkAuroraEndpoint#(Integer pidx, Reg#(Bit#(HeaderFieldSz)) myNetIdx) ( AuroraEndpointIfc#(t) )
+	provisos(Bits#(t,wt)
+		, Add#(wt,__a,PayloadSz));
+
 	FIFO#(AuroraIfcType) sendQ <- mkFIFO;
 	FIFO#(AuroraIfcType) recvQ <- mkFIFO;
 	Reg#(Bit#(6)) myIdx <- mkReg(fromInteger(pidx));
 interface AuroraEndpointUserIfc user;
-	method Action send(AuroraPacket data);
-		sendQ.enq(packPacket(data));
+	method Action send(t data, Bit#(HeaderFieldSz) dst);
+		AuroraPacket p;
+		p.dst = dst;
+		p.src = myNetIdx;
+		p.payload = zeroExtend(pack(data));
+		p.len = 1;
+		p.ptype = fromInteger(pidx);
+		sendQ.enq(packPacket(p));
 	endmethod
-	method ActionValue#(AuroraPacket) receive;
+	method ActionValue#(Tuple2#(t, Bit#(HeaderFieldSz))) receive;
 		recvQ.deq;
-		return unpackPacket(recvQ.first);
+		AuroraIfcType idata = recvQ.first;
+		AuroraPacket p = unpackPacket(idata);
+		t data = unpack(truncate(p.payload));
+		Bit#(HeaderFieldSz) src = p.src;
+		return tuple2(data,src);
 	endmethod
 endinterface
 interface AuroraEndpointCmdIfc cmd;

@@ -116,15 +116,17 @@ module mkDRAMArbiter#(DRAM_User dram, Vector#(tPortCount, DRAMCommandIfc) userLi
 	SyncFIFOIfc#(Tuple2#(Bit#(512), Bit#(8))) dataQ <- mkSyncFIFO(2, ddr3clk,ddr3rstn, curClk);
 	rule ruleRecvData;
 		let res <- dram.read_data;
+		/*
 		//FIXME Don't know why this is happening
 		`ifndef BSIM
 			let rdata = {res[255:0], res[511:256]};
 		`else
 			let rdata = res;
 		`endif
+		*/
 		reqUserQ.deq;
 		let uidx = reqUserQ.first;
-		dataQ.enq(tuple2(rdata, uidx));
+		dataQ.enq(tuple2(res, uidx));
 	endrule
 	rule ruleSendData;
 		let res = dataQ.first;

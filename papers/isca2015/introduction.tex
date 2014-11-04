@@ -1,10 +1,54 @@
 \section{Introduction}
 
-Complex analytics of large datasets provide deep insight into real-world
-phenomena. 
+As computation and communication technologies become increasingly advanced and
+widespread, an unprecedented amount of digital data has become available to be
+analyzed. In-depth analysis of so-called "Big Data" has shown to provide
+extremely deep insight into real world phenomena.
 
-More data means more value <- as much data as can process.
+Due to the sheer size of the datasets involved in Big Data analytics,
+transporting data to where it can be processed becomes a first order concern. In
+traditional computer systems, this meant first trying to fit as much data as
+possible on local DRAM, and when this becomes not viable, creating a cluster of
+machines connected by a fast network fabric. Storing data in secondary storage
+was done as a last-ditch attempt to bring price down by sacrificing performance.
+This is due to the disparity of performance across system components, where the
+access latency of spinning disk storages dwarfed all other components of a
+system/
 
-Big Data by definition is data too large to be processed with conventional
-methods and machines.
+%However, traditional computing machines are not designed to 
 
+%More data means more value <- as much data as can process.
+
+%Big Data by definition is data too large to be processed with conventional
+%methods and machines.
+
+This landscape is changing with the widespread adoption of flash storage. Flash
+storage’s random access latency is multiple orders of magnitude lower than disk,
+on par with most widespread networking platforms. As a result, a computing
+system with fewer nodes storing data on a local flash storage can be an
+alternative solution instead of a system with a greater number of nodes
+attempting to store most data in DRAM. 
+
+One way to further improve processing capabilities of flash storage based
+systems is near-data computation. Because transporting the data to the processor
+incurs a large communication overhead, it would be beneficial if computation can
+be moved to a processing core on the storage itself, so that much lower latency
+computation can take place. Operations such as filtering can be offloaded to
+such a near-data processor so that less data has to be transported to the CPU,
+conserving bandwidth and improving performance. 
+
+Another way to improve performance could be to create a separate sideband
+network between storage devices, in order to accelerate remote storage access.
+Such a network can have a hardware-accelerated application-specific network
+protocol, reducing network overhead. This may enable implementing a
+high-performance distributed file system by reducing the latency of
+communication between nodes. It may be possible to implement micro-servers on
+storage devices themselves that service other servers in the cluster over this
+high-speed network.
+
+We propose to explore various architectural solutions to make maximum use of
+flash device characteristics and improve data processing capabilities while
+lowering cost. This includes flash-optimized storage management software stack,
+near-data processing using hardware accelerators, and application-specific
+sideband networks between storage devices accelerating application packets and
+distributed file systems.

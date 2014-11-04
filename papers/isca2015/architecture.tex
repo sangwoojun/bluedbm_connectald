@@ -1,12 +1,31 @@
 \section{System Architecture}
 
-Architecture
+The BlueDBM architecture is composed of multiple identical nodes. Each node
+consists of a flash storage device, reconfigurable computation fabric (e.g.,
+FPGA), and a host server. The FPGA controls  connects to the host server over a high-speed
+PCIe link.
 
 \subsection{Flash Interface}
 
-\subsection{Serial Network}
+\subsection{Inter-FPGA Network}
 
 \subsection{Host Interface}
 
+\begin{figure}[ht]
+	\begin{center}
+	%\includegraphics[scale=0.4]{}
+	\caption{Host-FPGA Interface Over PCIe}
+	\label{fig:hostinterface}
+	\end{center}
+\end{figure}
+
 \subsection{File System Interface}
 
+
+\begin{figure}[ht]
+	\begin{center}
+	%\includegraphics[scale=0.4]{}
+	\caption{File System Interface}
+	\label{fig:filesystem}
+	\end{center}
+\end{figure}

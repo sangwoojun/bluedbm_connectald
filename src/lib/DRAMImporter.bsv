@@ -29,8 +29,8 @@ endinterface
 module mkDRAMImport#(Clock clk200, Reset rst200) (DRAM_Import);
 `ifndef BSIM
 	DDR3_Configure ddr3_cfg = defaultValue;
-	//ddr3_cfg.reads_in_flight = 2;   // adjust as needed
-	ddr3_cfg.reads_in_flight = 24;   // adjust as needed
+	ddr3_cfg.reads_in_flight = 2;   // adjust as needed
+	//ddr3_cfg.reads_in_flight = 24;   // adjust as needed
 	//ddr3_cfg.fast_train_sim_only = False; // adjust if simulating
 	DDR3_Controller_VC707 ddr3_ctrl <- mkDDR3Controller_VC707(ddr3_cfg, clk200, clocked_by clk200, reset_by rst200);
 

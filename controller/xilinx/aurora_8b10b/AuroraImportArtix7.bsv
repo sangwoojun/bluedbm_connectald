@@ -18,6 +18,8 @@ typedef Bit#(6) PacketType;
 interface AuroraIfc;
 	method Action send(DataIfc data, PacketType ptype);
 	method ActionValue#(Tuple2#(DataIfc, PacketType)) receive;
+	method Tuple4#(Bit#(32), Bit#(32), Bit#(32), Bit#(32)) getDebugCnts;
+
 
 	interface Clock clk;
 	interface Reset rst;
@@ -85,18 +87,34 @@ module mkAuroraIntra#(Clock gtp_clk) (AuroraIfc);
 	Clock aclk = auroraIntraImport.aurora_clk;
 	Reset arst = auroraIntraImport.aurora_rst;
 
-	AuroraGearboxIfc auroraGearbox <- mkAuroraGearbox(aclk, arst);
-	rule auroraOut;
-		let d <- auroraGearbox.auroraSend;
-		if ( auroraIntraImport.user.channel_up == 1 ) begin
-			auroraIntraImport.user.send(d);
-		end
+	Reg#(Bit#(32)) gearboxSendCnt <- mkReg(0);
+	Reg#(Bit#(32)) gearboxRecCnt <- mkReg(0);
+	Reg#(Bit#(32)) auroraSendCnt <- mkReg(0, clocked_by aclk, reset_by arst);
+	Reg#(Bit#(32)) auroraRecCnt <- mkReg(0, clocked_by aclk, reset_by arst);
+	Reg#(Bit#(32)) auroraSendCntCC <- mkSyncRegToCC(0, aclk, arst);
+	Reg#(Bit#(32)) auroraRecCntCC <- mkSyncRegToCC(0, aclk, arst);
+	rule syncCnt;
+		auroraSendCntCC <= auroraSendCnt;
+		auroraRecCntCC <= auroraRecCnt;
 	endrule
+
+
+	AuroraGearboxIfc auroraGearbox <- mkAuroraGearbox(aclk, arst);
+	rule auroraOut if (auroraIntraImport.user.channel_up == 1);
+		let d <- auroraGearbox.auroraSend;
+		//if ( auroraIntraImport.user.channel_up == 1 ) begin
+			auroraSendCnt <= auroraSendCnt + 1;
+			auroraIntraImport.user.send(d);
+		//end
+	endrule
+	/*
 	rule resetDeadLink ( auroraIntraImport.user.channel_up == 0);
 		auroraGearbox.resetLink;
 	endrule
+	*/
 	rule auroraIn;
 		let d <- auroraIntraImport.user.receive;
+		auroraRecCnt <= auroraRecCnt + 1;
 		auroraGearbox.auroraRecv(d);
 	endrule
 
@@ -107,11 +125,17 @@ module mkAuroraIntra#(Clock gtp_clk) (AuroraIfc);
 	endrule
 */
 
+	method Tuple4#(Bit#(32), Bit#(32), Bit#(32), Bit#(32)) getDebugCnts;
+		return tuple4(gearboxSendCnt, gearboxRecCnt, auroraSendCntCC, auroraRecCntCC);
+	endmethod
+
 	method Action send(DataIfc data, PacketType ptype);
 		auroraGearbox.send(data, ptype);
+		gearboxSendCnt <= gearboxSendCnt + 1;
 	endmethod
 	method ActionValue#(Tuple2#(DataIfc, PacketType)) receive;
 		let d <- auroraGearbox.recv;
+		gearboxRecCnt <= gearboxRecCnt + 1;
 		return d;
 	endmethod
 	method channel_up = auroraIntraImport.user.channel_up;

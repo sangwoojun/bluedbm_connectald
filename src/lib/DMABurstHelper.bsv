@@ -216,31 +216,11 @@ module mkDmaWriteEngine# (
 		dmaRefReqQ.enq(rbuf);
 
 		writeBuffer.startBurst(fromInteger(burstWords), tag);
+		$display("dmawriter: TAG = %d", tag);
 	endrule
 
-	/*
-	FIFO#(Bit#(8)) startWriteTestQ <- mkSizedFIFO(8);
-	Reg#(Bit#(16)) curTestWriteOff <- mkReg(0);
-	rule startFlushDma;
-		let tag = startWriteTestQ.first;
-		let wcount = tpl_2(dmaWriteBuf[tag]);
-		if ( curTestWriteOff < wcount/fromInteger(burstWords) ) begin
-			curTestWriteOff <= curTestWriteOff + 1;
-		end else begin
-			startWriteTestQ.deq;
-			curTestWriteOff <= 0;
 
-		end
-
-		startDmaFlushQ.enq(zeroExtend(tag));
-		let rbuf = tpl_1(dmaWriteBuf[tag]);
-		dmaRefReqQ.enq(rbuf);
-	endrule
-	*/
-
-	//Reg#(Bit#(16)) dummyOffset <- mkReg(0);
-
-	FIFO#(MemengineCmd) engineCmdQ <- mkSizedFIFO(4);
+	FIFO#(Tuple3#(Bit#(32), Bit#(8), Bit#(8))) dmaTwo2ThreePipeQ <- mkFIFO;
 	rule startFlushDma2;
 		let tag = startDmaFlushQ.first;
 		startDmaFlushQ.deq;
@@ -257,6 +237,21 @@ module mkDmaWriteEngine# (
 
 		let rbuf = tpl_1(dmaWriteBuf[tag]);
 		dmaWriteOffset[tag] <= tuple2(offset+fromInteger(burstBytes), phase);
+
+		dmaTwo2ThreePipeQ.enq(tuple3(offset, rbuf, tag));
+
+	endrule
+
+
+
+
+	FIFO#(MemengineCmd) engineCmdQ <- mkSizedFIFO(4);
+	rule startFlushDma3;
+		dmaTwo2ThreePipeQ.deq;
+		let pipeData = dmaTwo2ThreePipeQ.first;
+		let offset = tpl_1(pipeData);
+		let rbuf = tpl_2(pipeData);
+		let tag = tpl_3(pipeData);
 
 		//let wr = dmaWriteRefs[rbuf];
 		let wr = dmaRefRespQ.first;

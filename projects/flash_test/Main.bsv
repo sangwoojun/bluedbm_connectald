@@ -63,6 +63,7 @@ interface FlashRequest;
 	method Action addWriteHostBuffer(Bit#(32) pointer, Bit#(32) offset, Bit#(32) idx);
 	method Action addReadHostBuffer(Bit#(32) pointer, Bit#(32) offset, Bit#(32) idx);
 	method Action start(Bit#(32) dummy);
+	method Action debugDumpReq(Bit#(32) dummy);
 endinterface
 
 interface FlashIndication;
@@ -70,6 +71,7 @@ interface FlashIndication;
 	method Action writeDone(Bit#(32) tag);
 	method Action reqFlashCmd(Bit#(32) inq, Bit#(32) count);
 	method Action hexDump(Bit#(32) data);
+	method Action debugDumpResp(Bit#(32) debugDoneCnt, Bit#(32) debugRCntHi, Bit#(32) debugRCntLo);
 endinterface
 
 // NumDmaChannels each for flash i/o and emualted i/o
@@ -138,7 +140,7 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 		let ind = tag2DmaIndTable[tag];
 		distrIndPipeQ.enq(ind);
 		distrDataPipeQ.enq(rd);
-		$display("main.bsv: read rd = %x, tag = %d, dmaInd=%d", data, tag, ind);
+		$display("@%d main.bsv: read rd = %x, tag = %d, dmaInd=%d", cycleCnt, data, tag, ind);
 	endrule
 
 	rule distrToDMAWriter2;
@@ -170,7 +172,7 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 			dmaWrBuf.deq();
 			let d = tpl_1(r);
 			let t = tpl_2(r);
-			dmaWriter.write(d,zeroExtend(t));
+			//dmaWriter.write(d,zeroExtend(t)); //FIXME DEBUG
 		endrule
 
 		dmaWriterFreeBufferClient[wIdx] = dmaWriter.bufClient;
@@ -181,10 +183,13 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 	//Reg#(Bit#(32)) rbufBuff <- mkReg(0);
 	//Reg#(Bit#(32)) tagBuff <- mkReg(0);
 
+	Reg#(Bit#(32)) debugDoneCnt <- mkReg(0);
+
 	FIFO#(Bit#(8)) writeDoneIndicationQ <- mkFIFO;
 	rule dmaWriteDoneCheck;
 			let r <- writeBufMan.done;
 			writeDoneIndicationQ.enq(r);
+			debugDoneCnt <= debugDoneCnt + 1;
 			$display( "write page done in %d", r );
 	endrule
 	rule flushDmaWriteDone;
@@ -269,6 +274,14 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 		end
 	endrule
 
+	
+	FIFO#(Bit#(1)) debugReqQ <- mkFIFO();
+	rule doDebugDump;
+		$display("Main.bsv: debug dump request received");
+		debugReqQ.deq;
+		indication.debugDumpResp(debugDoneCnt, debugRCnt[63:32], debugRCnt[31:0]);
+	endrule
+
    
 	Vector#(NumObjectClients, ObjectReadClient#(WordSz)) dmaReadClients;
 	Vector#(NumObjectClients, ObjectWriteClient#(WordSz)) dmaWriteClients;
@@ -345,6 +358,12 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 	method Action start(Bit#(32) datasource);
 		started <= True;
 	endmethod
+
+
+	method Action debugDumpReq(Bit#(32) dummy);
+		debugReqQ.enq(1);
+	endmethod
+
 	endinterface
 
    interface ObjectReadClient dmaReadClient = dmaReadClients;

@@ -84,16 +84,17 @@ int main(int argc, const char **argv)
 	timespec start, now;
 	clock_gettime(CLOCK_REALTIME, & start);
 
-	for (int repeat = 0; repeat < 1000000; repeat++){
-	//for (int blk = 0; blk < 1; blk++){
-		//for (int chip = 7; chip >= 0; chip--){
-			//for (int bus = 7; bus >= 0; bus--){
+	int totalCnt = 0;
+	for (int repeat = 0; repeat < 2; repeat++){
+	for (int blk = 0; blk < 1; blk++){
+		for (int chip = 7; chip >= 0; chip--){
+			for (int bus = 7; bus >= 0; bus--){
 				//int blk = 0;
 
 				//random testing
-				int blk = rand() % 1024;
-				int chip = rand() % 8;
-				int bus = rand() % 8;
+				//int blk = rand() % 1024;
+				//int chip = rand() % 8;
+				//int bus = rand() % 8;
 
 				int page = 0;
 				readPage(bus, chip, blk, page, waitIdleReadBuffer());
@@ -116,9 +117,13 @@ int main(int argc, const char **argv)
 				while (enter != '\r' && enter != '\n') { enter = getchar(); }
 				*/
 				
-	//		}
-	//	}
-	//}
+				totalCnt++;
+				if (totalCnt%64==0) {
+					device->debugDumpReq(0);
+				}
+			}
+		}
+	}
 	}
 	
 
@@ -126,10 +131,20 @@ int main(int argc, const char **argv)
 
 	printf( "trying reading from page!\n" );
 
+	int elapsed = 0;
 	while (true) {
+		if (elapsed == 0) {
+			elapsed=10000;
+			device->debugDumpReq(0);
+		}
+		else {
+			elapsed--;
+		}
 		usleep(100);
 		if ( getNumReadsInFlight() == 0 ) break;
 	}
+
+	device->debugDumpReq(0);
 
 	clock_gettime(CLOCK_REALTIME, & now);
 	printf( "finished reading from page! %f\n", timespec_diff_sec(start, now) );

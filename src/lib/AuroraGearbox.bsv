@@ -17,7 +17,7 @@ interface AuroraGearboxIfc;
 	method Action auroraRecv(Bit#(AuroraWidth) word);
 	method ActionValue#(Bit#(AuroraWidth)) auroraSend;
 
-	method Action resetLink;
+	//method Action resetLink;
 endinterface
 
 module mkAuroraGearbox#(Clock aclk, Reset arst) (AuroraGearboxIfc);
@@ -52,6 +52,8 @@ module mkAuroraGearbox#(Clock aclk, Reset arst) (AuroraGearboxIfc);
 			flowControlQ.deq;
 			PacketType ptype = 0;
 			auroraOutQ.enq({2'b01, ptype, zeroExtend(flowControlQ.first)});
+			$display("AuroraOutQ: flowControl packet: %d", flowControlQ.first);
+			$display("send budget = %d", curSendBudget);
 		end else
 		if ( curSendBudget > 0 ) begin
 			if ( isValid(packetSendBuffer) ) begin
@@ -62,6 +64,7 @@ module mkAuroraGearbox#(Clock aclk, Reset arst) (AuroraGearboxIfc);
 					});
 				packetSendBuffer <= tagged Invalid;
 				curSendBudgetDown <= curSendBudgetDown + 1;
+				$display("AuroraOutQ: data packet VALID: data=%x, type=%x", tpl_1(btpl), tpl_2(btpl));
 			end else begin
 				sendQ.deq;
 				let data = sendQ.first;
@@ -71,7 +74,9 @@ module mkAuroraGearbox#(Clock aclk, Reset arst) (AuroraGearboxIfc);
 						tpl_2(data)
 					);
 				auroraOutQ.enq({2'b00, tpl_2(data),truncate(tpl_1(data))});
+				$display("AuroraOutQ: data packet INVALID: data=%x, type=%x", tpl_1(data), tpl_2(data));
 			end
+			$display("send budget = %d", curSendBudget);
 		end
 	endrule
 
@@ -89,8 +94,8 @@ module mkAuroraGearbox#(Clock aclk, Reset arst) (AuroraGearboxIfc);
 
 		if ( control == 1 ) begin
 			curSendBudgetUp <= curSendBudgetUp + truncate(cdata);
-		end else
-		if ( isValid(packetRecvBuffer) ) begin
+		end 
+		else if ( isValid(packetRecvBuffer) ) begin
 			let pdata = fromMaybe(0, packetRecvBuffer);
 			if ( idx == 1 ) begin
 				packetRecvBuffer <= tagged Invalid;
@@ -132,10 +137,12 @@ module mkAuroraGearbox#(Clock aclk, Reset arst) (AuroraGearboxIfc);
 		return auroraOutQ.first;
 	endmethod
 	
+	/*
 	method Action resetLink;
 		maxInFlightUp <= 0;
 		maxInFlightDown <= 0;
 		curInQUp <= 0;
 		curInQDown <= 0;
 	endmethod
+	*/
 endmodule

@@ -31,6 +31,7 @@ endinterface
 
 interface FCVirtexDebug;
 	method Tuple2#(DataIfc, PacketType) debugRecPacket();
+	method Tuple4#(Bit#(32), Bit#(32), Bit#(32), Bit#(32)) getDebugCnts;
 endinterface
 
 interface FlashCtrlVirtexIfc;
@@ -62,7 +63,7 @@ module mkFlashCtrlVirtex#(
 //method ActionValue#(Tuple2#(DataIfc, PacketType)) receive;
 
 
-
+	
 	//SEND V7 -> A7 rules: sendCmd and write data
 	//Prioritize sendCmd over writeData
 	//TODO: must check if there's space on A7 to accept cmd, otherwise aurora
@@ -89,6 +90,7 @@ module mkFlashCtrlVirtex#(
 		
 
 	//RECEIVE A7 -> V7 rules
+	//TODO need to break up the rules because ActionValue receive
 	rule receivePacket;
 		let typedData <- auroraIntra.receive();
 		debugRecPacketV <= typedData;
@@ -109,15 +111,41 @@ module mkFlashCtrlVirtex#(
 		else begin
 			$display("**ERROR: Unknown Packet Type"); //TODO go into err state
 		end
-		//TODO: may need full/empty indications for Queues
-		//TODO: may need to handle full/empty indications
 		// Possible scenerio: pcie can't drain rdata fast enough? acks or wr_req 
 		// can't be received either. but host always has space before issuing
 		// rdata, so it might be ok? it drains eventually. 
 	endrule
+	
+
+	//bsim testing
+	/*
+	Reg#(Bit#(32)) dataReg <- mkReg(0);
+	rule sendAurora;
+		dataReg <= dataReg + 1;
+		auroraIntra.send(zeroExtend(dataReg), 0);
+		$display("aurora SEND data = %x", dataReg);
+	endrule
+
+	//receive slowly
+	Integer recDelay = 1000;
+	Reg#(Bit#(32)) delayReg <- mkReg(fromInteger(recDelay));
+	rule receiveAurora;
+		if (delayReg == 0) begin
+			let typedData <- auroraIntra.receive();
+			let data = tpl_1(typedData);
+			$display("aurora RECEIVED data = %x", data);
+			delayReg <= fromInteger(recDelay);
+		end
+		else begin
+			delayReg <= delayReg - 1;
+		end
+	endrule
+	*/	
+
+
 			
 	interface FlashCtrlUser user;
-		method Action sendCmd (FlashCmd cmd); //TODO Flashcmd is defined twice
+		method Action sendCmd (FlashCmd cmd); 
 			flashCmdQ.enq(cmd);
 		endmethod
 
@@ -145,6 +173,7 @@ module mkFlashCtrlVirtex#(
 		method Tuple2#(DataIfc, PacketType) debugRecPacket();
 			return debugRecPacketV;
 		endmethod
+		method Tuple4#(Bit#(32), Bit#(32), Bit#(32), Bit#(32)) getDebugCnts = auroraIntra.getDebugCnts;
 	endinterface
 
 	interface Aurora_Pins aurora = auroraIntra.aurora;

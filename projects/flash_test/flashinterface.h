@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include <stdint.h>
 
 #include "connectal.h"
 
@@ -47,6 +48,7 @@ extern pthread_cond_t cmdReqCond;
 extern int curCmdCountBudget;
 
 extern sem_t wait_sem;
+extern FlashRequestProxy *device;
 
 double timespec_diff_sec( timespec start, timespec end );
 
@@ -138,6 +140,13 @@ public:
 	printf( "aurora data! %f\n", timespec_diff_sec(aurorastart, now) );
 	fflush(stdout);
   }
+
+  virtual void debugDumpResp (unsigned int debugDoneCnt, unsigned int debugRdCntHi,  unsigned int debugRdCntLo) {
+	  uint64_t cntHi = debugRdCntHi;
+	  uint64_t rdCnt = (cntHi<<32) + debugRdCntLo;
+	  fprintf(stderr, "DEBUG DUMP: debugDoneCnt = %d, rdCnt = %lu\n", debugDoneCnt, rdCnt);
+  }
+
 };
 
 

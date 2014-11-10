@@ -1,19 +1,185 @@
 \section{Introduction}
 
+Complex analytics of so-called "Big Data" has shown to provide extremely deep
+insight into real world phenomena, but the sheer size of datasets involved makes
+designing efficient analytic systems challenging. The entire working set should
+ideally fit inside the collective DRAM of a cluster in order to avoid the
+prohibitively high access latency of mechanical disk storage. However, such a
+system quickly becomes prohibitively expensive, both in purchasing price and
+power consumption. As the number of machines increase, scalability also becomes
+an issue.
+
+%	Flash storage may provide good balance between price power performance, but
+%	performance bottlenecked by architecture assuming slow storage.
+With the advancement of high bandwidth, low latency flash
+storage technology, flash-based systems present an alternative system
+configuration, as well as new architectural challenges. The access latency of
+modern flash storage devices are on par with commodity networking
+technologies, making a system with an affordable number of nodes that fit the working
+set in collective flash storage a possible alternative to a prohibitively large cluster that
+attempts to fit everything in memory. 
+In such a configuration, the bottleneck shifts from the storage device to
+other components such as the network latency, software overhead and bandwidth of
+the host-storage interface. In order to further improve the performance,
+we must move beyond point component improvements and explore cross-layer
+optimizations and architectural solutions.
+
+%	Accelerators, invocation latency limits usage scenarios, bump in the wire good.
+%	In Store Processing Engine
+A prominent architectural approach to further improve the performance of flash
+based systems is to embed In-Store Processing (ISP) engines on the storage
+device itself, in order to offload data processing and to reduce data transfer
+overhead between the host and storage. In-store processing engines have multiple
+desirable characteristics. It has a very low latency access to data on the
+storage as it does not need to be suffer the transportation overhead to the
+host CPU, and therefore also does not effected by the bandwidth limitations that
+may be imposed by such connections. For example, if the host-storage link has a
+lower bandwidth than the storage device, an in-storage processor can make full
+use of the device bandwidth and provide bandwidth amplification over the storage
+interface by pre-processing the data and only transporting a smaller amount of
+relevant information. To exploit such benefits, embedding various kinds
+of computation fabric in storage is under active investigation. A reconfigurable
+hardware accelerator, such as an FPGA, may be a good fit in this position due
+to its power efficiency and performance.
+
+Similarly, adding computation fabric in the form of accelerators to the network
+interface is also an actively researched area, in order to offload computation
+and achieve bandwidth amplification by pre-processing data that goes over the
+network.
+
+%	We present bluedbm
+In this work, we present FlashBoost, a high-performance
+distributed flash storage and accelerator platform for big data analytics.
+A FlashBoost cluster consists of multiple servers, each with a FlashBoost
+storage device plugged into its PCIe slot. A FlashBoost storage device also
+connects to other FlashBoost devices over a separate sideband network, making
+each device a storage device as well as a network interface.
+FlashBoost also provides a combined in-storage and in-network-interface
+accelerator platform. Since the combined bandwidth of flash storage and the
+sideband links is likely to surpass the bandwidth of the PCIe link, bandwidth
+amplification by the accelerator becomes very important, as well as eliminating
+the data transport overhead between storage and network interface. 
+
+%\textbf{Would In-Data Processing be a good name to combine the two?}
+
+%in-storage
+%processing capabilities in the form of an FPGA-based hardware accelerator. It
+%also provides both low-level interface into flash storage and in-storage
+%processors along with a
+%high-level file system interface, to make it possible to explore thin software
+%layers optimized to applications.
+
+%	BlueDBM aims to achieve the following goals
+FlashBoost aims to achieve the following goals:
+\begin{enumerate}
+\item \textbf{High Performance}: Software should be able to access
+data in the entire cluster of flash storage with with low latency and high bandwidth.
+\item \textbf{Effective Hardware Acceleration}: It should provide a platform for
+building hardware accelerators with very low latency access to storage and
+network, in order to improve computation performance and to make maximum use of
+flash and network performance.
+\item \textbf{Ease of Accelerator Development}: It should provide easy-to-use
+interface into system components, allowing other developers to easily
+build their own hardware accelerators.
+\item \textbf{Sandbox for Software Stack Development}: Provide an easy-to use
+software interface into flash storage and in-storage processor access, so that the software stack
+can be optimized to the specific application.
+\end{enumerate}
+
+%	High level description of BlueDBM
+FlashBoost follows after FPGA-accelerated distributed flash-based storage
+systems such as BlueDBM~\cite{bluedbm}. Storage systems such as BlueDBM and
+FlashBoost differ from traditional distributed storage systems largely in two
+aspects: First, the flash storage controller includes a reconfigurable hardware
+fabric, which can be used to program application-specific hardware accelerators
+with low latency access into flash storage. Second: the storage
+controllers and in-store processing engines are connected to each other via a separate network.
+This storage device network is entirely implemented in hardware and stripped of
+unnecessary software overhead, allowing very low latency communication between
+storage nodes. However, the system described in BlueDBM was too small and slow
+to accurately evaluate its benefits with real-world problems. Our experience
+with building FlashBoost has shown that many engineering trade-offs change when
+building a modern-scale system.
+
+%	The key contribution
+
+%	We built a machine
+In order to demonstrate the performance of our architecture, we have constructed
+a 20-node FlashBoost cluster with 20TBs of flash storage. Each node consists of
+a host server with a 12-core Xeon server and 48GBs of DRAM, and a FlashBoost
+storage device built using an off-the-shelf Xilinx VC707 FPGA development board
+and two custom-designed flash boards, each with 0.5TBs of flash. All nodes are
+connected to each other using both Ethernet between host servers and 8
+high-speed serial links directly between the FPGAs. The FPGA communicates with
+the host server over high-speed PCIe link, and host software can access the
+flash storage and the in-store processing engine over either a RPC-like raw
+interface or a file system interface that we have developed. A pair of our flash
+boards deliver 3.2GB/s of read bandwidth, and 2.4GB/s of write bandwidth.  The 8
+serial links between FPGAs each run at 10Gb/s, and all nodes act as a switch as
+well as an endpoint, allowing freedom to explore topologies.
+
+%	Rest of the paper is...
+The rest of the paper is organized as follows:
+
+
+
+\begin{comment}
 As computation and communication technologies become increasingly advanced and
 widespread, an unprecedented amount of digital data has become available to be
 analyzed. In-depth analysis of so-called "Big Data" has shown to provide
 extremely deep insight into real world phenomena.
+
+Due to the sheer size of the datasets involved in Big Data analytics, storing
+all data in fast DRAM of a cluster of machines quickly too expensive, or not
+scalable. With the advancement of fast, high-capacity flash storage devices,
+flash-based analytics platforms is becoming an increasingly viable alternative
+to the traditional DRAM-based analytics platforms. Using flash storage, a large
+dataset can fit in a smaller cluster with less machines.
+
+Flash device's low-latency high-bandwidth characteristics move the bottleneck
+away from the traditional location of secondary storage access, to other system
+components such as the storage or network management software stack, or the
+storage access interface between the storage and host. In order to make maximum
+use of flash storage, the system architecture needs to be modified to better
+balance the various components of the system.
+%TODO explain in depth in Motivation: PCIe bottleneck, Ethernet bottleneck
+
+One way to improve processing capabilities of flash storage based
+systems is to use reconfigurable hardware accelerators on the storage device
+itself for in-storage processing. There are multiple benefits to such a
+configuration: First, an in-storage processing core can have a much lower latency
+access to data. Second, operations such as filtering can be offloaded to a
+in-storage processor, reducing the overhead of transporting data to the
+CPU. Finally, application-specific accelerators can help maintain processing
+performance while reducing the number of processing nodes.
+
+Another way to improve performance could be to create a separate sideband
+network between the near-data processors. Such a specialized network will
+not require most of the bulk that comes with general-purpose network and will
+facilitate an even lower-latency access into remote storage and near-data
+computation resources.
+
+In this paper, we present BlueDBM, a flash-based Big Data analytics platform to
+demonstrate the benefits of such architectural solutions. BlueDBM aims to make
+maximum use of flash device characteristics, in order to improve data processing
+capabilities while lowering cost. To further demonstrate the capabilities of the
+BlueDBM system, we are implementing multiple real-world
+applications on this platform, including an SQL DBMS with hardware-accelerated
+query processing, key-value store, sparse linear algebra processor and a
+flash-based Memcached implementation.
+\end{comment}
+
+\begin{comment}
 
 Due to the sheer size of the datasets involved in Big Data analytics,
 transporting data to where it can be processed becomes a first order concern. In
 traditional computer systems, this meant first trying to fit as much data as
 possible on local DRAM, and when this becomes not viable, creating a cluster of
 machines connected by a fast network fabric. Storing data in secondary storage
-was done as a last-ditch attempt to bring price down by sacrificing performance.
+is done only as a last attempt when  to bring price down by sacrificing performance.
 This is due to the disparity of performance across system components, where the
-access latency of spinning disk storages dwarfed all other components of a
-system/
+access latency of mechanical disk storages dwarfs all other components of a
+system.
 
 %However, traditional computing machines are not designed to 
 
@@ -23,32 +189,10 @@ system/
 %methods and machines.
 
 This landscape is changing with the widespread adoption of flash storage. Flash
-storage’s random access latency is multiple orders of magnitude lower than disk,
+storage's random access latency is multiple orders of magnitude lower than disk,
 on par with most widespread networking platforms. As a result, a computing
-system with fewer nodes storing data on a local flash storage can be an
-alternative solution instead of a system with a greater number of nodes
-attempting to store most data in DRAM. 
+system with fewer nodes storing data on a local flash storage could be a viable
+alternative to a system with a greater number of nodes attempting to store most
+data in DRAM.
+\end{comment}
 
-One way to further improve processing capabilities of flash storage based
-systems is near-data computation. Because transporting the data to the processor
-incurs a large communication overhead, it would be beneficial if computation can
-be moved to a processing core on the storage itself, so that much lower latency
-computation can take place. Operations such as filtering can be offloaded to
-such a near-data processor so that less data has to be transported to the CPU,
-conserving bandwidth and improving performance. 
-
-Another way to improve performance could be to create a separate sideband
-network between storage devices, in order to accelerate remote storage access.
-Such a network can have a hardware-accelerated application-specific network
-protocol, reducing network overhead. This may enable implementing a
-high-performance distributed file system by reducing the latency of
-communication between nodes. It may be possible to implement micro-servers on
-storage devices themselves that service other servers in the cluster over this
-high-speed network.
-
-We propose to explore various architectural solutions to make maximum use of
-flash device characteristics and improve data processing capabilities while
-lowering cost. This includes flash-optimized storage management software stack,
-near-data processing using hardware accelerators, and application-specific
-sideband networks between storage devices accelerating application packets and
-distributed file systems.

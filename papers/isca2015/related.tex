@@ -1,2 +1,44 @@
 
 \section{Related Work}
+
+%\item Computation/Storage coupling (computation near data), for MapReduce, etc
+%\item Flash-based databases (Zetascale)
+Flash-based databased have been under active investigation as an way to expand
+the working set beyond what is feasible using relatively expensive DRAM.
+Flash-based solutions such as SanDisk ZetaScale~\ref{zetascale} have
+demonstrated that by optimizing databases for flash access, a
+performance-per-dollar much higher that with DRAM-based machines can be
+achieved.
+
+As flash storage became faster, and the bottleneck of system performance became
+other components such as the storage area network, attempts to reduce the
+network software overhead or even providing a separate sideband network is being
+explored. One such solution is QuickSAN~\ref{quicksan}, which implements much of
+the network protocol in a reconfigurable hardware fabric.
+
+FPGA-based application-specific hardware accelerators is becoming more popular
+for HPC workloads due to its high performance and low power consumption.
+Applications such as linear algebra operations~\ref{}, genome sequencing~\ref{}
+and high-speed data filtering~\ref{} has been successful, and even general
+purpose database accelerators have been built and commercialized~\ref{netezza}.
+Microsoft Research recently has demonstrated the power/performance
+benefits of using FPGAs in a cluster, in the context of accelerating Bing
+search~\ref{msr}. In their work, each server in a cluster were augmented with an FPGA, and
+the FPGAs were networked to each other using high-speed serial links.
+However, such accelerator appliances depend on the host streaming data to the
+accelerator, and therefore are only effective for datasets that can
+still fit in the combined DRAM capacity of host machines. Once the data doesn't
+fit, data needs to be streamed from secondary storage, which ends up being the
+bottleneck.
+
+Another way hardware accelerators can be deployed is an embedded processor in
+the datapath of normal data access, such as in network and storage interfaces. 
+An accelerator with an implementation of the
+network protocol can plug directly into a network
+port, and process data as it is being passed across the network link. This
+removes much of the data transport and protocol overhead and allows very low
+latency operations. This idea has often been demonstrated in financial
+applications that require extremely low latency, and also in latency-sensitive
+applications such as memcached~\ref{memcached}. Accelerators such as compression
+or filtering accelerators in the network or storage can help reduce the amount
+of data that need to be sent over a link, effectively amplifying its bandwidth.

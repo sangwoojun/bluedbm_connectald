@@ -8,7 +8,9 @@
 \begin{document}
 
 \title{
-BlueDBM: Distributed Flash-Based Big Data Analytics Platform}
+FlashBoost: Distributed Flash-Based Big Data Analytics Platform
+(Title Tentative)
+}
 
 \date{}
 \maketitle
@@ -16,7 +18,19 @@ BlueDBM: Distributed Flash-Based Big Data Analytics Platform}
 %\thispagestyle{empty}
 
 \begin{abstract}
-Abstract here
+This paper presents the design and implementation of FlashBoost, a distributed
+flash-based Big Data analytics platform. High-performance processing of large
+datasets often depend on fitting the entire working set in the aggregate DRAM
+capacity of a processing cluster, and creating a large enough cluster often
+becomes prohibitively expensive.  FlashBoost aims to accelerate access of very
+large datasets by storing all data in a cluster of flash storage and providing a
+dedicated storage network between storage devices. FlashBoost also aims to
+accelerate data processing by incorporating compuation capabilities in the form
+of accelerators in the resulting storage device with a combined storage/network
+interface, maximizing the use of storage and network performance and
+parallelizing computation across accelerators.  We argue that a small cluster of
+FlashBoost nodes with sufficient flash storage can be a viable, less costly
+alternative to a much larger traditional DRAM-based cluster.
 \end{abstract}
 
 

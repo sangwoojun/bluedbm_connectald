@@ -2,13 +2,14 @@ CONNECTALDIR=../../tools/xbsv/
 
 S2H = FlashRequest
 H2S = FlashIndication
+
+#Note: for some reason, xbsv can't parase ControllerTypes.bsv properly. So a soft link in current directory is created
 BSVFILES = Main.bsv Top.bsv \
 	../../xilinx/aurora_8b10b_fmc1/AuroraImportFmc1.bsv \
 	../../src/lib/AuroraCommon.bsv \
 	../../controller/src/common/FlashBusModel.bsv \
-	../../controller/src/common/ControllerTypes.bsv \
-	../../controller/src/hw_virtex/FlashCtrlVirtex.bsv \
-	../../controller/src/model_virtex/FlashCtrlModel.bsv
+	../../controller/src/model_virtex/FlashCtrlModel.bsv \
+	../../controller/src/hw_virtex/FlashCtrlVirtex.bsv
 
 CPPFILES=main.cpp
 #CONNECTALFLAGS=--bscflags " -D TRACE_AXI"

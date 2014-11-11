@@ -483,7 +483,7 @@
         <spirit:parameters>
           <spirit:parameter>
             <spirit:name>customizationCRC</spirit:name>
-            <spirit:value>2347afb8</spirit:value>
+            <spirit:value>7ce56268</spirit:value>
           </spirit:parameter>
           <spirit:parameter>
             <spirit:name>customizationCRCversion</spirit:name>
@@ -491,7 +491,7 @@
           </spirit:parameter>
           <spirit:parameter>
             <spirit:name>GENtimestamp</spirit:name>
-            <spirit:value>Thu Jul 17 02:56:55 UTC 2014</spirit:value>
+            <spirit:value>Tue Nov 11 01:18:48 UTC 2014</spirit:value>
           </spirit:parameter>
           <spirit:parameter>
             <spirit:name>StaleAtRelink</spirit:name>
@@ -518,7 +518,7 @@
         <spirit:parameters>
           <spirit:parameter>
             <spirit:name>customizationCRC</spirit:name>
-            <spirit:value>2347afb8</spirit:value>
+            <spirit:value>7ce56268</spirit:value>
           </spirit:parameter>
           <spirit:parameter>
             <spirit:name>customizationCRCversion</spirit:name>
@@ -526,7 +526,7 @@
           </spirit:parameter>
           <spirit:parameter>
             <spirit:name>GENtimestamp</spirit:name>
-            <spirit:value>Thu Jul 17 02:56:57 UTC 2014</spirit:value>
+            <spirit:value>Tue Nov 11 01:18:48 UTC 2014</spirit:value>
           </spirit:parameter>
           <spirit:parameter>
             <spirit:name>StaleAtRelink</spirit:name>
@@ -545,7 +545,7 @@
         <spirit:parameters>
           <spirit:parameter>
             <spirit:name>customizationCRC</spirit:name>
-            <spirit:value>2347afb8</spirit:value>
+            <spirit:value>7ce56268</spirit:value>
           </spirit:parameter>
           <spirit:parameter>
             <spirit:name>customizationCRCversion</spirit:name>
@@ -553,7 +553,7 @@
           </spirit:parameter>
           <spirit:parameter>
             <spirit:name>GENtimestamp</spirit:name>
-            <spirit:value>Thu Jul 17 02:56:57 UTC 2014</spirit:value>
+            <spirit:value>Tue Nov 11 01:18:49 UTC 2014</spirit:value>
           </spirit:parameter>
           <spirit:parameter>
             <spirit:name>StaleAtRelink</spirit:name>
@@ -572,7 +572,7 @@
         <spirit:parameters>
           <spirit:parameter>
             <spirit:name>customizationCRC</spirit:name>
-            <spirit:value>ac0bd2a1</spirit:value>
+            <spirit:value>273d077f</spirit:value>
           </spirit:parameter>
           <spirit:parameter>
             <spirit:name>customizationCRCversion</spirit:name>
@@ -580,7 +580,7 @@
           </spirit:parameter>
           <spirit:parameter>
             <spirit:name>GENtimestamp</spirit:name>
-            <spirit:value>Thu Jul 17 02:56:57 UTC 2014</spirit:value>
+            <spirit:value>Tue Nov 11 01:18:49 UTC 2014</spirit:value>
           </spirit:parameter>
           <spirit:parameter>
             <spirit:name>StaleAtRelink</spirit:name>
@@ -598,7 +598,7 @@
         <spirit:parameters>
           <spirit:parameter>
             <spirit:name>customizationCRC</spirit:name>
-            <spirit:value>2347afb8</spirit:value>
+            <spirit:value>7ce56268</spirit:value>
           </spirit:parameter>
           <spirit:parameter>
             <spirit:name>customizationCRCversion</spirit:name>
@@ -606,7 +606,7 @@
           </spirit:parameter>
           <spirit:parameter>
             <spirit:name>GENtimestamp</spirit:name>
-            <spirit:value>Thu Jul 17 02:56:57 UTC 2014</spirit:value>
+            <spirit:value>Tue Nov 11 01:18:49 UTC 2014</spirit:value>
           </spirit:parameter>
           <spirit:parameter>
             <spirit:name>StaleAtRelink</spirit:name>
@@ -624,7 +624,7 @@
         <spirit:parameters>
           <spirit:parameter>
             <spirit:name>customizationCRC</spirit:name>
-            <spirit:value>2347afb8</spirit:value>
+            <spirit:value>7ce56268</spirit:value>
           </spirit:parameter>
           <spirit:parameter>
             <spirit:name>customizationCRCversion</spirit:name>
@@ -29428,7 +29428,7 @@
       <spirit:modelParameter xsi:type="spirit:nameValueTypeType" spirit:dataType="string">
         <spirit:name>C_XLNX_HW_PROBE_INFO</spirit:name>
         <spirit:displayName>C Xlnx Hw Probe Info</spirit:displayName>
-        <spirit:value spirit:format="string" spirit:resolve="generated" spirit:id="MODELPARAM_VALUE.C_XLNX_HW_PROBE_INFO">NUM_OF_PROBES=1,DATA_DEPTH=131072,PROBE0_WIDTH=64,PROBE0_MU_CNT=1,PROBE1_WIDTH=1,PROBE1_MU_CNT=1,PROBE2_WIDTH=1,PROBE2_MU_CNT=1,PROBE3_WIDTH=1,PROBE3_MU_CNT=1,PROBE4_WIDTH=1,PROBE4_MU_CNT=1,PROBE5_WIDTH=1,PROBE5_MU_CNT=1,PROBE6_WIDTH=1,PROBE6_MU_CNT=1,PROBE7_WIDTH=1,PROBE7_MU_CNT=1,PROBE8_WIDTH=1,PROBE8_MU_CNT=1,PROBE9_WIDTH=1,PROBE9_MU_CNT=1,PROBE10_WIDTH=1,PROBE10_MU_CNT=1,PROBE11_WIDTH=1,PROBE11_MU_CNT=1,PROBE12_WIDTH=1,PROBE12_MU_CNT=1,PROBE13_WIDTH=1,PROBE13_MU_CNT=1,PROBE14_WIDTH=1,PROBE14_MU_CNT=1,PROBE15_WIDTH=1,PROBE15_MU_CNT=1,PROBE16_WIDTH=1,PROBE16_MU_CNT=1,PROBE17_WIDTH=1,PROBE17_MU_CNT=1,PROBE18_WIDTH=1,PROBE18_MU_CNT=1,PROBE19_WIDTH=1,PROBE19_MU_CNT=1,PROBE20_WIDTH=1,PROBE20_MU_CNT=1,PROBE21_WIDTH=1,PROBE21_MU_CNT=1,PROBE22_WIDTH=1,PROBE22_MU_CNT=1,PROBE23_WIDTH=1,PROBE23_MU_CNT=1,PROBE24_WIDTH=1,PROBE24_MU_CNT=1,PROBE25_WIDTH=1,PROBE25_MU_CNT=1,PROBE26_WIDTH=1,PROBE26_MU_CNT=1,PROBE27_WIDTH=1,PROBE27_MU_CNT=1,PROBE28_WIDTH=1,PROBE28_MU_CNT=1,PROBE29_WIDTH=1,PROBE29_MU_CNT=1,PROBE30_WIDTH=1,PROBE30_MU_CNT=1,PROBE31_WIDTH=1,PROBE31_MU_CNT=1,PROBE32_WIDTH=1,PROBE32_MU_CNT=1,PROBE33_WIDTH=1,PROBE33_MU_CNT=1,PROBE34_WIDTH=1,PROBE34_MU_CNT=1,PROBE35_WIDTH=1,PROBE35_MU_CNT=1,PROBE36_WIDTH=1,PROBE36_MU_CNT=1,PROBE37_WIDTH=1,PROBE37_MU_CNT=1,PROBE38_WIDTH=1,PROBE38_MU_CNT=1,PROBE39_WIDTH=1,PROBE39_MU_CNT=1,PROBE40_WIDTH=1,PROBE40_MU_CNT=1,PROBE41_WIDTH=1,PROBE41_MU_CNT=1,PROBE42_WIDTH=1,PROBE42_MU_CNT=1,PROBE43_WIDTH=1,PROBE43_MU_CNT=1,PROBE44_WIDTH=1,PROBE44_MU_CNT=1,PROBE45_WIDTH=1,PROBE45_MU_CNT=1,PROBE46_WIDTH=1,PROBE46_MU_CNT=1,PROBE47_WIDTH=1,PROBE47_MU_CNT=1,PROBE48_WIDTH=1,PROBE48_MU_CNT=1,PROBE49_WIDTH=1,PROBE49_MU_CNT=1,PROBE50_WIDTH=1,PROBE50_MU_CNT=1,PROBE51_WIDTH=1,PROBE51_MU_CNT=1,PROBE52_WIDTH=1,PROBE52_MU_CNT=1,PROBE53_WIDTH=1,PROBE53_MU_CNT=1,PROBE54_WIDTH=1,PROBE54_MU_CNT=1,PROBE55_WIDTH=1,PROBE55_MU_CNT=1,PROBE56_WIDTH=1,PROBE56_MU_CNT=1,PROBE57_WIDTH=1,PROBE57_MU_CNT=1,PROBE58_WIDTH=1,PROBE58_MU_CNT=1,PROBE59_WIDTH=1,PROBE59_MU_CNT=1,PROBE60_WIDTH=1,PROBE60_MU_CNT=1,PROBE61_WIDTH=1,PROBE61_MU_CNT=1,PROBE62_WIDTH=1,PROBE62_MU_CNT=1,PROBE63_WIDTH=1,PROBE63_MU_CNT=1</spirit:value>
+        <spirit:value spirit:format="string" spirit:resolve="generated" spirit:id="MODELPARAM_VALUE.C_XLNX_HW_PROBE_INFO">NUM_OF_PROBES=1,DATA_DEPTH=1024,PROBE0_WIDTH=64,PROBE0_MU_CNT=1,PROBE1_WIDTH=1,PROBE1_MU_CNT=1,PROBE2_WIDTH=1,PROBE2_MU_CNT=1,PROBE3_WIDTH=1,PROBE3_MU_CNT=1,PROBE4_WIDTH=1,PROBE4_MU_CNT=1,PROBE5_WIDTH=1,PROBE5_MU_CNT=1,PROBE6_WIDTH=1,PROBE6_MU_CNT=1,PROBE7_WIDTH=1,PROBE7_MU_CNT=1,PROBE8_WIDTH=1,PROBE8_MU_CNT=1,PROBE9_WIDTH=1,PROBE9_MU_CNT=1,PROBE10_WIDTH=1,PROBE10_MU_CNT=1,PROBE11_WIDTH=1,PROBE11_MU_CNT=1,PROBE12_WIDTH=1,PROBE12_MU_CNT=1,PROBE13_WIDTH=1,PROBE13_MU_CNT=1,PROBE14_WIDTH=1,PROBE14_MU_CNT=1,PROBE15_WIDTH=1,PROBE15_MU_CNT=1,PROBE16_WIDTH=1,PROBE16_MU_CNT=1,PROBE17_WIDTH=1,PROBE17_MU_CNT=1,PROBE18_WIDTH=1,PROBE18_MU_CNT=1,PROBE19_WIDTH=1,PROBE19_MU_CNT=1,PROBE20_WIDTH=1,PROBE20_MU_CNT=1,PROBE21_WIDTH=1,PROBE21_MU_CNT=1,PROBE22_WIDTH=1,PROBE22_MU_CNT=1,PROBE23_WIDTH=1,PROBE23_MU_CNT=1,PROBE24_WIDTH=1,PROBE24_MU_CNT=1,PROBE25_WIDTH=1,PROBE25_MU_CNT=1,PROBE26_WIDTH=1,PROBE26_MU_CNT=1,PROBE27_WIDTH=1,PROBE27_MU_CNT=1,PROBE28_WIDTH=1,PROBE28_MU_CNT=1,PROBE29_WIDTH=1,PROBE29_MU_CNT=1,PROBE30_WIDTH=1,PROBE30_MU_CNT=1,PROBE31_WIDTH=1,PROBE31_MU_CNT=1,PROBE32_WIDTH=1,PROBE32_MU_CNT=1,PROBE33_WIDTH=1,PROBE33_MU_CNT=1,PROBE34_WIDTH=1,PROBE34_MU_CNT=1,PROBE35_WIDTH=1,PROBE35_MU_CNT=1,PROBE36_WIDTH=1,PROBE36_MU_CNT=1,PROBE37_WIDTH=1,PROBE37_MU_CNT=1,PROBE38_WIDTH=1,PROBE38_MU_CNT=1,PROBE39_WIDTH=1,PROBE39_MU_CNT=1,PROBE40_WIDTH=1,PROBE40_MU_CNT=1,PROBE41_WIDTH=1,PROBE41_MU_CNT=1,PROBE42_WIDTH=1,PROBE42_MU_CNT=1,PROBE43_WIDTH=1,PROBE43_MU_CNT=1,PROBE44_WIDTH=1,PROBE44_MU_CNT=1,PROBE45_WIDTH=1,PROBE45_MU_CNT=1,PROBE46_WIDTH=1,PROBE46_MU_CNT=1,PROBE47_WIDTH=1,PROBE47_MU_CNT=1,PROBE48_WIDTH=1,PROBE48_MU_CNT=1,PROBE49_WIDTH=1,PROBE49_MU_CNT=1,PROBE50_WIDTH=1,PROBE50_MU_CNT=1,PROBE51_WIDTH=1,PROBE51_MU_CNT=1,PROBE52_WIDTH=1,PROBE52_MU_CNT=1,PROBE53_WIDTH=1,PROBE53_MU_CNT=1,PROBE54_WIDTH=1,PROBE54_MU_CNT=1,PROBE55_WIDTH=1,PROBE55_MU_CNT=1,PROBE56_WIDTH=1,PROBE56_MU_CNT=1,PROBE57_WIDTH=1,PROBE57_MU_CNT=1,PROBE58_WIDTH=1,PROBE58_MU_CNT=1,PROBE59_WIDTH=1,PROBE59_MU_CNT=1,PROBE60_WIDTH=1,PROBE60_MU_CNT=1,PROBE61_WIDTH=1,PROBE61_MU_CNT=1,PROBE62_WIDTH=1,PROBE62_MU_CNT=1,PROBE63_WIDTH=1,PROBE63_MU_CNT=1</spirit:value>
       </spirit:modelParameter>
       <spirit:modelParameter spirit:dataType="string">
         <spirit:name>C_XDEVICEFAMILY</spirit:name>
@@ -29487,7 +29487,7 @@
       <spirit:modelParameter spirit:dataType="integer">
         <spirit:name>C_DATA_DEPTH</spirit:name>
         <spirit:displayName>Sample Data Depth</spirit:displayName>
-        <spirit:value spirit:format="long" spirit:resolve="generated" spirit:id="MODELPARAM_VALUE.C_DATA_DEPTH">131072</spirit:value>
+        <spirit:value spirit:format="long" spirit:resolve="generated" spirit:id="MODELPARAM_VALUE.C_DATA_DEPTH">1024</spirit:value>
       </spirit:modelParameter>
       <spirit:modelParameter spirit:dataType="integer">
         <spirit:name>C_MAJOR_VERSION</spirit:name>
@@ -59827,7 +59827,7 @@
     <spirit:parameter>
       <spirit:name>C_DATA_DEPTH</spirit:name>
       <spirit:displayName>Sample Data Depth</spirit:displayName>
-      <spirit:value spirit:format="long" spirit:resolve="user" spirit:id="PARAM_VALUE.C_DATA_DEPTH" spirit:choiceRef="choices_1030" spirit:order="10800" spirit:configGroups="1 UnGrouped">131072</spirit:value>
+      <spirit:value spirit:format="long" spirit:resolve="user" spirit:id="PARAM_VALUE.C_DATA_DEPTH" spirit:choiceRef="choices_1030" spirit:order="10800" spirit:configGroups="1 UnGrouped">1024</spirit:value>
       <spirit:vendorExtensions>
         <xilinx:parameterInfo>
           <xilinx:enablement>

@@ -2,9 +2,14 @@ CONNECTALDIR=../../tools/xbsv/
 
 S2H = FlashRequest
 H2S = FlashIndication
-BSVFILES = Main.bsv Top.bsv FlashCtrlVirtex.bsv \
+BSVFILES = Main.bsv Top.bsv \
 	../../xilinx/aurora_8b10b_fmc1/AuroraImportFmc1.bsv \
-	../../src/lib/AuroraCommon.bsv 
+	../../src/lib/AuroraCommon.bsv \
+	../../controller/src/common/FlashBusModel.bsv \
+	../../controller/src/common/ControllerTypes.bsv \
+	../../controller/src/hw_virtex/FlashCtrlVirtex.bsv \
+	../../controller/src/model_virtex/FlashCtrlModel.bsv
+
 CPPFILES=main.cpp
 #CONNECTALFLAGS=--bscflags " -D TRACE_AXI"
 

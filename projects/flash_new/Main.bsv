@@ -55,7 +55,7 @@ import AuroraCommon::*;
 //import DMABurstHelper::*;
 import ControllerTypes::*;
 import FlashCtrlVirtex::*;
-import FlashEmu::*;
+import FlashCtrlModel::*;
 
 interface FlashRequest;
 	method Action readPage(Bit#(32) bus, Bit#(32) chip, Bit#(32) block, Bit#(32) page, Bit#(32) tag);
@@ -102,11 +102,11 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 	Vector#(NUM_BUSES, FIFO#(Tuple2#(Bit#(WordSz), TagT))) dmaWriteBufOut <- replicateM(mkFIFO());
 
 	GtxClockImportIfc gtx_clk_fmc1 <- mkGtxClockImport;
-	//`ifdef BSIM
-		//FlashCtrlVirtexIfc flashCtrl <- mkFlashEmu(gtx_clk_fmc1.gtx_clk_p_ifc, gtx_clk_fmc1.gtx_clk_n_ifc, clk250);
-	//`else
+	`ifdef BSIM
+		FlashCtrlVirtexIfc flashCtrl <- mkFlashCtrlModel(gtx_clk_fmc1.gtx_clk_p_ifc, gtx_clk_fmc1.gtx_clk_n_ifc, clk250);
+	`else
 		FlashCtrlVirtexIfc flashCtrl <- mkFlashCtrlVirtex(gtx_clk_fmc1.gtx_clk_p_ifc, gtx_clk_fmc1.gtx_clk_n_ifc, clk250);
-	//`endif
+	`endif
 
 	//Create read/write engines with NUM_BUSES memservers
 	MemreadEngineV#(WordSz, 1, NUM_BUSES) re <- mkMemreadEngine;

@@ -127,7 +127,16 @@ decide which entry to use in the routing table. In-order arrival is desirable in
 a hardware implementation because completion buffers may be expensive.
 Because of this characteristic, if the in-storage processing engine want to
 ensure more bandwidth, it can break a wide data bus into multiple endpoints and
-send data over them in parallel.
+send data over them in parallel. Figure~\ref{fig:networkrouting} shows packet
+routing in an example network.
+
+\begin{figure}[h]
+	\begin{center}
+	\includegraphics[width=0.4\textwidth]{figures/routing-crop.pdf}
+	\caption{Routing Packets Across the Network}
+	\label{fig:networkrouting}
+	\end{center}
+\end{figure}
 
 It should be pointed out that because end-to-end flow control doesn't exist, a
 large part of the network might actually block if a destination endpoint doesn't
@@ -168,16 +177,26 @@ controller bus. However, reading from flash is slightly more complex because the
 data from each flash chip can come interleaved, even within the same bus. 
 We include an implementation of a multiple-in-single-out completion buffer using
 on-chip BRAM with burst support, in order to save hardware resources by not
-having 128 separate FIFOs. Figure~\ref{fig:hostinterface} describes the
+having 128 separate FIFOs.
+
+Reading or writing data from the host buffers were done by DMA read/write
+engines implemented in the Connectal framework. In our FlashBoost
+implementation, there are four read engines and four write engines each, in
+order to more easily make maximum use of the PCIe bandwidth. Since there are 16
+busses in total per storage node, each read/write engines manage data from four
+busses each.
+Figure~\ref{fig:hostinterface} describes the
 structure of the host interface.
 
 \begin{figure}[ht!]
-	\begin{center}
-	\includegraphics[width=0.3\textwidth]{figures/readinterface-crop.pdf}
-	\includegraphics[width=0.3\textwidth]{figures/writeinterface-crop.pdf}
+	\centering
+%	\subfloat[Writing Data to Storage]
+%		{\includegraphics[width=0.23\textwidth]{figures/readinterface-crop.pdf}}
+%	\subfloat[Reading Data from Storage]
+%		{\includegraphics[width=0.23\textwidth]{figures/writeinterface-crop.pdf}}
+	\includegraphics[width=0.4	\textwidth]{figures/hostinterface-crop.pdf}
 	\caption{Host-FPGA Interface Over PCIe}
 	\label{fig:hostinterface}
-	\end{center}
 \end{figure}
 
 %TODO: \subsubsection{Storage Bridge to Host}

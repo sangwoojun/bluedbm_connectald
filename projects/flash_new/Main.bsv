@@ -52,13 +52,16 @@ import ControllerTypes::*;
 import AuroraCommon::*;
 
 //import PageCache::*;
-//import DMABurstHelper::*;
+import DMABurstHelper::*;
 import ControllerTypes::*;
 import FlashCtrlVirtex::*;
 import FlashCtrlModel::*;
 
 interface FlashRequest;
 	method Action readPage(Bit#(32) bus, Bit#(32) chip, Bit#(32) block, Bit#(32) page, Bit#(32) tag);
+	method Action writePage(Bit#(32) bus, Bit#(32) chip, Bit#(32) block, Bit#(32) page, Bit#(32) tag);
+	method Action eraseBlock(Bit#(32) bus, Bit#(32) chip, Bit#(32) block, Bit#(32) tag);
+	method Action addDmaReadRefs(Bit#(32) pointer, Bit#(32) offset, Bit#(32) tag);
 	method Action addDmaWriteRefs(Bit#(32) pointer, Bit#(32) offset, Bit#(32) tag);
 	method Action start(Bit#(32) dummy);
 	method Action debugDumpReq(Bit#(32) dummy);
@@ -67,6 +70,8 @@ endinterface
 
 interface FlashIndication;
 	method Action readDone(Bit#(32) tag);
+	method Action writeDone(Bit#(32) tag);
+	method Action eraseDone(Bit#(32) tag, Bit#(32) status);
 	method Action debugDumpResp(Bit#(32) debug0, Bit#(32) debug1, Bit#(32) debug2, Bit#(32) debug3);
 endinterface
 
@@ -137,6 +142,11 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 	Reg#(Bit#(32)) delayReg <- mkReg(0);
 	Reg#(Bit#(32)) debugFlag <- mkReg(0);
 
+
+	//--------------------------------------------
+	// Reads from Flash (DMA Write)
+	//--------------------------------------------
+
 	rule doEnqReadFromFlash;
 		if (delayReg==0) begin
 			let taggedRdata <- flashCtrl.user.readWord();
@@ -161,10 +171,7 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 		$display("@%d Main.bsv: rdata tag=%d, bus=%d, data[%d]=%x", cycleCnt, tag, bus, dmaWBurstCnts[bus], data);
 	endrule
 
-
-
 	for (Integer b=0; b<valueOf(NUM_BUSES); b=b+1) begin
-
 		rule doReqDMAStart;
 			dmaWriteBuf[b].deq;
 			let taggedRdata = dmaWriteBuf[b].first;
@@ -239,6 +246,81 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 		endrule
 	end //for each bus
 
+
+
+	//--------------------------------------------
+	// Writes to Flash (DMA Reads)
+	//--------------------------------------------
+
+	//Instantiate dma readers (in DMABurstHelper)
+	Vector#(NUM_BUSES, DMAReadEngineIfc#(WordSz)) dmaReaders;
+	for (Integer b=0; b<valueOf(NUM_BUSES); b=b+1) begin
+		DMAReadEngineIfc#(WordSz) reader <- mkDmaReadEngine(re.readServers[b], re.dataPipes[b]);
+		dmaReaders[b] = reader; 
+	end //For NUM_BUSES
+
+	//Handle write data requests from controller
+	FIFO#(Tuple2#(TagT, BusT)) wrToDmaReqQ <- mkFIFO();
+	rule handleWriteDataRequestFromFlash;
+		TagT tag <- flashCtrl.user.writeDataReq();
+		//check which bus it's from
+		let bus = tag2busTable[tag];
+		wrToDmaReqQ.enq(tuple2(tag, bus));
+	endrule
+
+	rule startDmaRead;
+		wrToDmaReqQ.deq;
+		let r = wrToDmaReqQ.first;
+		let tag = tpl_1(r);
+		let bus = tpl_2(r);
+		dmaReaders[bus].startRead(tag, fromInteger(pageWords));
+	endrule
+
+	//Handle read data/done from each DMA reader port
+	for (Integer b=0; b<valueOf(NUM_BUSES); b=b+1) begin
+		rule dmaReadDone;
+			let trashTag <- dmaReaders[b].done; //ignore this return tag
+		endrule
+
+		rule dmaReadData;
+			let r <- dmaReaders[b].read;
+			let data = tpl_1(r);
+			let tag = tpl_2(r);
+			flashCtrl.user.writeWord(tuple2(data, tag));
+		endrule
+	end
+
+
+
+	//--------------------------------------------
+	// Writes/Erase Acks
+	//--------------------------------------------
+
+	//Handle acks from controller
+	FIFO#(Tuple2#(TagT, StatusT)) ackQ <- mkFIFO;
+	rule handleControllerAck;
+		let ackStatus <- flashCtrl.user.ackStatus();
+		ackQ.enq(ackStatus);
+	endrule
+
+	rule indicateControllerAck;
+		ackQ.deq;
+		TagT tag = tpl_1(ackQ.first);
+		StatusT st = tpl_2(ackQ.first);
+		case (st)
+			WRITE_DONE: indication.writeDone(zeroExtend(tag));
+			ERASE_DONE: indication.eraseDone(zeroExtend(tag), 0);
+			ERASE_ERROR: indication.eraseDone(zeroExtend(tag), 1);
+		endcase
+	endrule
+
+
+
+
+	//--------------------------------------------
+	// Debug
+	//--------------------------------------------
+
 	FIFO#(Bit#(1)) debugReqQ <- mkFIFO();
 	rule doDebugDump;
 		$display("Main.bsv: debug dump request received");
@@ -273,11 +355,36 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 			flashCmdQ.enq(fcmd);
 		endmethod
 		
-		//method Action writePage(Bit#(32) bus, Bit#(32) chip, Bit#(32) block, Bit#(32) page, Bit#(32) tag);
-		//endmethod
+		method Action writePage(Bit#(32) bus, Bit#(32) chip, Bit#(32) block, Bit#(32) page, Bit#(32) tag);
+			FlashCmd fcmd = FlashCmd{
+				tag: truncate(tag),
+				op: WRITE_PAGE,
+				bus: truncate(bus),
+				chip: truncate(chip),
+				block: truncate(block),
+				page: truncate(page)
+				};
 
-		//method Action erasePage(Bit#(32) bus, Bit#(32) chip, Bit#(32) block);
-		//endmethod
+			flashCmdQ.enq(fcmd);
+		endmethod
+
+		method Action eraseBlock(Bit#(32) bus, Bit#(32) chip, Bit#(32) block, Bit#(32) tag);
+			FlashCmd fcmd = FlashCmd{
+				tag: truncate(tag),
+				op: ERASE_BLOCK,
+				bus: truncate(bus),
+				chip: truncate(chip),
+				block: truncate(block),
+				page: 0
+				};
+			flashCmdQ.enq(fcmd);
+		endmethod
+
+		method Action addDmaReadRefs(Bit#(32) pointer, Bit#(32) offset, Bit#(32) tag);
+			for (Integer b=0; b<valueOf(NUM_BUSES); b=b+1) begin
+				dmaReaders[b].addBuffer(truncate(tag), offset, pointer);
+			end
+		endmethod
 
 		method Action addDmaWriteRefs(Bit#(32) pointer, Bit#(32) offset, Bit#(32) tag);
 			dmaWriteRefs[tag] <= tuple2(pointer, offset);

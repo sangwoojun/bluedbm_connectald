@@ -6,6 +6,7 @@
 
 
 /*** To Do Features ***/
+- Fix ActionValue calls and method selection using indices (flashcontroller.user.writeWord, aurora)
 - Repackage data over Serial links
 - Increase usable page size for metadata 
 - ECC can't correct flag handling

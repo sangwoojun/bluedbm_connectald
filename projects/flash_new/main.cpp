@@ -26,15 +26,23 @@ pthread_cond_t flashFreeTagCond;
 
 //8k * 128
 size_t dstAlloc_sz = PAGE_SIZE * NUM_TAGS *sizeof(unsigned char);
+size_t srcAlloc_sz = PAGE_SIZE * NUM_TAGS *sizeof(unsigned char);
 int dstAlloc;
+int srcAlloc;
 unsigned int ref_dstAlloc; 
+unsigned int ref_srcAlloc; 
 unsigned int* dstBuffer;
+unsigned int* srcBuffer;
 unsigned int* readBuffers[NUM_TAGS];
+unsigned int* writeBuffers[NUM_TAGS];
 bool dstBufBusy[NUM_TAGS]; 
+bool srcBufBusy[NUM_TAGS]; 
+bool eraseTagBusy[NUM_TAGS]; 
 
 bool verbose = true;
 int curReadsInFlight = 0;
-
+int curWritesInFlight = 0;
+int curErasesInFlight = 0;
 
 double timespec_diff_sec( timespec start, timespec end ) {
 	double t = end.tv_sec - start.tv_sec;
@@ -71,6 +79,41 @@ class FlashIndication : public FlashIndicationWrapper
 			pthread_mutex_unlock(&flashReqMutex);
 		}
 
+		virtual void writeDone(unsigned int tag) {
+			printf("LOG: writedone, tag=%d", tag); fflush(stdout);
+			//TODO probably should use a diff lock
+			pthread_mutex_lock(&flashReqMutex);
+			curWritesInFlight--;
+			if ( curWritesInFlight < 0 ) {
+				fprintf(stderr, "Write requests in flight cannot be negative %d\n", curWritesInFlight );
+				curWritesInFlight = 0;
+			}
+			if ( srcBufBusy[tag] == false ) {
+				fprintf(stderr, "**ERROR: received unused buffer Write done %d\n", tag);
+			}
+			srcBufBusy[tag] = false;
+			pthread_mutex_unlock(&flashReqMutex);
+		}
+
+		virtual void eraseDone(unsigned int tag, unsigned int status) {
+			printf("LOG: eraseDone, tag=%d, status=%d", tag, status); fflush(stdout);
+			if (status != 0) {
+				printf("LOG: detected bad block with tag = %d", tag);
+			}
+
+			pthread_mutex_lock(&flashReqMutex);
+			curErasesInFlight--;
+			if ( curErasesInFlight < 0 ) {
+				fprintf(stderr, "erase requests in flight cannot be negative %d\n", curErasesInFlight );
+				curErasesInFlight = 0;
+			}
+			if ( eraseTagBusy[tag] == false ) {
+				fprintf(stderr, "**ERROR: received unused tag erase done %d\n", tag);
+			}
+			eraseTagBusy[tag] = false;
+			pthread_mutex_unlock(&flashReqMutex);
+		}
+
 		virtual void debugDumpResp (unsigned int debug0, unsigned int debug1,  unsigned int debug2, unsigned int debug3) {
 			//uint64_t cntHi = debugRdCntHi;
 			//uint64_t rdCnt = (cntHi<<32) + debugRdCntLo;
@@ -84,20 +127,25 @@ class FlashIndication : public FlashIndicationWrapper
 
 
 int getNumReadsInFlight() { return curReadsInFlight; }
+int getNumWritesInFlight() { return curWritesInFlight; }
+int getNumErasesInFlight() { return curErasesInFlight; }
 
-int waitIdleReadBuffer() {
+
+
+//TODO: more efficient locking
+int waitIdleEraseTag() {
 	int tag = -1;
 	while ( tag < 0 ) {
-pthread_mutex_lock(&flashReqMutex);
+	pthread_mutex_lock(&flashReqMutex);
 
 		for ( int t = 0; t < NUM_TAGS; t++ ) {
-			if ( !dstBufBusy[t] ) {
-				dstBufBusy[t] = true;
+			if ( !eraseTagBusy[t] ) {
+				eraseTagBusy[t] = true;
 				tag = t;
 				break;
 			}
 		}
-pthread_mutex_unlock(&flashReqMutex);
+	pthread_mutex_unlock(&flashReqMutex);
 		/*
 		if (tag < 0) {
 			pthread_cond_wait(&flashFreeTagCond, &flashReqMutex);
@@ -112,6 +160,82 @@ pthread_mutex_unlock(&flashReqMutex);
 }
 
 
+//TODO: more efficient locking
+int waitIdleWriteBuffer() {
+	int tag = -1;
+	while ( tag < 0 ) {
+	pthread_mutex_lock(&flashReqMutex);
+
+		for ( int t = 0; t < NUM_TAGS; t++ ) {
+			if ( !srcBufBusy[t] ) {
+				srcBufBusy[t] = true;
+				tag = t;
+				break;
+			}
+		}
+	pthread_mutex_unlock(&flashReqMutex);
+		/*
+		if (tag < 0) {
+			pthread_cond_wait(&flashFreeTagCond, &flashReqMutex);
+		}
+		else {
+			pthread_mutex_unlock(&flashReqMutex);
+			return tag;
+		}
+		*/
+	}
+	return tag;
+}
+
+
+
+//TODO: more efficient locking
+int waitIdleReadBuffer() {
+	int tag = -1;
+	while ( tag < 0 ) {
+	pthread_mutex_lock(&flashReqMutex);
+
+		for ( int t = 0; t < NUM_TAGS; t++ ) {
+			if ( !dstBufBusy[t] ) {
+				dstBufBusy[t] = true;
+				tag = t;
+				break;
+			}
+		}
+	pthread_mutex_unlock(&flashReqMutex);
+		/*
+		if (tag < 0) {
+			pthread_cond_wait(&flashFreeTagCond, &flashReqMutex);
+		}
+		else {
+			pthread_mutex_unlock(&flashReqMutex);
+			return tag;
+		}
+		*/
+	}
+	return tag;
+}
+
+
+void eraseBlock(int bus, int chip, int block, int tag) {
+	pthread_mutex_lock(&flashReqMutex);
+	curErasesInFlight ++;
+	pthread_mutex_unlock(&flashReqMutex);
+
+	if ( verbose ) fprintf(stderr, "LOG: sending erase block request with tag=%d @%d %d %d 0\n", tag, bus, chip, block );
+	device->eraseBlock(bus,chip,block,tag);
+}
+
+
+
+void writePage(int bus, int chip, int block, int page, int tag) {
+	pthread_mutex_lock(&flashReqMutex);
+	curWritesInFlight ++;
+	pthread_mutex_unlock(&flashReqMutex);
+
+	if ( verbose ) fprintf(stderr, "LOG: sending write page request with tag=%d @%d %d %d %d\n", tag, bus, chip, block, page );
+	device->writePage(bus,chip,block,page,tag);
+}
 
 void readPage(int bus, int chip, int block, int page, int tag) {
 	pthread_mutex_lock(&flashReqMutex);
@@ -137,9 +261,13 @@ int main(int argc, const char **argv)
 	device = new FlashRequestProxy(IfcNames_FlashRequest);
 	FlashIndication *deviceIndication = new FlashIndication(IfcNames_FlashIndication);
 	
+	srcAlloc = portalAlloc(srcAlloc_sz);
 	dstAlloc = portalAlloc(dstAlloc_sz);
+	srcBuffer = (unsigned int *)portalMmap(srcAlloc, srcAlloc_sz);
 	dstBuffer = (unsigned int *)portalMmap(dstAlloc, dstAlloc_sz);
+
 	fprintf(stderr, "dstAlloc = %x\n", dstAlloc); 
+	fprintf(stderr, "srcAlloc = %x\n", srcAlloc); 
 	
 	pthread_mutex_init(&flashReqMutex, NULL);
 	pthread_cond_init(&flashFreeTagCond, NULL);
@@ -150,40 +278,76 @@ int main(int argc, const char **argv)
 	printf( "Done portalExec_start\n" ); fflush(stdout);
 
 	portalDCacheFlushInval(dstAlloc, dstAlloc_sz, dstBuffer);
+	portalDCacheFlushInval(srcAlloc, srcAlloc_sz, srcBuffer);
 	ref_dstAlloc = dma->reference(dstAlloc);
+	ref_srcAlloc = dma->reference(srcAlloc);
 
 	for (int t = 0; t < NUM_TAGS; t++) {
 		dstBufBusy[t] = false;
+		srcBufBusy[t] = false;
 		int byteOffset = t * PAGE_SIZE;
 		device->addDmaWriteRefs(ref_dstAlloc, byteOffset, t);
+		device->addDmaReadRefs(ref_srcAlloc, byteOffset, t);
 		readBuffers[t] = dstBuffer + byteOffset/sizeof(unsigned int);
+		writeBuffers[t] = srcBuffer + byteOffset/sizeof(unsigned int);
 	}
 	
 	for (int t = 0; t < NUM_TAGS; t++) {
 		for ( int i = 0; i < PAGE_SIZE/sizeof(unsigned int); i++ ) {
 			readBuffers[t][i] = 0;
+			writeBuffers[t][i] = (t<<16)+i;
 		}
 	}
 
 	device->start(0);
 	device->setDebugVals(0,0); //flag, delay
 
+	//TODO: test writes and erases
+	for (int blk = 0; blk < 1; blk++){
+		for (int chip = 7; chip >= 0; chip--){
+			for (int bus = 7; bus >= 0; bus--){
+				int page = 0;
+				writePage(bus, chip, blk, page, waitIdleWriteBuffer());
+			}
+		}
+	}
+	
+	while (true) {
+		usleep(100);
+		if ( getNumWritesInFlight() == 0 ) break;
+	}
+
+	//test erases
+	for (int blk = 0; blk < 1; blk++){
+		for (int chip = 0; chip >= 0; chip--){
+			for (int bus = 0; bus >= 0; bus--){
+				eraseBlock(bus, chip, blk, waitIdleEraseTag());
+			}
+		}
+	}
+
+	while (true) {
+		usleep(100);
+		if ( getNumErasesInFlight() == 0 ) break;
+	}
+
+
 	timespec start, now;
 	clock_gettime(CLOCK_REALTIME, & start);
 
-	for (int repeat = 0; repeat < 1000000; repeat++){
-		//for (int blk = 0; blk < 1; blk++){
-		//	for (int chip = 7; chip >= 0; chip--){
-		//		for (int bus = 7; bus >= 0; bus--){
+	for (int repeat = 0; repeat < 1; repeat++){
+		for (int blk = 0; blk < 1; blk++){
+			for (int chip = 7; chip >= 0; chip--){
+				for (int bus = 7; bus >= 0; bus--){
 
-				int blk = rand() % 1024;
-				int chip = rand() % 8;
-				int bus = rand() % 8;
+				//int blk = rand() % 1024;
+				//int chip = rand() % 8;
+				//int bus = rand() % 8;
 					int page = 0;
 					readPage(bus, chip, blk, page, waitIdleReadBuffer());
-		//		}
-		//	}
-		//}
+				}
+			}
+		}
 	}
 	
 	int elapsed = 0;

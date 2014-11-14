@@ -21,10 +21,13 @@ for HPC workloads due to its high performance and low power consumption.
 Applications such as linear algebra operations~\ref{}, genome sequencing~\ref{}
 and high-speed data filtering~\ref{} has been successful, and even general
 purpose database accelerators have been built and commercialized~\ref{netezza}.
-Microsoft Research recently has demonstrated the power/performance
-benefits of using FPGAs in a cluster, in the context of accelerating Bing
+
+Microsoft Research recently has built and demonstrated the power/performance
+benefits of a FPGA-based system called Catapult.
+using FPGAs in a cluster, in the context of accelerating Bing
 search~\ref{msr}. In their work, each server in a cluster were augmented with an FPGA, and
 the FPGAs were networked to each other using high-speed serial links.
+
 However, such accelerator appliances depend on the host streaming data to the
 accelerator, and therefore are only effective for datasets that can
 still fit in the combined DRAM capacity of host machines. Once the data doesn't
@@ -42,3 +45,5 @@ applications that require extremely low latency, and also in latency-sensitive
 applications such as memcached~\ref{memcached}. Accelerators such as compression
 or filtering accelerators in the network or storage can help reduce the amount
 of data that need to be sent over a link, effectively amplifying its bandwidth.
+
+

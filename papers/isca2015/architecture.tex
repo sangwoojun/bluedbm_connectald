@@ -42,8 +42,67 @@ used easily with many in-storage processing engines.
 
 \subsection{Flash Interface}
 
-The near-data processing core implements a error-free low-level interface into
-the flash storage. (Ming)
+Access to flash storage is provided by the flash controller via a
+fast, low-level and error-free interface with minimal bandwidth and
+latency overhead. This interface exposes the internal memory organization of
+the flash device, namely the buses/channels, chips, blocks and pages.
+The interface is designed to stream data in
+and out of the flash chips as fast as possible without concern for
+flash management. Garbage collection, bad block management and
+wear-leveling functionalities are handled by the flash-aware file system
+in the host kernel (discussed in Section~\ref{?}). The key advantage of such
+a low-level interface is that in-store processors have direct access to
+the data in a streaming fashion with minimal buffering and insignificant
+latency overhead. 
+
+The raw flash interface, in hardware, is defined below:
+
+%[captionpos=b, caption={Flash Controller Interface}, label={lst:hwifc}]
+\begin{lstlisting}
+interface FlashIfc;       
+  method sendCmd (FlashOp op, Bit#(4) bus,
+                  Bit#(3) chip, Bit#(16) block, 
+                  Bit#(8) page, Bit#(8) tag);        
+  method writeWord (Bit#(128) data, Bit#(8) tag);
+  method Tuple2#(Bit#(128), Bit#(8)) readWord (); 
+  method Bit#(8) writeDataReq ();
+  method Tuple2#(Bit#(8), StatusT) ackStatus ();
+endinterface 
+\end{lstlisting}
+
+To access the flash, the user issues a flash command
+(\textit{sendCmd} method) with the operation, the address and
+a free tag. For writes, the user awaits for a write data request from
+the controller scheduler (\textit{writeDataReq} method), and then sends
+the write data corresponding to that request in 128-bit bursts
+(\textit{writeWord} method). An acknowledgement is received when the
+operation completes (\textit{ackStatus} method). For read operations,
+data will return in 128-bit bursts along with the command tag that the
+burst corresponds to. We emphasize that for maximum performance, the
+controller sends these data bursts \textbf{out of order} with respect to
+the issued request and \textbf{interleaved} with other read requests.
+Thus completion buffers may be required on the user side. Furthermore,
+we note that to saturate the bandwidth of the flash device, multiple
+commands must be in-flight at the same time, since flash operations
+have latencies of tens to thousands of microseconds. 
+
+In our architecture, multiple users may need shared access to the
+flash controller interface. For example, a particular flash controller may
+be accessed by local in-store processors, local host software over PCIe
+DMA, or remote in-store processors. Thus, we include as part of the
+platform, an interface multiplexer that converts one flash interface
+into a parametrizable number of additional interfaces. 
+
+%TODO: give a name to this module?
+To ease development of hardware accelerators (i.e. in-store processors),
+we also provide a parametrizable module that converts a flash interface
+into multiple simple in-order request/response interfaces
+(Figure~\ref{?}). We allow the user to adjust the interface width, the
+command queue depth and number of interfaces of the converter.
+Internally, the converter renames tags and uses completion buffers to
+order data. This design easily permits multiple accelerators to be
+attached to the flash device, taking advantage of flash parallelism. 
+
 
 \begin{figure}[h]
 	\begin{center}

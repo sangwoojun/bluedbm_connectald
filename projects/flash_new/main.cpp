@@ -96,9 +96,9 @@ class FlashIndication : public FlashIndicationWrapper
 		}
 
 		virtual void eraseDone(unsigned int tag, unsigned int status) {
-			printf("LOG: eraseDone, tag=%d, status=%d", tag, status); fflush(stdout);
+			printf("LOG: eraseDone, tag=%d, status=%d\n", tag, status); fflush(stdout);
 			if (status != 0) {
-				printf("LOG: detected bad block with tag = %d", tag);
+				printf("LOG: detected bad block with tag = %d\n", tag);
 			}
 
 			pthread_mutex_lock(&flashReqMutex);
@@ -302,10 +302,32 @@ int main(int argc, const char **argv)
 	device->start(0);
 	device->setDebugVals(0,0); //flag, delay
 
+	device->debugDumpReq(0);
+	sleep(1);
+	device->debugDumpReq(0);
+	sleep(1);
 	//TODO: test writes and erases
-	for (int blk = 0; blk < 1; blk++){
+	
+	//test erases
+	for (int blk = 0; blk < 1024; blk++){
 		for (int chip = 7; chip >= 0; chip--){
 			for (int bus = 7; bus >= 0; bus--){
+				eraseBlock(bus, chip, blk, waitIdleEraseTag());
+			}
+		}
+	}
+
+	while (true) {
+		usleep(100);
+		if ( getNumErasesInFlight() == 0 ) break;
+	}
+	
+
+
+	
+	for (int blk = 0; blk < 1; blk++){
+		for (int chip = 7; chip >= 0; chip--){
+			for (int bus = 0; bus >= 0; bus--){
 				int page = 0;
 				writePage(bus, chip, blk, page, waitIdleWriteBuffer());
 			}
@@ -316,21 +338,7 @@ int main(int argc, const char **argv)
 		usleep(100);
 		if ( getNumWritesInFlight() == 0 ) break;
 	}
-
-	//test erases
-	for (int blk = 0; blk < 1; blk++){
-		for (int chip = 0; chip >= 0; chip--){
-			for (int bus = 0; bus >= 0; bus--){
-				eraseBlock(bus, chip, blk, waitIdleEraseTag());
-			}
-		}
-	}
-
-	while (true) {
-		usleep(100);
-		if ( getNumErasesInFlight() == 0 ) break;
-	}
-
+	
 
 	timespec start, now;
 	clock_gettime(CLOCK_REALTIME, & start);

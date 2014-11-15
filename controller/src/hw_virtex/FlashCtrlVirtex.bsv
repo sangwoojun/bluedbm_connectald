@@ -91,8 +91,17 @@ module mkFlashCtrlVirtex#(
 
 	//RECEIVE A7 -> V7 rules
 	//TODO need to break up the rules because ActionValue receive
-	rule receivePacket;
+
+	FIFO#(Tuple2#(DataIfc, PacketType)) receiveQ <- mkFIFO();
+	rule receivePacketBuf;
 		let typedData <- auroraIntra.receive();
+		receiveQ.enq(typedData);
+	endrule
+
+	rule receivePacket;
+		let typedData = receiveQ.first;
+		receiveQ.deq;
+		//let typedData <- auroraIntra.receive();
 		debugRecPacketV <= typedData;
 		DataIfc data = tpl_1(typedData);
 		PacketType dataType = tpl_2(typedData);

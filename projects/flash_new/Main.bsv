@@ -103,6 +103,7 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 	FIFO#(FlashCmd) flashCmdQ <- mkSizedFIFO(valueOf(NumTags));
 	Vector#(NumTags, Reg#(BusT)) tag2busTable <- replicateM(mkRegU());
 	Vector#(NumTags, Reg#(Tuple2#(Bit#(32),Bit#(32)))) dmaWriteRefs <- replicateM(mkRegU());
+	Vector#(NumTags, Reg#(Tuple2#(Bit#(32),Bit#(32)))) dmaReadRefs <- replicateM(mkRegU());
 	Vector#(NUM_BUSES, FIFO#(Tuple2#(Bit#(WordSz), TagT))) dmaWriteBuf <- replicateM(mkSizedBRAMFIFO(dmaBurstWords*2));
 	Vector#(NUM_BUSES, FIFO#(Tuple2#(Bit#(WordSz), TagT))) dmaWriteBufOut <- replicateM(mkFIFO());
 
@@ -116,12 +117,12 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 	//Create read/write engines with NUM_BUSES memservers
 	MemreadEngineV#(WordSz, 1, NUM_BUSES) re <- mkMemreadEngine;
 	MemwriteEngineV#(WordSz, 1, NUM_BUSES) we <- mkMemwriteEngine;
+	//MemwriteEngineV#(WordSz, 2, NUM_BUSES) we <- mkMemwriteEngineBuff(1024);
 
 	Vector#(NUM_BUSES, Reg#(Bit#(16))) dmaWBurstCnts <- replicateM(mkReg(0));
 	Vector#(NUM_BUSES, FIFO#(TagT)) dmaReqQs <- replicateM(mkSizedFIFO(valueOf(NumTags)));//TODO make bigger?
 	Vector#(NUM_BUSES, FIFO#(Tuple2#(TagT, Bit#(32)))) dmaReq2RespQ <- replicateM(mkSizedFIFO(valueOf(NumTags))); //TODO make bigger?
-	Vector#(NUM_BUSES, Reg#(Bit#(32))) dmaReqCnts <- replicateM(mkReg(0));
-	Vector#(NUM_BUSES, Reg#(Bit#(32))) dmaRespCnts <- replicateM(mkReg(0));
+	Vector#(NUM_BUSES, Reg#(Bit#(32))) dmaWrReqCnts <- replicateM(mkReg(0));
 	Vector#(NUM_BUSES, Reg#(TagT)) currTags <- replicateM(mkReg(0));
 	FIFO#(Tuple2#(Bit#(WordSz), TagT)) dataFlash2DmaQ <- mkFIFO();
 
@@ -204,7 +205,7 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 			let tag = dmaReqQs[b].first;
 			let base = tpl_1(dmaWriteRefs[tag]);
 			let offset = tpl_2(dmaWriteRefs[tag]);
-			Bit#(32) burstOffset = (dmaReqCnts[b]<<log2(dmaBurstBytes)) + offset;
+			Bit#(32) burstOffset = (dmaWrReqCnts[b]<<log2(dmaBurstBytes)) + offset;
 			let dmaCmd = MemengineCmd {
 								sglId: base, 
 								base: zeroExtend(burstOffset),
@@ -212,15 +213,15 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 								burstLen:fromInteger(dmaBurstBytes)
 							};
 			we.writeServers[b].request.put(dmaCmd);
-			dmaReq2RespQ[b].enq(tuple2(tag, dmaReqCnts[b]));
+			dmaReq2RespQ[b].enq(tuple2(tag, dmaWrReqCnts[b]));
 			
 			$display("@%d Main.bsv: init dma write tag=%d, bus=%d, addr=0x%x 0x%x", 
 							cycleCnt, tag, b, base, burstOffset);
-			if (dmaReqCnts[b] == fromInteger(dmaBurstsPerPage-1)) begin
-				dmaReqCnts[b] <= 0;
+			if (dmaWrReqCnts[b] == fromInteger(dmaBurstsPerPage-1)) begin
+				dmaWrReqCnts[b] <= 0;
 			end
 			else begin
-				dmaReqCnts[b] <= dmaReqCnts[b] + 1;
+				dmaWrReqCnts[b] <= dmaWrReqCnts[b] + 1;
 			end
 		endrule
 
@@ -252,15 +253,22 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 	// Writes to Flash (DMA Reads)
 	//--------------------------------------------
 
+	/*
 	//Instantiate dma readers (in DMABurstHelper)
 	Vector#(NUM_BUSES, DMAReadEngineIfc#(WordSz)) dmaReaders;
 	for (Integer b=0; b<valueOf(NUM_BUSES); b=b+1) begin
 		DMAReadEngineIfc#(WordSz) reader <- mkDmaReadEngine(re.readServers[b], re.dataPipes[b]);
 		dmaReaders[b] = reader; 
 	end //For NUM_BUSES
+	*/
+
+	FIFO#(Tuple2#(TagT, BusT)) wrToDmaReqQ <- mkFIFO();
+	Vector#(NUM_BUSES, FIFO#(TagT)) dmaRdReq2RespQ <- replicateM(mkSizedFIFO(valueOf(NumTags))); //TODO sz
+	Vector#(NUM_BUSES, Reg#(Bit#(32))) dmaReadBurstCount <- replicateM(mkReg(0));
+	Vector#(NUM_BUSES, FIFO#(TagT)) dmaReadReqQ <- replicateM(mkSizedFIFO(valueOf(NumTags)));
+	Vector#(NUM_BUSES, Reg#(Bit#(32))) dmaRdReqCnts <- replicateM(mkReg(0));
 
 	//Handle write data requests from controller
-	FIFO#(Tuple2#(TagT, BusT)) wrToDmaReqQ <- mkFIFO();
 	rule handleWriteDataRequestFromFlash;
 		TagT tag <- flashCtrl.user.writeDataReq();
 		//check which bus it's from
@@ -268,15 +276,64 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 		wrToDmaReqQ.enq(tuple2(tag, bus));
 	endrule
 
-	rule startDmaRead;
+	rule distrDmaReadReq;
 		wrToDmaReqQ.deq;
 		let r = wrToDmaReqQ.first;
 		let tag = tpl_1(r);
 		let bus = tpl_2(r);
-		dmaReaders[bus].startRead(tag, fromInteger(pageWords));
+		dmaReadReqQ[bus].enq(tag);
+		dmaRdReq2RespQ[bus].enq(tag);
+		//dmaReaders[bus].startRead(tag, fromInteger(pageWords));
 	endrule
 
+	for (Integer b=0; b<valueOf(NUM_BUSES); b=b+1) begin
+		rule initDmaRead;
+			let tag = dmaReadReqQ[b].first;
+			let base = tpl_1(dmaReadRefs[tag]);
+			let offset = tpl_2(dmaReadRefs[tag]);
+			Bit#(32) burstOffset = (dmaRdReqCnts[b]<<log2(dmaBurstBytes)) + offset;
+			let dmaCmd = MemengineCmd {
+								sglId: base, 
+								base: zeroExtend(burstOffset),
+								len:fromInteger(dmaBurstBytes), 
+								burstLen:fromInteger(dmaBurstBytes)
+							};
+			re.readServers[b].request.put(dmaCmd);
+			$display("Main.bsv: dma read cmd issued: base=%x, burstOffset=%d", base, burstOffset);
+
+			if (dmaRdReqCnts[b] == fromInteger(dmaBurstsPerPage-1)) begin
+				dmaRdReqCnts[b] <= 0;
+				dmaReadReqQ[b].deq; //done with this req
+			end
+			else begin
+				dmaRdReqCnts[b] <= dmaRdReqCnts[b] + 1;
+			end
+		endrule
+
+		rule dmaReaderGetResponse;
+			let dummy <- re.readServers[b].response.get;
+		endrule
+
+		//forward data
+		rule forwardDmaRdData;
+			let d <- toGet(re.dataPipes[b]).get;
+			let tag = dmaRdReq2RespQ[b].first;
+			flashCtrl.user.writeWord(tuple2(d, tag));
+			$display("Main.bsv: forwarded dma read data [%d]: tag=%d, data=%x", dmaReadBurstCount[b],
+							tag, d);
+
+			if (dmaReadBurstCount[b] == fromInteger(pageWords-1)) begin
+				dmaRdReq2RespQ[b].deq;
+				dmaReadBurstCount[b] <= 0;
+			end
+			else begin
+				dmaReadBurstCount[b] <= dmaReadBurstCount[b] + 1;
+			end
+		endrule
+	end //for each bus
+	
 	//Handle read data/done from each DMA reader port
+	/*
 	for (Integer b=0; b<valueOf(NUM_BUSES); b=b+1) begin
 		rule dmaReadDone;
 			let trashTag <- dmaReaders[b].done; //ignore this return tag
@@ -289,7 +346,7 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 			flashCtrl.user.writeWord(tuple2(data, tag));
 		endrule
 	end
-
+	*/
 
 
 	//--------------------------------------------
@@ -381,9 +438,10 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 		endmethod
 
 		method Action addDmaReadRefs(Bit#(32) pointer, Bit#(32) offset, Bit#(32) tag);
-			for (Integer b=0; b<valueOf(NUM_BUSES); b=b+1) begin
-				dmaReaders[b].addBuffer(truncate(tag), offset, pointer);
-			end
+			//for (Integer b=0; b<valueOf(NUM_BUSES); b=b+1) begin
+			//	dmaReaders[b].addBuffer(truncate(tag), offset, pointer);
+			//end
+			dmaReadRefs[tag] <= tuple2(pointer, offset);
 		endmethod
 
 		method Action addDmaWriteRefs(Bit#(32) pointer, Bit#(32) offset, Bit#(32) tag);

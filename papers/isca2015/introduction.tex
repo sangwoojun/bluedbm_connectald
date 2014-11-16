@@ -1,85 +1,94 @@
 \section{Introduction}
 
-Complex analytics of so-called "Big Data" has shown to provide extremely deep
-insight into real world phenomena, but the sheer size of datasets involved makes
-designing efficient analytic systems challenging. Ideally, the entire dataset
-should fit in the collective DRAM of a moderately sized cluster. However, DRAM's
-high price tag of tens of dollars per GB, and high power consumption makes this
-impractical. Assuming a moderate size dataset of 10TBs, the price of the DRAM
-alone exceeds hundreds of thousands of dollars. On the other hand, disk storage
-costs tens of cents per GB, pricing the same capacity around a few thousand
-dollars. However, disk storage's prohibitively high access overhead makes
-using cheap disk storage in a random-access intensive analytics workload
-difficult. Flash storage provides a middle ground between price and performance. While
-flash storage is priced a few times more expensive than disks, it has a low
-random access latency of around 100$\mu s$, compared to multiple milliseconds of
-hard disks. It also consumes much less power than both DRAM and disk storage.
+Google has predicted flu outbreaks by analyzing social network information a
+week faster than CDC~\cite{}. Analysis of twitter data can reveal social
+upheavals faster than journalists. Amazon is planning to use customer data for
+preemptive shipping of products. Real-time analysis of personal genome may
+significantly aid in diagnostics. Big Data analytics are potentially going to
+have revolutionary impact on the way scientific discoveries are made. By many
+accounts, complex analysis of Big Data is going to be the biggest economic
+driver for the IT industry.
 
-%Flash research is in two ways: replacing DRAM and replacing Disk. neither are
-%perfect answers
+Big Data by definition doesn’t fit in personal computers or DRAM of even
+moderate size clusters. Since the data may be stored on hard disks, latency and
+throughput of storage access is of primary concern. Historically, this has been
+mitigated by organizing the processing of data in a highly sequential manner.
+However, complex queries cannot always be organized for sequential data
+accesses, and thus high performance implementations of such queries pose a
+great challenge. One approach to solving this problem is \emph{cloud
+ram}~\cite{}, where the cluster has enough collective DRAM to accommodate the
+entire dataset in DRAM. In this paper, we explore much cheaper alternatives
+where Big Data analytics can be done with reasonable efficiency in a single
+rack.
 
-Traditionally, flash storage has mostly been used as a plug-in alternative to
-disk, and this has caused flash to be used ineffectively. Flash has multiple
-differences from disk, such as requiring a high-granularity block erase
-before doing a low-granularity page write, having a limited program/erase
-cycle per cell, and having uniform latency access to all pages.
-However, in order to make flash backwards compatible with disk interfaces,
-intermediate layers such as the Flash Translation Layer (FTL) had to be built in
-order to make flash fit into a disk interface. This adds overhead and
-cost, preventing maximum use of flash device capabilities. Most flash-based
-storage devices only deliver a fraction of performance that can be achieved by
-the raw flash chips in the product.
+Another alternative to speed up complex data analysis is to use SSDs instead of
+disks because of superior performance of flash devices in terms of latency of
+access and throughput, especially for random accesses. SSDs have been developed
+with the goal to be a drop-in replacement of hard disks. This has led to their
+widespread use especially in embedded space, but the use of this legacy
+interface has resulted in suboptimal use of flash capabilities. The
+sub-optimality arises both from the use of a \emph{Flash Translation Layer}
+(FTL), and the use of old hardware interfaces like SATA. The latter is somewhat
+mitigated by the use of newer interfaces like PCIe.  High-performance enterprise
+SSDs such as FusionIO~\cite{}, Violinmemory~\cite{} and Intel NVMe
+devices~\cite{} solve many of these issues by implementing an improved interface
+such as NVMe over PCIe.
 
-%Second, disk optimized software
-%Third, architecturally... +network?
 
-Flash storage's performance characteristics also puts it in an interesting spot
-for architectural exploration. Flash has low latency and high bandwidth which is
-on par with many widely used networking infrastructure technologies. This means
-in remote storage access, improving storage or network performance individually
-may result in little overall benefit because the bottleneck might simply shift
-to the other component. Going through the both storage and network management
-software layers also becomes a major overhead.
+The latency to access storage over Ethernet in a hard-disk-based cluster is
+dominated by the latency of the hard disk itself. However, this is not the case
+in an SSD-based cluster, where network latency may even be larger than the SSD
+latency. At this low-level of latency, even software stack overhead becomes a
+significant concern. These concerns have been addressed by faster network
+fabrics such as 10Gb Ethernet and Infiniband~\cite{}, and by low-overhead
+software protocols such as RDMA~\cite{} or user-level TCP stacks that bypass the
+operating system~\cite{}. QuickSAN integrates a network interface into the
+storage device, thus removing a layer of software overhead.
 
-In this work, we present FlashBoost, which presents a possible solution to this
-problem using two architectural improvements: integrated storage area network,
-and in-store processing engines. Integrating the storage area network into the
-storage device removes the software and host-side interface overhead between
-storage and network, allowing a lower latency access to remote data.  
-The in-store processing engine can pre-process data inside the storage itself,
-parallelizing processing while reducing the amount of data transferred to the
-host. This becomes increasingly important with the integrated network, because
-the combined bandwidth of the network and storage can easily surpass the
-host-side interface.
+Another solution to the network performance problem is to reduce the network
+traffic by in-store computing. For example, if one can perform some filtering
+operation in the disk controller without bringing it to the host, it may
+dramatically reduce the amount of data that needs to be transferred between the
+disk and the host~\cite{idisk,netezza,smartssd}. Even though this idea has been
+around for a long time, it has not found much traction, perhaps because the
+characteristics of disks masked the benefits of this approach.  
 
-The major goal of FlashBoost is twofold: to make maximum use of flash device
-performance in a distributed analytics setting, such that the other components
-of the system does not bottleneck flash. 
+In this paper, we present FlashBoost, a system designed to address all of the
+aforementioned problems in the context of complex analysis of Big Data. Our goal
+is to provide a rack-level system which can address many Big Data problems whose
+datasets are 10~20 TB. Specifically, we have implemented a system which has 20
+nodes where each node consists of a server with 12 Xeon cores, 48 GB of DRAM and
+2 TB of disk. We have augmented each server with a Xilinx VC707 FPGA board and
+1TB of flash on a custom design board. The FPGA board is connected to the server
+via PCIe on one side, and to the flash card by 8 lanes of 6.6Gbps serial
+communication links. All FPGAs can be connected to each other in various
+topologies using 8 10Gbps serial links provided by the FPGA. 
 
-Our key contributions in this paper are as follows: We present an alternative
-architecture of distributed flash-storage systems, including a integrated
-storage-area network and in-store processing engine.
-We have demonstrated the performance of such an architecture by building a
-cluster system of realistic size and capacity and processing real world scale
-amount of data. We compare our results against various other approaches that
-could be taken with such a large scale data, and argue that the FlashBoost
-architecture is a very good balance between system cost, power consumption and
-performance.
+The system hardware and software provides the following capabilities:
+\begin{enumerate}
+\item Large enough storage to host Big Data workloads in the 10~20 TB range
+\item Near-uniform latency access into a network of storage devices that form a
+global address space
+\item Capacity to implement user-defined in-storage processing engines in the
+embedded FPGA
+\item Flash card design which exposes a low-latency interface with details to
+exploit parallelism in flash chip accesses by in-storage processing engines
+\end{enumerate}
 
-%	We built a machine
-In order to demonstrate the performance of our architecture, we have constructed
-a 20-node FlashBoost cluster with 20TBs of flash storage. Each node consists of
-a host server with a 12-core Xeon server and 48GBs of DRAM, and a FlashBoost
-storage device built using an off-the-shelf Xilinx VC707 FPGA development board
-and two custom-designed flash boards, each with 0.5TBs of flash. All nodes are
-connected to each other using both Ethernet between host servers and 8
-high-speed serial links directly between the FPGAs. The FPGA communicates with
-the host server over high-speed PCIe link, and host software can access the
-flash storage and the in-store processing engine over either a RPC-like raw
-interface or a file system interface that we have developed. A pair of our flash
-boards deliver 3.2GB/s of read bandwidth, and 2.4GB/s of write bandwidth.  The 8
-serial links between FPGAs each run at 10Gb/s, and all nodes act as a switch as
-well as an endpoint, allowing freedom to explore topologies.
+Our preliminary experimental results show that FlashBoost performance is
+significantly better than (1) a disk-based system and (2) a flash-based system
+in which flash is used as a disk replacement. We also show that accelerators can
+provide a factor of XXX performance benefits over a non-accelerated system.
+FlashBoost unambiguously establishes an architecture whose
+price-performance-power characteristics provide an attractive alternative for
+doing similar scale applications in cloud ram.
 
-%	Rest of the paper is...
-The rest of the paper is organized as follows:
+The main contributions of this work are: (1) Design and implementation of a
+scalable flash-based system with a global address space and in-store computing
+capability. (2) A hardware-software codesign environment for incorporating
+user-defined in-store processing engines. (3) Performance measurements that show
+the advantage of such an architecture over using flash as a drop-in replacement
+for disks. (4) Demonstration of a complex data analytics appliance which is much
+cheaper and consumes an order of magnitude less power than the cloud-based
+alternative.
+

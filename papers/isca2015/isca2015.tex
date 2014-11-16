@@ -9,8 +9,7 @@
 \begin{document}
 
 \title{
-FlashBoost: Distributed Flash-Based Big Data Analytics Platform
-(Title Tentative)
+FlashBoost: An Appliance for Big Data Analytics
 }
 
 \date{}
@@ -19,32 +18,31 @@ FlashBoost: Distributed Flash-Based Big Data Analytics Platform
 %\thispagestyle{empty}
 
 \begin{abstract}
-This paper presents the design and implementation of FlashBoost, a distributed
-flash-based Big Data analytics platform. High-performance processing of large
-datasets often depend on fitting the entire working set in the aggregate DRAM
-capacity of a processing cluster, and creating a large enough cluster often
-becomes prohibitively expensive. Flash storage is orders of magnitudes cheaper
-than DRAM and consumes less power while being orders of magnitues faster than
-disk storage, but its performance is constrained because it has been used as a
-drop-in replacement to disk, despite its different characteristics.  FlashBoost
-aims to accelerate access of very large datasets by storing all in a cluster of
-flash storage and constructing a flash-optimized architecture. This include an
-integrated storage network between storage devices, and in-store processing to
-offload computation and reduce data transfer over the host-side link.  We argue
-that a small cluster of FlashBoost nodes with sufficient flash storage can be a
-viable, less costly alternative to a much larger traditional DRAM-based cluster.
+Big Data analytics have been shown to provide deep insights which are both
+commercially valuable and socially impactful. Complex data queries, because of
+their need for random accesses, have proven to be slow unless all the data can
+be accommodated in DRAM. There are many domains, such as genomics, geological
+data and daily twitter feeds where the datasets are 5 to 20 TB. A cluster with a
+total DRAM capacity of 10 TB may easily cost (dollar) 300K and consume 30
+Kilowatts of power. In this paper we present FlashBoost, a rack-level
+flash-based system which is significantly cheaper, and has an order of magnitude
+smaller power and area footprint. A node in a FlashBoost appliance consists of a
+server, a flash storage device capable of in-store processing, and an integrated
+network between the storage devices. We present the rationale underlying
+FlashBoost and show that it outperforms a rack-level cluster with SSDs. For many
+applications, FlashBoost provides an attractive alternative to large clusters in
+terms of price-performance tradeoff.
 \end{abstract}
 
 
 \input{introduction}
 %\input{motivation}
+
 \input{related}
 \input{architecture}
 \input{implementation}
 \input{results}
 \input{acceleration}
-
-
 
 \section{Conclusion}
 

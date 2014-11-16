@@ -42,3 +42,47 @@ applications that require extremely low latency, and also in latency-sensitive
 applications such as memcached~\ref{memcached}. Accelerators such as compression
 or filtering accelerators in the network or storage can help reduce the amount
 of data that need to be sent over a link, effectively amplifying its bandwidth.
+
+
+Ming's rant: database accelerators, old near data storage papers
+
+The idea of near-disk or near-storage processing for databases is not new. In
+1998, Keeton et al.~\cite{?} theorized about the idea of an intelligent disk
+(IDISK) that integrated a cheap, low power embedded processor with DRAM and
+hard disk.  These IDISKs are also connected to each other using serial network
+switches.  Ideas such as using a shared intelligent disk controller, a
+processor per head or per track to do simple scans and filters have been
+suggested in the 1970s~\cite{?,?,?}.  However, at the time, the cost of these
+special purpose hardware did not justify their performance gains. In
+FlashBoost, we make use of programmable hardware, that have become widely
+available, to provide flexibility in accelerating a variety of applications at
+low cost, while easily keeping up with the data line rate of the flash buses. 
+
+Building specialized hardware for databases has been studied extensively and
+productized. Netezza~\cite{?} and Teradata~\cite{?} have used FPGAs as an
+off-datapath accelerator to offload simple query operations. More recently,
+domain specific processors for database queries were developed, including
+Q100~\cite{?} and LINQits~\cite{?}. Q100 is a data-flow style processor with an
+instruction set architecture that supported SQL queries. LINQits mapped a query
+language called LINQ to a set of accelerated hardware templates on a
+heterogeneous SoC (FPGA + ARM). Both designs exhibited order of magnitude
+performance gains at lower power, affirming that specialized hardware for data
+processing is very advantageous. However, in both cases, experiments were
+conducted with data that is on-chip or in DRAM. In FlashBoost, we extend the
+study by assuming that data does not fit in DRAM and we introduce an
+architecture for storing and processing data in distributed flash. 
+
+TODO: This may be too much... 
+
+Accelerating SQL queries in-datapath was studied by Woods et al.~\cite{?}.
+Ibex is a MySQL accelerator platform with a SATA SSD connected to an FPGA and
+then connected to ethernet. Relational operators such as selection and group-by
+are performed on the FPGA whenever possible, otherwise they are forwarded to
+software. The FlashBoost architecture not only can accomodate existing
+accelerators such as Ibex, it exposes internal flash device architecture and
+provides a dedicated serial network for additional acceleration opportunities. 
+
+
+
+
+

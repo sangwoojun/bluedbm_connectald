@@ -1,6 +1,50 @@
 
 \section{Related Work}
 
+\begin{comment}
+NAND flash-based storage devices have much different characteristics from
+traditional disk based storage systems. Because there are not mechanical
+movement involved, access latency is uniformly low, unlike disks that suffer
+from high seek latency. An SSD storage device consists of an array of flash
+chips organized into buses, and bandwidth can be made very high by having
+multiple buses that operate in parallel. NAND flash suffers read-write
+performance imbalance, where writes take longer to complete than reads. Flash
+read and write can be done at a \emph{page} granularity, which is generally
+4~8KB in size. However, before a page can be written, it must be erased, which
+can only be done at a \emph{block} granularity, which is a region of hundreds of
+pages. NAND flash also suffers from a limited program-erase cycle, in which a
+block can only sustain a few thousand erases before it becomes a bad block.
+\end{comment}
+
+SSD storage devices have been largely developed to be a faster drop-in replacement for
+disk drives. This backwards compatibility helped them gain widespread adoption.
+However, this required additional software and hardware to hide the difference
+in device characteristics. 
+Moneta~\cite{ucsd_moneta}modifies the operating system's storage
+management components to reduce software overhead when accessing 
+NVM storage devices. Although Moneta was evaluated using a DRAM-based emulator
+platform configured to perform at the speed of a PCM-based NVM device, its ideas
+may be applicable to a slower NAND-based devices.
+Willow~\cite{ucsd_willow} has attempted to
+provide an easy way to augment SSD controllers with additional interface
+semantics that make better use of SSD characteristics. Their idea of \emph{SSD
+Apps} with low-level access to storage is similar to ours of in-storage
+processors with low-latency access to flash.
+QuickSAN~\cite{ucsd_quiclsan} is an attempt to remove a layer of software
+overhead by augmenting the storage device with a low-latency NIC, so that remote
+storage access does not need to go through the network software stack. Due to
+the high performance of SSDs, removing this software overhead results in a
+significant performance improvement.
+
+Microsoft Research recently has built and demonstrated the power/performance
+benefits of a FPGA-based system called Catapult~\cite{msr_catapult}.
+Catapult uses a large number of homogeneous servers each augmented with an FPGA.
+The FPGAs form a network among themselves via high-speed serial links so that
+large jobs can be mapped to groups of FPGAs. Catapult was demonstrated to
+deliver much faster performance while consuming less power, compared to a normal
+ram cloud cluster. FlashBoost has similar goals, uses flash to accelerate
+systems that do not have enough collective DRAM to host the entire dataset.
+
 %\item Computation/Storage coupling (computation near data), for MapReduce, etc
 %\item Flash-based databases (Zetascale)
 Flash-based databased have been under active investigation as an way to expand
@@ -22,11 +66,6 @@ Applications such as linear algebra operations~\ref{}, genome sequencing~\ref{}
 and high-speed data filtering~\ref{} has been successful, and even general
 purpose database accelerators have been built and commercialized~\ref{netezza}.
 
-Microsoft Research recently has built and demonstrated the power/performance
-benefits of a FPGA-based system called Catapult.
-using FPGAs in a cluster, in the context of accelerating Bing
-search~\ref{msr}. In their work, each server in a cluster were augmented with an FPGA, and
-the FPGAs were networked to each other using high-speed serial links.
 
 However, such accelerator appliances depend on the host streaming data to the
 accelerator, and therefore are only effective for datasets that can

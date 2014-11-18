@@ -1,7 +1,7 @@
 package AuroraImportFmc1;
 
 import FIFO::*;
-
+import FIFOF::*;
 import Clocks :: *;
 import DefaultValue :: *;
 import Xilinx :: *;
@@ -15,6 +15,7 @@ import AuroraGearbox::*;
 interface AuroraIfc;
 	method Action send(DataIfc data, PacketType ptype);
 	method ActionValue#(Tuple2#(DataIfc, PacketType)) receive;
+	method Tuple4#(Bit#(32), Bit#(32), Bit#(32), Bit#(32)) getDebugCnts;
 
 	interface Clock clk;
 	interface Reset rst;
@@ -58,29 +59,54 @@ module mkAuroraIntra#(Clock gtx_clk_p, Clock gtx_clk_n, Clock clk250) (AuroraIfc
 	Clock aclk = auroraIntraImport.aurora_clk;
 	Reset arst = auroraIntraImport.aurora_rst;
 
-	AuroraGearboxIfc auroraGearbox <- mkAuroraGearbox(aclk, arst);
-	rule auroraOut;
-		let d <- auroraGearbox.auroraSend;
-		if ( auroraIntraImport.user.channel_up == 1 ) begin
-			auroraIntraImport.user.send(d);
-		end
+
+	Reg#(Bit#(32)) gearboxSendCnt <- mkReg(0);
+	Reg#(Bit#(32)) gearboxRecCnt <- mkReg(0);
+	Reg#(Bit#(32)) auroraSendCnt <- mkReg(0, clocked_by aclk, reset_by arst);
+	Reg#(Bit#(32)) auroraRecCnt <- mkReg(0, clocked_by aclk, reset_by arst);
+	Reg#(Bit#(32)) auroraSendCntCC <- mkSyncRegToCC(0, aclk, arst);
+	Reg#(Bit#(32)) auroraRecCntCC <- mkSyncRegToCC(0, aclk, arst);
+	rule syncCnt;
+		auroraSendCntCC <= auroraSendCnt;
+		auroraRecCntCC <= auroraRecCnt;
 	endrule
+
+
+	AuroraGearboxIfc auroraGearbox <- mkAuroraGearbox(aclk, arst, False);
+	rule auroraOut if (auroraIntraImport.user.channel_up==1);
+		let d <- auroraGearbox.auroraSend;
+		//if ( auroraIntraImport.user.channel_up == 1 ) begin
+			$display("Gearbox send out: %x", d);
+			auroraSendCnt <= auroraSendCnt + 1;
+			auroraIntraImport.user.send(d);
+		//end
+	endrule
+	/*
 	rule resetDeadLink ( auroraIntraImport.user.channel_up == 0 );
 		auroraGearbox.resetLink;
+		$display("Gearbox reset link");
 	endrule
+	*/
 	rule auroraIn;
 		let d <- auroraIntraImport.user.receive;
+		$display("Gearbox received: %x", d);
+		auroraRecCnt <= auroraRecCnt + 1;
 		auroraGearbox.auroraRecv(d);
 	endrule
 		
 
+	method Tuple4#(Bit#(32), Bit#(32), Bit#(32), Bit#(32)) getDebugCnts;
+		return tuple4(gearboxSendCnt, gearboxRecCnt, auroraSendCntCC, auroraRecCntCC);
+	endmethod
 
 
 	method Action send(DataIfc data, PacketType ptype);
 		auroraGearbox.send(data, ptype);
+		gearboxSendCnt <= gearboxSendCnt + 1;
 	endmethod
 	method ActionValue#(Tuple2#(DataIfc, PacketType)) receive;
 		let d <- auroraGearbox.recv;
+		gearboxRecCnt <= gearboxRecCnt + 1;
 		return d;
 	endmethod
 
@@ -100,7 +126,23 @@ module mkAuroraImport_8b10b_bsim (AuroraImportIfc#(4));
 	Clock clk <- exposeCurrentClock;
 	Reset rst <- exposeCurrentReset;
 
-	FIFO#(Bit#(128)) mirrorQ <- mkFIFO;
+	FIFOF#(Bit#(128)) mirrorQ <- mkSizedFIFOF(2);
+	Reg#(Bit#(1)) laneUpR <- mkReg(0);
+	Reg#(Bit#(32)) laneUpDelay <- mkReg(500);
+
+	rule updateLaneUp;
+		if (laneUpDelay ==0) begin
+			laneUpR <= 1;
+		end
+		else begin
+			laneUpDelay <= laneUpDelay - 1;
+		end
+	endrule
+
+
+	rule detectFull if (!mirrorQ.notFull);
+		$display("WARNING: mirrorQ is full!");
+	endrule
 
 	interface aurora_clk = clk;
 	interface aurora_rst = rst;
@@ -108,10 +150,10 @@ module mkAuroraImport_8b10b_bsim (AuroraImportIfc#(4));
 		interface Reset aurora_rst_n = rst;
 
 		method Bit#(1) channel_up;
-			return 0;
+			return laneUpR; 
 		endmethod
 		method Bit#(1) lane_up;
-			return 0;
+			return laneUpR;
 		endmethod
 		method Bit#(1) hard_err;
 			return 0;

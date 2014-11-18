@@ -16,15 +16,19 @@ interface AuroraGearboxIfc;
 
 	method Action auroraRecv(Bit#(AuroraWidth) word);
 	method ActionValue#(Bit#(AuroraWidth)) auroraSend;
-
-	method Action resetLink;
 endinterface
 
-module mkAuroraGearbox#(Clock aclk, Reset arst) (AuroraGearboxIfc);
+module mkAuroraGearbox#(Clock aclk, Reset arst, Bool waitForStartReq) (AuroraGearboxIfc);
 	SyncFIFOIfc#(Tuple2#(DataIfc,PacketType)) sendQ <- mkSyncFIFOFromCC(4, aclk);
 
 	Integer recvQDepth = 128;
 	Integer windowSize = 64;
+
+	Reg#(Bool) canSend <- mkReg(!waitForStartReq, clocked_by aclk, reset_by arst);
+	Reg#(Bool) sentStartReq <- mkReg(waitForStartReq, clocked_by aclk, reset_by arst);
+
+
+
 	SyncFIFOIfc#(Tuple2#(DataIfc,PacketType)) recvQ <- mkSyncFIFOToCC(4, aclk, arst);
 	FIFO#(Tuple2#(DataIfc,PacketType)) recvBufferQ <- mkSizedFIFO(recvQDepth, clocked_by aclk, reset_by arst);
 	Reg#(Bit#(16)) maxInFlightUp <- mkReg(0, clocked_by aclk, reset_by arst);
@@ -88,7 +92,10 @@ module mkAuroraGearbox#(Clock aclk, Reset arst) (AuroraGearboxIfc);
 		PacketType ptype = truncate(header);
 
 		if ( control == 1 ) begin
+			Bit#(8) sendBudget = truncate(cdata);
+			Bit#(1) startPacket = cdata[8];
 			curSendBudgetUp <= curSendBudgetUp + truncate(cdata);
+			if ( startPacket == 1 ) canSend <= True;
 		end else
 		if ( isValid(packetRecvBuffer) ) begin
 			let pdata = fromMaybe(0, packetRecvBuffer);
@@ -127,15 +134,15 @@ module mkAuroraGearbox#(Clock aclk, Reset arst) (AuroraGearboxIfc);
 	method Action auroraRecv(Bit#(AuroraWidth) word);
 		auroraInQ.enq(word);
 	endmethod
-	method ActionValue#(Bit#(AuroraWidth)) auroraSend;
-		auroraOutQ.deq;
+	method ActionValue#(Bit#(AuroraWidth)) auroraSend if ( canSend );
+		let sendData = auroraOutQ.first;
+		if ( !sentStartReq ) begin
+			PacketType ptype = 0;
+			sendData = {2'b01, ptype, 1<<8}; // send start Packet
+			sentStartReq <= True;
+		end else begin
+			auroraOutQ.deq;
+		end
 		return auroraOutQ.first;
-	endmethod
-	
-	method Action resetLink;
-		maxInFlightUp <= 0;
-		maxInFlightDown <= 0;
-		curInQUp <= 0;
-		curInQDown <= 0;
 	endmethod
 endmodule

@@ -85,15 +85,10 @@ module mkAuroraIntra#(Clock gtp_clk) (AuroraIfc);
 	Clock aclk = auroraIntraImport.aurora_clk;
 	Reset arst = auroraIntraImport.aurora_rst;
 
-	AuroraGearboxIfc auroraGearbox <- mkAuroraGearbox(aclk, arst);
+	AuroraGearboxIfc auroraGearbox <- mkAuroraGearbox(aclk, arst, True);
 	rule auroraOut;
 		let d <- auroraGearbox.auroraSend;
-		if ( auroraIntraImport.user.channel_up == 1 ) begin
-			auroraIntraImport.user.send(d);
-		end
-	endrule
-	rule resetDeadLink ( auroraIntraImport.user.channel_up == 0);
-		auroraGearbox.resetLink;
+		auroraIntraImport.user.send(d);
 	endrule
 	rule auroraIn;
 		let d <- auroraIntraImport.user.receive;

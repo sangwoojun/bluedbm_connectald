@@ -789,7 +789,7 @@ set_false_path -through [get_pins -filter {NAME =~ */DQSFOUND} -of [get_cells -h
 set_multicycle_path -through [get_pins -filter {NAME =~ */OSERDESRST} -of [get_cells -hier -filter {REF_NAME == PHASER_OUT_PHY}]] -setup 2 -start
 set_multicycle_path -through [get_pins -filter {NAME =~ */OSERDESRST} -of [get_cells -hier -filter {REF_NAME == PHASER_OUT_PHY}]] -hold 1 -start
 
-set_max_delay -datapath_only -from [get_cells -hier -filter {NAME =~ *temp_mon_enabled.u_tempmon/*}] -to [get_cells -hier -filter {NAME =~ *temp_mon_enabled.u_tempmon/device_temp_sync_r1*}] 20
+set_max_delay -datapath_only -from [get_cells -hier -filter {IS_SEQUENTIAL == TRUE && NAME =~ *temp_mon_enabled.u_tempmon/*}] -to [get_cells -hier -filter {NAME =~ *temp_mon_enabled.u_tempmon/device_temp_sync_r1*}] 20
 set_max_delay -from [get_cells -hier *rstdiv0_sync_r1_reg*] -to [get_pins -filter {NAME =~ */RESET} -of [get_cells -hier -filter {REF_NAME == PHY_CONTROL}]] -datapath_only 5
 #set_max_delay -datapath_only -from [get_cells -hier -filter {NAME =~ *temp_mon_enabled.u_tempmon/*}] -to [get_cells -hier -filter {NAME =~ *temp_mon_enabled.u_tempmon/device_temp_sync_r1*}] 20
 #set_max_delay -from [get_cells -hier rstdiv0_sync_r1*] -to [get_pins -filter {NAME =~ */RESET} -of [get_cells -hier -filter {REF_NAME == PHY_CONTROL}]] -datapath_only 5
@@ -803,17 +803,47 @@ set_max_delay -datapath_only -from [get_cells -hier -filter {NAME =~ *ddr3_infra
 #startgroup
 #create_pblock pblock_ddr3
 #resize_pblock pblock_ddr3 -add { SLICE_X146Y201:SLICE_X205Y348 DSP48_X13Y82:DSP48_X19Y137 RAMB18_X9Y82:RAMB18_X13Y137 RAMB36_X9Y41:RAMB36_X13Y68 }
-#add_cells_to_pblock pblock_ddr3 [get_cells [list ddr3* ]]
+###add_cells_to_pblock pblock_ddr3 [get_cells [list ddr3* ]]
+#add_cells_to_pblock pblock_ddr3 [get_cells [list portalTop_dramImport_ddr3_ctrl*] ]
+#add_cells_to_pblock pblock_ddr3 [get_cells portalTop_dramImport_ddr3_ctrl* ]
 #endgroup
 
 ## wjun
-create_clock -name top_x7pcie_sys_clk_200mhz -period 5 [get_pins host_sys_clk_200mhz_buf/O] 
-create_generated_clock -name ddr3_usrclk -source [get_pins host_sys_clk_200mhz_buf/O] -multiply_by 5 -divide_by 10 [get_pins portalTop_clk_gen_pll/CLKOUT0]
-create_generated_clock -name ddr3_refclk -source [get_pins portalTop_clk_gen_pll/CLKIN1] -multiply_by 5 -divide_by 5 [get_pins portalTop_clk_gen_pll/CLKOUT1]
-set_max_delay -from [get_clocks ddr3_refclk] -to [get_clocks ddr3_usrclk] 20.000 -datapath_only
-set_max_delay -from [get_clocks ddr3_usrclk] -to [get_clocks ddr3_refclk] 20.000 -datapath_only
-set_max_delay -from [get_clocks ddr3_refclk] -to [get_clocks top_x7pcie_sys_clk_200mhz] 20.000 -datapath_only
-set_max_delay -from [get_clocks top_x7pcie_sys_clk_200mhz] -to [get_clocks ddr3_refclk] 20.000 -datapath_only
+#create_clock -name top_x7pcie_sys_clk_200mhz -period 5 [get_pins host_sys_clk_200mhz_buf/O] 
+create_clock -name ddr3_refclk -period 5 [get_pins host_sys_clk_200mhz_buf/O] 
+#create_generated_clock -name ddr3_refclk -source [get_pins portalTop_clk_gen_pll/CLKIN1] -multiply_by 5 -divide_by 5 [get_pins portalTop_clk_gen_pll/CLKOUT1]
+
+create_clock -name ddr3_usrclk -period 5 [get_pins portalTop_dramImport_ddr3_ctrl/portalTop_dramImport_ddr3_ctrl_ui_clk]
+#create_generated_clock -name ddr3_usrclk -source [get_pins portalTop_clk_gen_pll/CLKIN1] -multiply_by 5 -divide_by 5 [get_pins portalTop_dramImport/portalTop_dramImport_CLK_user_clock]
+create_generated_clock -name app_clk -source [get_pins */clkgen_pll/CLKIN1] -divide_by 2 [get_pins */clkgen_pll/CLKOUT0]
+
+#set_max_delay -from [get_clocks app_clk] -to [get_clocks ddr3_refclk] 5.000 -datapath_only
+#set_max_delay -from [get_clocks ddr3_refclk] -to [get_clocks app_clk] 5.000 -datapath_only
+set_max_delay -from [get_clocks app_clk] -to [get_clocks ddr3_usrclk] 5.000 -datapath_only
+set_max_delay -from [get_clocks ddr3_usrclk] -to [get_clocks app_clk] 5.000 -datapath_only
+#set_max_delay -from [get_clocks ddr3_usrclk] -to [get_clocks ddr3_refclk] 20.000 -datapath_only
+#set_max_delay -from [get_clocks ddr3_refclk] -to [get_clocks ddr3_usrclk] 20.000 -datapath_only
+	
+#	set_false_path -to [get_cells portalTop_hwmain_dramArbiter_rcmdQ_*/*/CLR]
+#	set_false_path -to [get_pins portalTop_hwmain_dramArbiter_rcmdQ_*/*/CLR]
+#	set_false_path -to [get_pins portalTop_hwmain_dramArbiter_wcmdQ_*/*/CLR]
+#
+#	set_false_path -to [get_pins portalTop_hwmain_rcmdQ_*/*/CLR]
+#	set_false_path -to [get_pins portalTop_hwmain_wcmdQ_*/*/CLR]
+	
+	set_false_path -to [get_pins portalTop_dramImport_cmdQ/*/CLR]
+	set_false_path -to [get_pins portalTop_ddr3ref_rst_n/*/CLR]
+	 
+
+#create_clock -name sys_usrclk -period 8 [get_pins host_ep7/CLK_epClock125]
+#create_generated_clock -name ddr3_usrclk -source [get_pins host_sys_clk_200mhz_buf/O] -multiply_by 5 -divide_by 5 [get_pins portalTop_dramImport/portalTop_dramImport_CLK_user_clock]
+#
+#
+#set_max_delay -from [get_clocks ddr3_usrclk] -to [get_clocks top_x7pcie_sys_clk_200mhz] 5.000 -datapath_only
+#set_max_delay -from [get_clocks top_x7pcie_sys_clk_200mhz] -to [get_clocks ddr3_usrclk] 5.000 -datapath_only
+#
+#set_max_delay -from [get_clocks sys_usrclk] -to [get_clocks ddr3_usrclk] 5.000 -datapath_only
+#set_max_delay -from [get_clocks ddr3_usrclk] -to [get_clocks sys_usrclk] 5.000 -datapath_only
 
 
 ######################################################################################################
@@ -833,3 +863,34 @@ set_max_delay -from [get_clocks top_x7pcie_sys_clk_200mhz] -to [get_clocks ddr3_
 #set_max_delay -from [get_clocks noc_clk] -to [get_clocks clk_pll_i] 20.000 -datapath_only
 #set_max_delay -from [get_clocks clk_pll_i] -to [get_clocks core_clock] 20.000 -datapath_only
 #set_max_delay -from [get_clocks core_clock] -to [get_clocks clk_pll_i] 20.000 -datapath_only
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#set_multicycle_path -to   [get_cells -hier -filter {NAME =~ *temp_mon_enabled.u_tempmon/device_temp_sync_r1*}] \
+#-setup 12 -end
+#
+#set_multicycle_path -to   [get_cells -hier -filter {NAME =~ *temp_mon_enabled.u_tempmon/device_temp_sync_r1*}] \
+#-hold 11 -end
+#
+#set_multicycle_path -to   [get_cells -hier -filter {NAME =~ *temp_mon_enabled.u_tempmon/xadc_supplied_temperature.rst_r1*}] \
+#-setup 2 -end
+#
+#set_multicycle_path -to   [get_cells -hier -filter {NAME =~ *temp_mon_enabled.u_tempmon/xadc_supplied_temperature.rst_r1*}] \
+#-hold 1 -end

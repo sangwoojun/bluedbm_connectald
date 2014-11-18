@@ -214,11 +214,92 @@ void flashifc_alloc(DmaManager* dma) {
 	}
 }
 
+void setAuroraRouting2(int myid, int src, int dst, int port1, int port2) {
+	if ( myid != src ) return;
+
+	for ( int i = 0; i < 8; i ++ ) {
+		if ( i % 2 == 0 ) { 
+			device->setAuroraExtRoutingTable(dst,port1, i);
+		} else {
+			device->setAuroraExtRoutingTable(dst,port2, i);
+		}
+	}
+}
+
 void auroraifc_start(int myid) {
 	device->setNetId(myid);
-	device->setAuroraExtRoutingTable(0,1);
-	device->setAuroraExtRoutingTable(1,1);
-	device->sendTest(LARGE_NUMBER*1024);
+
+	//This is not strictly required
+	for ( int i = 0; i < 8; i++ ) 
+		device->setAuroraExtRoutingTable(myid,0,i);
+
+	// This is set up such that all nodes can one day 
+	// read the same routing file and apply it
+	setAuroraRouting2(myid, 0,1, 0,1);
+	setAuroraRouting2(myid, 0,2, 2,3);
+	//setAuroraRouting2(myid, 0,3, 2,3);
+	setAuroraRouting2(myid, 0,3, 3,3);
+
+	setAuroraRouting2(myid, 1,0, 0,1);
+	setAuroraRouting2(myid, 1,2, 0,1);
+	setAuroraRouting2(myid, 1,3, 0,1);
+	
+	setAuroraRouting2(myid, 2,0, 0,3);
+	setAuroraRouting2(myid, 2,1, 0,3);
+	setAuroraRouting2(myid, 2,3, 0,3);
+
+	setAuroraRouting2(myid, 3,0, 1,2);
+	setAuroraRouting2(myid, 3,1, 1,2);
+	setAuroraRouting2(myid, 3,2, 0,3);
+
+
+/*
+	if ( myid == 0 ) { // lightning?
+		device->setAuroraExtRoutingTable(1,0);
+		//device->setAuroraExtRoutingTable(1,1);
+		device->setAuroraExtRoutingTable(2,3);
+		//device->setAuroraExtRoutingTable(2,2);
+		
+		device->setAuroraExtRoutingTable(3,3);
+		//device->setAuroraExtRoutingTable(3,2);
+	}
+	if ( myid == 1 ) { // bdbm01
+		device->setAuroraExtRoutingTable(0,0);
+		device->setAuroraExtRoutingTable(2,0);
+		device->setAuroraExtRoutingTable(3,0);
+		//device->setAuroraExtRoutingTable(2,1);
+	}
+	if ( myid == 2 ) { // bdbm02
+		device->setAuroraExtRoutingTable(0,0);
+		device->setAuroraExtRoutingTable(1,0);
+		device->setAuroraExtRoutingTable(3,0);
+		//device->setAuroraExtRoutingTable(3,3);
+	}
+	if ( myid == 3 ) { // bdbm03
+		device->setAuroraExtRoutingTable(0,2);
+		device->setAuroraExtRoutingTable(1,2);
+		device->setAuroraExtRoutingTable(2,0);
+		//device->setAuroraExtRoutingTable(2,3);
+	}
+	*/
+	usleep(100);
+}
+void auroraifc_sendTest() {
+	printf( "sending test to 1\n" );
+	for ( int i = 0; i < 1024; i++ ) {
+		device->sendTest(1);
+		usleep(100);
+	}
+	printf( "sending test to 0\n" );
+	for ( int i = 0; i < 1024; i++ ) {
+		device->sendTest(0);
+		usleep(100);
+	}
+	printf( "sending test to 3\n" );
+	for ( int i = 0; i < 1024; i++ ) {
+		device->sendTest(3);
+		usleep(100);
+	}
 }
 
 void flashifc_start(int datasource) {
@@ -226,4 +307,31 @@ void flashifc_start(int datasource) {
 	
 	clock_gettime(CLOCK_REALTIME, & deviceIndication->aurorastart);
 	printf( "sending aurora test req\n" ); fflush(stdout);
+}
+
+void test_dram() {
+	for ( int i = 0; i < 1024; i++ ) {
+		device->writeDRAM(i*7, 0xabcc, i);
+		usleep(100);
+	}
+	for ( int i = 0; i < 1024; i++ ) {
+		device->readDRAM(i*7);
+		usleep(100);
+	}
+	
+	for ( int i = 0; i < 1024*8; i++ ) {
+		device->writeDRAM(i, i, i);
+		usleep(100);
+		device->readDRAM(i);
+		usleep(100);
+	}
+	
+	for ( int i = 0; i < 1024*8; i++ ) {
+		device->writeDRAM(1024*100+i, i, i);
+		usleep(100);
+	}
+	for ( int i = 0; i < 1024*8; i++ ) {
+		device->readDRAM(1024*100+i);
+		usleep(100);
+	}
 }

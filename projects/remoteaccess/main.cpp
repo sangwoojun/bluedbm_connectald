@@ -32,64 +32,24 @@
 
 
 #include "connectal.h"
-#include "flashinterface.h"
-#include "storagebridge.h"
-
-void write_test() {
-	timespec start, now;
-	printf( "writing pages to flash!\n" ); fflush(stdout);
-	clock_gettime(CLOCK_REALTIME, & start);
-	//for ( int i = 0; i < 4; i++ ) {
-	for ( int i = 0; i < LARGE_NUMBER/TEST_DMA_CHANNELS; i++ ) {
-		for ( int j = 0; j < TEST_DMA_CHANNELS; j++ ) {
-			if ( verbose || i % (1024*4) == 0 ) {
-				printf( "writing page %d\n", i ); fflush(stdout);
-			}
-			writePage(j,0,0,i,waitIdleWriteBuffer(j));
-
-			//sem_wait(&wait_sem);
-		}
-		//sleep(1);
-	}
-	printf( "waiting for writing pages to flash!\n" ); fflush(stdout);
-	while ( getNumWritesInFlight() > 0 ) usleep(1000);
-	clock_gettime(CLOCK_REALTIME, & now); fflush(stdout);
-	printf( "finished writing to page! %f\n", timespec_diff_sec(start, now) );
-	printf( "wrote pages to flash!\n" ); fflush(stdout);
-}
-
-void read_test() {
-	timespec start, now;
-	clock_gettime(CLOCK_REALTIME, & start);
-	//for ( int i = 0; i < 4; i++ ) {
-	for ( int i = 0; i < LARGE_NUMBER/TEST_DMA_CHANNELS; i++ ) {
-		for ( int j = 0; j < TEST_DMA_CHANNELS; j++ ) {
-
-			if ( verbose || i % 1024 == 0 ) 
-				printf( "reading page %d\n", i );
-
-			readPage(j,0,0,i, waitIdleReadBuffer());
-		}
-	}
-
-	printf( "trying reading from page!\n" );
-
-	while (true) {
-		usleep(100);
-		if ( getNumReadsInFlight() == 0 ) break;
-	}
-	clock_gettime(CLOCK_REALTIME, & now);
-	printf( "finished reading from page! %f\n", timespec_diff_sec(start, now) );
-}
+#include "interface.h"
 
 int main(int argc, const char **argv)
 {
-	if ( argc < 2 ) {
-		fprintf(stderr, "usage: ./ubuntu.exe [nodeid]\n");
+	char hostname[32];
+	gethostname(hostname,32);
+
+	//FIXME "lightning" is evaluated to 0,
+	// so when bdbm00 is returned to the cluster,
+	// code needs to be modified
+	if ( strstr(hostname, "bdbm") == NULL 
+		&& strstr(hostname, "umma") == NULL
+		&& strstr(hostname, "lightning") == NULL ) {
+		
+		fprintf(stderr, "ERROR: hostname should be bdbm[idx] or lightning\n");
 		return 1;
 	}
-
-	int myid = atoi(argv[1]);
+	int myid = atoi(hostname+strlen("bdbm"));
 
 	DmaDebugRequestProxy *hostDmaDebugRequest = new DmaDebugRequestProxy(IfcNames_HostDmaDebugRequest);
 	MMUConfigRequestProxy *dmap = new MMUConfigRequestProxy(IfcNames_HostMMUConfigRequest);
@@ -100,16 +60,14 @@ int main(int argc, const char **argv)
 
 	fprintf(stderr, "Main::allocating memory...\n");
 	
-	flashifc_init();
-	storagebridge_init();
+	interface_init();
 
 	printf( "Done initializing hw interfaces\n" ); fflush(stdout);
 
 	portalExec_start();
 	printf( "Done portalExec_start\n" ); fflush(stdout);
 
-	flashifc_alloc(dma);
-	storagebridge_alloc(dma);
+	interface_alloc(dma);
 	
 	printf( "Done allocating DMA buffers\n" ); fflush(stdout);
 
@@ -135,38 +93,17 @@ int main(int argc, const char **argv)
 		}
 	}
 
-	printf( "testing DRAM\n" ); fflush(stdout);
-	//test_dram();
-	
-
 	sleep(5);
 
 	printf ( "sending start msg\n" ); fflush(stdout);
-	flashifc_start(/*datasource*/1);
-	auroraifc_sendTest();
-	
-	sleep(1);
-	
+	generalifc_start(/*datasource*/1);
+	//auroraifc_sendTest();
 
-	write_test();
-	
-	read_test();
-
-
-	//for ( int j = 0; j < 5; j++ ) {
-	for ( int j = 0; j < READ_BUFFER_COUNT; j++ ) {
-		for ( int i = 0; i < (8192+64)/4; i++ ) {
-			if ( i > (8192+64)/4 - 2 )
-			printf( "%d %d %d\n", j, i, readBuffers[j][i] );
-		}
+	if ( myid == 1 ) { 
+		generalifc_readRemotePage();
 	}
-
-/*
-	for ( int i = 0; i < READ_BUFFER_COUNT; i++ ) {
-		printf( "buffer %d : %s\n", i, dstBufferBusy[i] ? "busy" : "idle" );
-	}
-	*/
-	//printf( "Command buget was gone:%d \nTag was busy:%d\n", noCmdBudgetCount, noTagCount );
-
+	
+	printf( "Entering idle loop\n" );
+	while(1) sleep(10);
 	exit(0);
 }

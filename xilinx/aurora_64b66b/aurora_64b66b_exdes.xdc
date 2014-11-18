@@ -70,14 +70,16 @@
 	set_property LOC K8 [get_ports aurora_quad117_gtx_clk_p_v]
 	set_property LOC K7 [get_ports aurora_quad117_gtx_clk_n_v]
 
-	set_false_path -from [get_cells portalTop_hwmain_auroraExt/rst50/*]
-	set_false_path -to [get_cells portalTop_hwmain_auroraExt/auroraExt_*_sendQ/*]
+	#set_false_path -from [get_cells portalTop_hwmain_auroraExt/rst50/*]
+	#set_false_path -to [get_cells portalTop_hwmain_auroraExt/auroraExt_*_sendQ/*]
+
+	set_false_path -from [get_cells portalTop_hwmain_auroraExt117/rst50/*]
+	set_false_path -to [get_cells portalTop_hwmain_auroraExt117/auroraExt_*_sendQ/*]
+	set_false_path -from [get_cells portalTop_hwmain_auroraExt119/rst50/*]
+	set_false_path -to [get_cells portalTop_hwmain_auroraExt119/auroraExt_*_sendQ/*]
 
 	#set_false_path -to [get_cells -hier -filter {NAME =~ portalTop_hwmain_auroraExt/auroraExt_0_sendQ/*/CLR}]
 	#set_false_path -to [get_cells -hier -filter {NAME =~ portalTop_hwmain_auroraExt/auroraExt_0_sendQ/*/PRE}]
-
-	# set_multicycle_path -from [get_cells -hier -filter {NAME =~ host_ep7/reset125/reset_hold_reg[?]_replica/C}] -to [get_cells -hier -filter {NAME =~ portalTop_hwmain_auroraExt/auroraExt_0_sendQ/*/*}] -hold 6
-	# set_multicycle_path -from [get_cells -hier -filter {NAME =~ host_ep7/reset125/reset_hold_reg[?]_replica/C}] -to [get_cells -hier -filter {NAME =~ portalTop_hwmain_auroraExt/auroraExt_0_sendQ/*/*}] -setup 2
 
 	create_clock -name init_clk_119_i -period 20.0 [get_pins portalTop_hwmain_auroraExtClockDiv5_slowbuf/O]
 	create_clock -name GTXQ0_left_119_i -period 1.600	 [get_pins portalTop_hwmain_auroraExt119/auroraExt_gtx_clk/O]

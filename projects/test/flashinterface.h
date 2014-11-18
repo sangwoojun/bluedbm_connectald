@@ -18,7 +18,7 @@
 	#define LARGE_NUMBER (1024*1024/8)
 #else
 	#define DMA_BUFFER_COUNT 4
-	#define LARGE_NUMBER 512
+	#define LARGE_NUMBER 256
 #endif
 
 #define READ_BUFFER_WAYS (128/DMA_BUFFER_COUNT)
@@ -156,5 +156,8 @@ void flashifc_alloc(DmaManager* dma);
 void flashifc_start(int datasource);
 
 void auroraifc_start(int myid);
+void auroraifc_sendTest();
+
+void test_dram();
 
 #endif

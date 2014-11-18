@@ -7,16 +7,15 @@ import XilinxCells ::*;
 import Clocks :: *;
 import DefaultValue    :: *;
 
+import FIFO::*;
+
 typedef Bit#(29) DDR3Address;
 typedef Bit#(64) ByteEn;
 typedef Bit#(512) DDR3Data;
 
 interface DRAM_User;
-	interface Clock clock;
-	interface Reset reset_n;
-	method Bool init_done;
-	method Action request(DDR3Address addr, ByteEn writeen, DDR3Data datain);
-	method ActionValue#(DDR3Data) read_data;
+	method Action request(Bit#(32) addr, Bit#(512) data, Bool write);
+	method ActionValue#(Bit#(512)) read_data;
 endinterface
 interface DRAM_Import;
 	interface DRAM_User user;
@@ -25,8 +24,10 @@ interface DRAM_Import;
 `endif
 endinterface
 
-(* synthesize *)
+//(* synthesize *)
 module mkDRAMImport#(Clock clk200, Reset rst200) (DRAM_Import);
+
+
 `ifndef BSIM
 	DDR3_Configure ddr3_cfg = defaultValue;
 	ddr3_cfg.reads_in_flight = 2;   // adjust as needed
@@ -39,13 +40,49 @@ module mkDRAMImport#(Clock clk200, Reset rst200) (DRAM_Import);
 `else
    let ddr3_ctrl_user <- mkDDR3Simulator;
 `endif
+	
+	Clock curClk <- exposeCurrentClock;
+	Reset curRst <- exposeCurrentReset;
+	
+	Clock ddr3clk = ddr3_ctrl_user.clock;
+	Reset ddr3rstn = ddr3_ctrl_user.reset_n;
+	
+	SyncFIFOIfc#(Tuple3#(Bit#(32), Bit#(512), Bool)) cmdQ <- mkSyncFIFO(2, curClk, curRst, ddr3clk);
+	SyncFIFOIfc#(Bit#(512)) dataQ <-mkSyncFIFO(8, ddr3clk,ddr3rstn, curClk);
+	FIFO#(Bool) dramThrottleQ <- mkSizedFIFO(8);
+
+	rule execCommand;
+		let cmd = cmdQ.first;
+		let addr = tpl_1(cmd);
+		let data = tpl_2(cmd);
+		let write = tpl_3(cmd);
+		Bit#(64) mask = ~64'h0;
+		
+		if ( write ) begin
+			ddr3_ctrl_user.request(truncate(addr<<3), mask, data);
+		end else begin
+			ddr3_ctrl_user.request(truncate(addr<<3), 0, ?);
+		end
+		cmdQ.deq;
+	endrule
+
+	rule flushData;
+			let d <- ddr3_ctrl_user.read_data;
+			dataQ.enq(d);
+	endrule
 
 interface DRAM_User user;
-	interface Clock clock = ddr3_ctrl_user.clock;
-	interface Reset reset_n = ddr3_ctrl_user.reset_n;
-	method init_done = ddr3_ctrl_user.init_done;
-	method request = ddr3_ctrl_user.request;
-	method read_data = ddr3_ctrl_user.read_data;
+	method Action request(Bit#(32) addr, Bit#(512) data, Bool write);
+		cmdQ.enq(tuple3(addr, data, write));
+		if ( !write ) dramThrottleQ.enq(True);
+
+	endmethod
+	method ActionValue#(Bit#(512)) read_data;
+		dramThrottleQ.deq;
+
+		dataQ.deq;
+		return dataQ.first;
+	endmethod
 endinterface
 `ifndef BSIM
 interface DDR3_Pins_VC707 ddr3 = ddr3_ctrl.ddr3;

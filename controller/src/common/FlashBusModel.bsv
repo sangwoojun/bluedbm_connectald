@@ -215,7 +215,7 @@ module mkFlashBusModel(FlashBusModelIfc);
 					let rdata = flashArr[c].sub(regAddr);
 
 					busReadQ.enq(tuple2(rdata, cmd.tag));
-					$display("@%d %m FlashBus chip[%d] read data tag=%d @ regAddr=%d [%d][%d][%d] = %x", cycleCnt, c, regAddr, cmd.tag, cmd.block, cmd.page, readBurstCnt, rdata);
+					$display("@%d %m FlashBus chip[%d] read data tag=%d @ regAddr=%d [%d][%d][%d] = %x", cycleCnt, c, cmd.tag, regAddr, cmd.block, cmd.page, readBurstCnt, rdata);
 				end
 				if (readBurstCnt==fromInteger(pageWords-1)) begin
 					flashChipCmdQs[c].deq;

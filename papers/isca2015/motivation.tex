@@ -1,4 +1,41 @@
 \section{Motivation}
 
-Computation/Storage coupling \(computation near data\), for MapReduce, etc
+Advancement of high-performance flash storage is introducing a new dynamic into
+how computer systems can be designed.  In traditional computer systems, the
+amount of data that can be processed on a single machine is often limited by the
+fast random access memory, i.e., DRAM, available on it. This is because the
+random access latency of mechanical hard disk, which is the primary form of
+secondary storage is large enough to dwarf all other components in the system.
+Because if this, the only way to quickly process large amounts of data was to
+store it in the collective memory of a cluster of machines.
 
+This landscape is changing with the widespread adoption of flash storage. Flash
+storage's random access latency is multiple orders of magnitude lower than disk,
+on par with many widespread networking interfaces. This means in a distributed
+cluster, it may take as much time to access and process a piece of data in the
+dram of a remote machine as it may take to fetch and process data on a local
+flash storage, especially if it is possible to bypass the software overhead
+imposed on flash storage by the operating system to make it compatible with the
+generic disk access interface.
+
+One of the reasons a generic network link has such a high latency is because of
+the general-purpose protocol overhead. Because general-purpose network protocols
+such as TCP need to cater to all kinds of traffic, the protocol
+becomes very complex and the software stack creates a large overhead. There have
+been many different attempts in reducing this overhead, ranging from bypassing
+the network stack and implementing the protocol in the userspace, to
+implementing parts of the protocol in the network interface hardware itself.
+
+One way to reduce latency and also make more efficient use of bandwidth is to
+embed computation engines directly in the storage and network controller itself.
+Latency can be cut down by eliminating a data transport step from the
+storage or network controller to the CPU, and bandwidth amplification can be
+achieved by implementing compression or filtering operations in the controllers.
+
+Application-specific hardware accelerators might be a good fit for the embedded
+computation engines. Hardware accelerators implemented as a standalone
+appliances are usually optimized for throughput rather than latency, as the
+invocation latency over PCIe or other interface medium is already substantial.
+On the other hand, low-latency hardware accelerators in the form of augmented
+network interfaces have been successful in many low-latency workloads such as
+high-frequency trading.

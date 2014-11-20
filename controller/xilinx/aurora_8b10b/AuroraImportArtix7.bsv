@@ -1,7 +1,7 @@
 package AuroraImportArtix7;
 
 import FIFO::*;
-
+import FIFOF::*;
 import Clocks :: *;
 import DefaultValue :: *;
 import Xilinx :: *;
@@ -58,6 +58,7 @@ module mkAuroraIntra#(Clock gtp_clk) (AuroraIfc);
 	Clock cur_clk <- exposeCurrentClock; // assuming 100MHz clock
 	Reset cur_rst <- exposeCurrentReset;
 	
+`ifndef BSIM
 	ClockDividerIfc auroraIntraClockDiv2 <- mkDCMClockDivider(2, 10);
 	Clock clk50 = auroraIntraClockDiv2.slowClock;
 	MakeResetIfc rst50ifc <- mkReset(8, True, clk50);
@@ -66,6 +67,7 @@ module mkAuroraIntra#(Clock gtp_clk) (AuroraIfc);
 	Reset rst50_2 = rst50ifc2.new_rst;
 
 	AuroraImportIfc#(4) auroraIntraImport <- mkAuroraImport_8b10b(gtp_clk, clk50, rst50, rst50_2);
+
 
 	Reg#(Bit#(32)) auroraGtResetCounter <- mkReg(0);
 	rule resetAurora;
@@ -83,6 +85,11 @@ module mkAuroraIntra#(Clock gtp_clk) (AuroraIfc);
 			end
 		end
 	endrule
+
+`else
+	AuroraImportIfc#(4) auroraIntraImport <- mkAuroraImport_8b10b_bsim;
+`endif
+
 
 	Clock aclk = auroraIntraImport.aurora_clk;
 	Reset arst = auroraIntraImport.aurora_rst;
@@ -150,8 +157,71 @@ module mkAuroraIntra#(Clock gtp_clk) (AuroraIfc);
 	interface Aurora_Pins aurora = auroraIntraImport.aurora;
 endmodule
 
+module mkAuroraImport_8b10b_bsim (AuroraImportIfc#(4));
+	Clock clk <- exposeCurrentClock;
+	Reset rst <- exposeCurrentReset;
+
+	FIFOF#(Bit#(128)) mirrorQ <- mkSizedFIFOF(2);
+	Reg#(Bit#(1)) laneUpR <- mkReg(0);
+	Reg#(Bit#(32)) laneUpDelay <- mkReg(500);
+
+	rule updateLaneUp;
+		if (laneUpDelay ==0) begin
+			laneUpR <= 1;
+		end
+		else begin
+			laneUpDelay <= laneUpDelay - 1;
+		end
+	endrule
+
+
+	rule detectFull if (!mirrorQ.notFull);
+		$display("WARNING: mirrorQ is full!");
+	endrule
+
+	interface aurora_clk = clk;
+	interface aurora_rst = rst;
+	interface AuroraControllerIfc user;
+		interface Reset aurora_rst_n = rst;
+
+		method Bit#(1) channel_up;
+			return laneUpR; 
+		endmethod
+		method Bit#(1) lane_up;
+			return laneUpR;
+		endmethod
+		method Bit#(1) hard_err;
+			return 0;
+		endmethod
+		method Bit#(1) soft_err;
+			return 0;
+		endmethod
+		method Bit#(8) data_err_count;
+			return 0;
+		endmethod
+
+		method Action send(Bit#(128) data);
+			mirrorQ.enq(data);
+		endmethod
+		method ActionValue#(Bit#(128)) receive;
+			mirrorQ.deq;
+			return mirrorQ.first;
+		endmethod
+	endinterface
+endmodule
+
+
+
+
+
+
+
+
+
+
 (* always_enabled, always_ready *)
 interface Aurora_Pins#(numeric type lanes);
+	`ifndef BSIM
 	(* prefix = "", result = "RXN" *)
 	method Action rxn_in(Bit#(lanes) rxn_i);
 	(* prefix = "", result = "RXP" *)
@@ -161,6 +231,7 @@ interface Aurora_Pins#(numeric type lanes);
 	method Bit#(lanes) txn_out();
 	(* prefix = "", result = "TXP" *)
 	method Bit#(lanes) txp_out();
+	`endif
 endinterface
 interface AuroraControllerIfc#(numeric type width);
 	interface Reset aurora_rst_n;
@@ -183,6 +254,8 @@ interface AuroraImportIfc#(numeric type lanes);
 	(* prefix = "" *)
 	interface AuroraControllerIfc#(TMul#(32,lanes)) user;
 endinterface
+
+`ifndef BSIM
 
 import "BVI" aurora_8b10b_exdes =
 module mkAuroraImport_8b10b#(Clock gtx_clk_in, Clock init_clk, Reset init_rst_n, Reset gt_rst_n) (AuroraImportIfc#(4));
@@ -232,5 +305,7 @@ module mkAuroraImport_8b10b#(Clock gtx_clk_in, Clock init_clk, Reset init_rst_n,
 	schedule (user_receive) C (user_receive);
 
 endmodule
+
+`endif //BSIM
 
 endpackage: AuroraImportArtix7

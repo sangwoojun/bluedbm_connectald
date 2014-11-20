@@ -6,7 +6,7 @@ import GetPut::*;
 import ClientServer::*;
 import Vector::*;
 import RegFile::*;
-
+import Clocks::*;
 
 import NandInfraWrapperArtixModel::*;
 //import AuroraGearbox::*;
@@ -71,10 +71,15 @@ module mkFlashCtrlArtixModel#(
 	Reset sysRstn
 	) (FlashControllerIfc);
 
+`ifndef BSIM
 	VNandInfra nandInfra <- vMkNandInfraArtixModel(sysClkP, sysClkN, sysRstn);
-
 	Clock clk0 = nandInfra.clk0;
 	Reset rst0 = nandInfra.rst0;
+`else
+	Clock clk0 = sysClkP;
+	Reset rst0 = sysRstn;
+`endif
+
 
 	//Flash bus models
 	Vector#(NUM_BUSES, FlashBusModelIfc) flashBuses <- replicateM(mkFlashBusModel(clocked_by clk0, reset_by rst0));

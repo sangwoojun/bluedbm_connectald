@@ -10,7 +10,7 @@ import RegFile::*;
 import ControllerTypes::*;
 
 //For BSIM: use hashed read data (so we don't have to write before read)
-typedef 0 BSIM_USE_HASHED_DATA; 
+typedef 1 BSIM_USE_HASHED_DATA; 
 
 typedef enum {
 	ST_CMD,
@@ -83,7 +83,8 @@ module mkFlashBusModel(FlashBusModelIfc);
 	Integer burstDelay = 7; //read bursts 128 bits every 8 cycles //TODO adjust this 
 
 	//Create a regfile per chip
-	Vector#(ChipsPerBus, RegFile#(Bit#(TLog#(WordsPerChip)), Bit#(128))) flashArr <- replicateM(mkRegFileFull());
+	//FIXME: commented out for synthesis
+	//Vector#(ChipsPerBus, RegFile#(Bit#(TLog#(WordsPerChip)), Bit#(128))) flashArr <- replicateM(mkRegFileFull());
 
 	
 	//enq commands to each chip (emulated sb)
@@ -210,12 +211,14 @@ module mkFlashBusModel(FlashBusModelIfc);
 					$display("@%d %m FlashBus chip[%d] read data tag=%d @ [%d][%d][%d] = %x", cycleCnt, c, cmd.tag, cmd.block, cmd.page, readBurstCnt, dataHashed);
 				end
 				else begin
+					/*
 					//compute addr in regfile
 					let regAddr = getRegAddr(cmd.block, cmd.page, readBurstCnt); 
 					let rdata = flashArr[c].sub(regAddr);
 
 					busReadQ.enq(tuple2(rdata, cmd.tag));
 					$display("@%d %m FlashBus chip[%d] read data tag=%d @ regAddr=%d [%d][%d][%d] = %x", cycleCnt, c, cmd.tag, regAddr, cmd.block, cmd.page, readBurstCnt, rdata);
+					*/
 				end
 				if (readBurstCnt==fromInteger(pageWords-1)) begin
 					flashChipCmdQs[c].deq;
@@ -260,10 +263,12 @@ module mkFlashBusModel(FlashBusModelIfc);
 			else begin
 				wrDlyCnt <= fromInteger(burstDelay);
 				if (cmd.tag==tpl_2(writeBuffer.first)) begin
+					/*
 					let regAddr = getRegAddr(cmd.block, cmd.page, writeBurstCnt); 
 					flashArr[c].upd(regAddr, tpl_1(writeBuffer.first));
 					writeBuffer.deq;
 					$display("@%d %m FlashBus chip[%d] wrote data @ regAddr=%d [%d][%d][%d] = %x", cycleCnt, c,regAddr, cmd.block, cmd.page, writeBurstCnt, tpl_1(writeBuffer.first));
+					*/
 				end
 				else begin
 					$display("**ERROR: FlashBusModel incorrect burst received. Cmd tag=%d, burst tag=%d",
@@ -301,7 +306,7 @@ module mkFlashBusModel(FlashBusModelIfc);
 			let cmd = flashChipCmdQs[c].first;
 			//erase entire block
 			let regAddr = getRegAddr(cmd.block, erasePageCnt, eraseWordCnt);
-			flashArr[c].upd(regAddr, -1);
+			//flashArr[c].upd(regAddr, -1);
 			$display("%m FlashBus chip[%d] erasing tag=%d, blk = %d, pageCnt = %d, wordCnt = %d", c, cmd.tag, cmd.block, erasePageCnt, eraseWordCnt);
 
 			if (eraseWordCnt == fromInteger(pageWords-1)) begin //done page

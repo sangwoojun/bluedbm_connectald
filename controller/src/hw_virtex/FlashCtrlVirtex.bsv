@@ -16,6 +16,7 @@ import AuroraGearbox::*;
 import AuroraCommon::*;
 import AuroraImportFmc1::*;
 import ControllerTypes::*;
+import StreamingSerDes::*;
 
 //defined in controllertypes.bsv
 /*
@@ -28,6 +29,7 @@ interface FlashCtrlUser;
 endinterface
 */
 
+typedef TMul#(2, TAdd#(128, TLog#(NumTags))) SerInSz;
 
 interface FCVirtexDebug;
 	method Tuple2#(DataIfc, PacketType) debugRecPacket();
@@ -54,22 +56,15 @@ module mkFlashCtrlVirtex#(
 	FIFO#(Tuple2#(TagT, StatusT)) ackQ <- mkSizedFIFO(valueOf(NumTags)); //TODO size?
 
 	Reg#(Tuple2#(DataIfc, PacketType)) debugRecPacketV <- mkRegU();
-//typedef 8 HeaderSz;
-//typedef TSub#(128,8) BodySz;
-//typedef TMul#(2,TSub#(128,HeaderSz)) DataIfcSz;
-//typedef Bit#(DataIfcSz) DataIfc; //240 bits
-//typedef Bit#(6) PacketType;
-//method Action send(DataIfc data, PacketType ptype);
-//method ActionValue#(Tuple2#(DataIfc, PacketType)) receive;
 
+	StreamingSerializerIfc#(Bit#(SerInSz), Bit#(TSub#(DataIfcSz,1))) ser <- mkStreamingSerializer();
+	StreamingDeserializerIfc#(Bit#(TSub#(DataIfcSz,1)), Bit#(SerInSz)) des <- mkStreamingDeserializer();
+	Reg#(Bit#(SerInSz)) serReg <- mkReg(0);
+	Reg#(Bit#(4)) phase <- mkReg(0);
 
 	
 	//SEND V7 -> A7 rules: sendCmd and write data
 	//Prioritize sendCmd over writeData
-	//TODO: must check if there's space on A7 to accept cmd, otherwise aurora
-		//may prevent write data from being sent 
-		// only umTags commands in flight at any time; just create buffer on Artix to
-		// make sure command drains
 	(* descending_urgency = "forwardCmd, forwardWrData" *)
 	rule forwardCmd;
 		DataIfc data = zeroExtend(pack(flashCmdQ.first));
@@ -79,19 +74,33 @@ module mkFlashCtrlVirtex#(
 		flashCmdQ.deq();
 	endrule
 
+	rule packWrData;
+		let wr = wrDataQ.first;
+		wrDataQ.deq();
+		Bit#(SerInSz) extWr = zeroExtend(pack(wr));
+		if (phase==0) begin
+			serReg <= extWr<<(valueOf(SerInSz)/2); 
+			phase <= 1;
+		end
+		else begin
+			Bit#(SerInSz) serData = serReg | extWr;
+			$display("serializer enq: %x", serData);
+			ser.enq(serData);
+			phase <= 0;
+		end
+	endrule
+
 	rule forwardWrData;
-		//TODO pack data more densely into 240 bit bursts
-		DataIfc data = zeroExtend(pack(wrDataQ.first));
+		let serData <- ser.deq;
+		//DataIfc data = zeroExtend(pack(rd));
 		PacketClass dataClass = F_DATA;
 		PacketType dataType = zeroExtend(pack(dataClass));
-		auroraIntra.send(data, dataType);
-		wrDataQ.deq();
+		auroraIntra.send(pack(serData), dataType);
+		//debugFwdCnt <= debugFwdCnt + 1;
 	endrule
-		
+
 
 	//RECEIVE A7 -> V7 rules
-	//TODO need to break up the rules because ActionValue receive
-
 	FIFO#(Tuple2#(DataIfc, PacketType)) receiveQ <- mkFIFO();
 	rule receivePacketBuf;
 		let typedData <- auroraIntra.receive();
@@ -107,7 +116,10 @@ module mkFlashCtrlVirtex#(
 		PacketType dataType = tpl_2(typedData);
 		PacketClass dataClass = unpack(truncate(dataType)); 
 		if (dataClass == F_DATA) begin
-			rdDataQ.enq(unpack(truncate(data))); //TODO need to repack bursts
+			Tuple2#(Bit#(TSub#(DataIfcSz,1)), Bool) desData = unpack(data);
+			des.enq(tpl_1(desData), tpl_2(desData));
+			$display("Received data burst");
+			//rdDataQ.enq(unpack(truncate(data))); //TODO need to repack bursts
 		end
 		else if (dataClass == F_WR_REQ) begin
 			TagT tag = unpack(truncate(data));
@@ -125,6 +137,29 @@ module mkFlashCtrlVirtex#(
 		// rdata, so it might be ok? it drains eventually. 
 	endrule
 	
+	Reg#(Bit#(4)) phaseRec <- mkReg(0);
+	FIFO#(Bit#(SerInSz)) desPipe <- mkFIFO();
+	rule desPipeline;
+		let data <- des.deq;
+		desPipe.enq(data);
+	endrule
+
+	rule fwdDataFromController; 
+		Bit#(SerInSz) data = desPipe.first;
+		if (phaseRec==0) begin
+			Tuple2#(Bit#(128), TagT) fwdData = unpack( truncateLSB(data) );
+			$display("tag = %x, data = %x", tpl_2(fwdData), tpl_1(fwdData));
+			rdDataQ.enq(fwdData); 
+			phaseRec <= 1;
+		end
+		else begin
+			desPipe.deq;
+			Tuple2#(Bit#(128), TagT) fwdData = unpack( truncate(data) );
+			$display("tag = %x, data = %x", tpl_2(fwdData), tpl_1(fwdData));
+			rdDataQ.enq(fwdData); 
+			phaseRec <= 0;
+		end
+	endrule
 
 	//bsim testing
 	/*

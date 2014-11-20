@@ -389,7 +389,7 @@ int main(int argc, const char **argv)
 	//TODO: test writes and erases
 	
 
-
+	
 	//test erases
 	for (int blk = 0; blk < BLOCKS_PER_CHIP; blk++){
 		for (int chip = 0; chip < CHIPS_PER_BUS; chip++){
@@ -403,6 +403,7 @@ int main(int argc, const char **argv)
 		usleep(100);
 		if ( getNumErasesInFlight() == 0 ) break;
 	}
+	
 	
 	//read back erased pages
 	for (int blk = 0; blk < BLOCKS_PER_CHIP; blk++){

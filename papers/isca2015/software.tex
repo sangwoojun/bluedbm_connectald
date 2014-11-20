@@ -1,0 +1,45 @@
+\section{Software Interface}
+\label{sec:software}
+
+NAND flash has very different characteristics from traditional hard disk drives,
+so a flash-aware management layer like a Flash Translation Layer (FTL)~\cite{}
+is required to hide such differences from the rest of the system.
+We have developed a refactored I/O architecture that offloads
+almost all of the FTL functions into a log-structured file system, called
+RFS~\cite{}. Unlike conventional FTL designs where the flash characteristics are
+hidden from the file system, RFS performs some functionality of an FTL,
+including logical-to-physical address mapping and garbage collection.
+This helps achieve achieving better garbage collection
+efficiency at much lower memory requirement. For the sake of compatibility with
+existing software, FlashBoost also offers a full-fledged page-level FTL for
+end-users, which is implemented in the device driver, much like Fusion IO’s
+driver implementation. It
+allows us to use well-known Linux file systems (e.g., ext2/4/3) as well as
+database systems (directly running on top of a block device) with FlashBoost.
+
+The most important feature of the FlashBoost software stack is that it provides
+easy-to-use software interfaces for application-specific hardware accelerators, allowing
+developers to easily make use of fast near-data processing without any efforts to
+write their own custom interfaces manually. In the FlashBoost software stack, user-level
+applications can provide the near-data processing engines with the physical
+locations of data in the flash. 
+Such physical locations can be easily obtained from the file
+system (i.e., RFS) or the device driver, because they maintain the mapping
+information between user files and flash storage. Once the in-storate processor
+finishes processing on the provided data, it will write the results to a host
+memory region and notify the user application.
+ 
+It is common that multiple
+user-applications compete for the limited and precious hardware acceleration
+units. For efficient sharing of hardware resources, FlashBoost runs a scheduling
+daemon that assigns available hardware-acceleration units to competing
+user-applications. In our implementation, a simple FIFO-based policy is used for
+request scheduling.
+
+\begin{figure}[h]
+	\begin{center}
+	\includegraphics[width=0.4\paperwidth]{figures/software.pdf}
+	\caption{File System Interface}
+	\label{fig:filesystem}
+	\end{center}
+\end{figure}

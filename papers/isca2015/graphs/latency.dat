@@ -1,0 +1,7 @@
+"Type"	"Latency"
+"Local Flash to ISP"	120
+"Local flash"	200
+"Remote flash over integrated network" 202
+"Remote DRAM over separate network" 140
+"Remote flash over separate network"	280
+"Remote flash appliance over separate network"	480

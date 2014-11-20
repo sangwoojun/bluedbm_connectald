@@ -1,4 +1,5 @@
 \section{Evaluation}
+\label{sec:results}
 
 This section evaluates the performance of FlashBoost by measuring its latency,
 bandwidth and scalability, as well as demonstrating the performance benefits of
@@ -7,18 +8,71 @@ simple analytics accelerators doing in-storage computation.
 \subsection{FPGA Resource Utilization}
 
 \subsection{Power Consumption}
+Table~\ref{tab:power} shows the overall power consumption of the system. Thanks
+to the low power consumption of the FPGA and flash devices, FlashBoost does not
+add much power consumption to the system.
+
+\begin{tabular}{l | r}
+\label{tab:power}
+Component & Power (Watts) \\
+\hline \hline
+VC707 & 30 \\
+Flash Board x2 & 10 \\
+Xeon Server & 200 \\
+\hline
+Storage Total & 40 \\
+Node Total & 240 \\
+
+\end{tabular}
 
 \subsection{Network Performance}
+
+Figure~\ref{fig:result_network} shows the bandwidth and latency characteristics
+of the integrated storage network. The network can sustain up to 8.2Gbps of
+bandwidth per link, at 0.48 $\mu s$ per network hop. Each node in our FlashBoost
+implementation includes a fan-out of 8 network ports, so each node can have an
+aggregate full duplex bandwidth of 8.2GB/s. With such a high fan-out, it would
+be unlikely that a remote node in a rack-class cluster to be over 4 hops, or 2
+$\mu s$ away. Even if we assume a naive ring network of 20 nodes with 4 lanes
+each to next and previous nodes, the average latency to a remote node would be
+2.5 $\mu s$, with the ring throughput of 32.8 Gbps.
+
+\begin{figure}[h]
+	\begin{center}
+	\includegraphics[width=0.3\paperwidth]{graphs/obj/network-crop.pdf}
+	\caption{FlashBoost Integrated Network Performance}
+	\label{fig:result_network}
+	\end{center}
+\end{figure}
 
 \subsection{Latency}
 
 Figure~\ref{fig:result_latency} shows the access latency of reading data from
-various locations in FlashBoost to various locations. It can be seen that when
-accessing remote data, the high-speed network helps reduce latency.
+various locations in FlashBoost to various locations. We measured the latency of
+a page of data access from (2) Local FlashBoost storage to its in-storage
+processor, (2) local FlashBoost storage to software, (3) remote FlashBoost
+storage over the integrated network to software, (4) remote host's DRAM over the integrated
+network, (5) remote FlashBoost storage over a separate network interface, and
+(6) remote off-the-shelf flash device over a separate network interface. It
+can be seen that remote flash access over the integrated network link has
+competitive latency characteristics, even compared to accessing a remote host's
+DRAM. Performance was worst when accessing an off-the-shelf remote flash with a separate
+network, which in turn had its own translation layer latency. This is because
+data access has to go through the most number of layers. We were able to
+demonstrate high performance by removing the inefficiencies including the
+network interface and flash translation.
+
+It should be noted that we have used the FlashBoost integrated storage network
+as the network connection for all experiments, by exposing a raw network
+interface to the software. This was to normalize the network performance across
+different experiments and demonstrate only the architectural advantages. The
+latency of using a normal TCP connection over Ethernet was too high, and we felt
+that our network, compared to a software implementation of Ethernet, was too
+high to be a fair comparison.
 
 \begin{figure}[h]
 	\begin{center}
-	%\includegraphics[width=0.3\paperwidth]{figures/isp-service-crop.pdf}
+	\includegraphics[width=0.3\paperwidth]{graphs/obj/latency-crop.pdf}
 	\caption{Latency of Data Access in FlashBoost}
 	\label{fig:result_latency}
 	\end{center}
@@ -37,57 +91,18 @@ accessing remote data, the high-speed network helps reduce latency.
 \subsection{Bandwidth}
 
 Figure~\ref{fig:result_bandwidth} shows the read bandwidth performance of
-BlueDBM while reading over various datapaths. 
+FlashBoost while over various datapaths. Once we try to stream all data to the
+host software, we are quickly bottlenecked by the PCIe link. The in-store
+processing node has much better bandwidth access to flash. Even with all 8
+10Gbps network links, it is only possible to sustain less than 3 flash node's
+bandwidth of data. Some network compression might be beneficial for future
+investigation.
 
 \begin{figure}[h]
 	\begin{center}
-	%\includegraphics[width=0.3\paperwidth]{figures/isp-service-crop.pdf}
+	\includegraphics[width=0.3\paperwidth]{graphs/obj/bandwidth-crop.pdf}
 	\caption{Bandwidth of Data Access in BlueDBM}
 	\label{fig:result_bandwidth}
 	\end{center}
 \end{figure}
 
-\subsection{Scalability}
-
-We evaluated the scalability of BlueDBM using a benchmark in which all nodes
-competed to read data from all nodes. Figure~\ref{fig:result_scalability} shows
-the results of the benchmark. It can be seen that the aggregate bandwidth of all
-nodes scale linearly as the number of nodes increase.
-
-\begin{figure}[h]
-	\begin{center}
-	%\includegraphics[width=0.3\paperwidth]{figures/isp-service-crop.pdf}
-	\caption{Data Access Scalability}
-	\label{fig:result_scalability}
-	\end{center}
-\end{figure}
-
-%Latency for local flash reads, reads from local DRAM, remote reads over
-%fpga/serial, remote reads over serial/host DRAM, remote reads over
-%ethernet/Flash ethernet/DRAM
-%
-%Aggregate bandwidth for flash, collecting all flash to one node, flash to pcie?
-%
-%Aggregate bandwidth for competing workloads on multiple servers, to test
-%scalability
-
-\subsection{Performance Benefits in Distributed Analytics}
-
-We evaluated the benefits of BlueDBM in the analytics setting by using the
-following synthetic benchmark: Read a 8K 64K 4M block look for number of certain
-4-byte value.
-We compared scenarios with varying percentage of the data fitting in host DRAM.
-(because host DRAM is lower latency than flash. Thankfully, only the counting
-results need to come back from the host, circumventing the PCIe bandwidth issue)
-(read bandwidth is still important, since we will test SW filtering from flash)
-
-HW/SW filtering while (network: ethernet/aurora/aurora, but as separate
-appliance)
-
-\begin{figure}[h]
-	\begin{center}
-	%\includegraphics[width=0.3\paperwidth]{figures/isp-service-crop.pdf}
-	\caption{Analytics Performance}
-	\label{fig:result_analytics}
-	\end{center}
-\end{figure}

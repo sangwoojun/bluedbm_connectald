@@ -1,0 +1,52 @@
+\section{Acceleration Performance Evaluation}
+\label{sec:results_acceleration}
+
+\subsection{Nearest Neighbor Search}
+Figure~\ref{fig:result_hamming} shows the performance of nearest-neighbor search,
+normalized to the in-storage processing performance. We compared the performance
+of our system to configurations where data mostly fits in DRAM, and only 20\% of the
+accesses go to a secondary storage, either a disk or a commodity flash storage.
+It can be seen that flash storage coupled with an in-storage accelerator
+provides competitive performance against a realistic system where not all of the
+working set fits in DRAM. 
+
+The reason for this performance improvement is
+twofold: (1) The required computation could be offloaded to the in-storage processor
+that could process the incoming data at wire-speed by using a hardware
+accelerator, and (2) The internal bandwidth of our flash device was faster than
+what the PCIe link could sustain, which meant the in-storage processor had
+access to a higher flash bandwidth than the host software.
+
+
+\begin{figure}[h]
+	\begin{center}
+	\includegraphics[width=0.3\paperwidth]{graphs/obj/hamming-crop.pdf}
+	\caption{Nearest Neighbor Search Performance}
+	\label{fig:result_hamming}
+	\end{center}
+\end{figure}
+
+\subsection{Graph Traversal}
+
+Figure~\ref{fig:result_graph} shows the performance of the graph traversal
+accelerator, compared to a software implementation that accesses remote nodes
+over a separate network. It can be seen that the low latency access to flash
+becomes beneficial.
+
+\begin{figure}[h]
+	\begin{center}
+	\includegraphics[width=0.3\paperwidth]{graphs/obj/graph-crop.pdf}
+	\caption{Graph Traversal Performance}
+	\label{fig:result_graph}
+	\end{center}
+\end{figure}
+
+
+
+\subsection{Hardware-Accelerate String Search}
+
+We were able to saturate the bandwidth of the flash store using multiple string
+search cores.
+
+This section is being written by Ming and Sungjin
+

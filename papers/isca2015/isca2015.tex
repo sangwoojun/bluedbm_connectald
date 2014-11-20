@@ -23,8 +23,8 @@ commercially valuable and socially impactful. Complex data queries, because of
 their need for random accesses, have proven to be slow unless all the data can
 be accommodated in DRAM. There are many domains, such as genomics, geological
 data and daily twitter feeds where the datasets are 5 to 20 TB. A cluster with a
-total DRAM capacity of 10 TB may easily cost (dollar) 300K and consume 30
-Kilowatts of power. In this paper we present FlashBoost, a rack-level
+total DRAM capacity of 10 TB may easily cost \$300K and consume 30
+KW of power. In this paper we present FlashBoost, a rack-level
 flash-based system which is significantly cheaper, and has an order of magnitude
 smaller power and area footprint. A node in a FlashBoost appliance consists of a
 server, a flash storage device capable of in-store processing, and an integrated
@@ -40,11 +40,34 @@ terms of price-performance tradeoff.
 
 \input{related}
 \input{architecture}
+\input{software}
+\input{acceleration}
 \input{implementation}
 \input{results}
-\input{acceleration}
+\input{results_acceleration}
 
-\section{Conclusion}
+\section{Conclusion and Future Work}
+
+In this paper we have presented FlashBoost, an appliance for Big Data analytics
+that uses flash storage, in-storage processing and integrated networks for
+cost-effective analytics of large datasets. We have demonstrated the performance
+benefits of the system using simple examples on large amounts of data.
+
+As we have demonstrated the benefits of our architecture and implementation, we
+plan to move onto exploring the applicability of our architecture and machine in
+specific application areas. Some planned applications include:
+
+\textbf{SQL Database Acceleration}: description
+
+\textbf{Sparse-Matrix Based Linear Algebra Acceleration}: description
+
+\textbf{Hardware-Optimized MapReduce}: description
+
+We believe that our system will provide an attractive point on the
+cost-performance relationship for many large scale applications, so that the
+benefits of Big Data analytics can be more widely enjoyed.
+
+
 
 \bstctlcite{bstctl:etal, bstctl:nodash, bstctl:simpurl}
 \bibliographystyle{IEEEtranS}

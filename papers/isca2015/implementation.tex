@@ -1,4 +1,5 @@
 \section{Hardware Implementation}
+\label{sec:implementation}
 
 We have built a 20-node FlashBoost cluster to explore the capabilities of the
 architecture. Figure~\ref{fig:bluedbmcluster} shows the photo of our
@@ -19,6 +20,12 @@ hosts two custom-built flash boards with SATA connectors. The VC707 board,
 coupled with two custom flash boards is mounted on top of each server.
 The host servers run the Ubuntu distribution of Linux.
 Figure~\ref{fig:bluedbmnode} shows the components of a single node.
+
+We used Connectal~\cite{connectal} and its PCIe Gen 1 implementation for the
+host link. This PCIe implementation caps our performance at 1.6GB/s reads and
+1GB/s writes, which is a reasonable performance for a commodity flash storage
+device. In the future we will also explore the benefits of a faster host link
+including later generation PCIe links.
 
 \begin{figure}[ht]
 	\begin{center}

@@ -2,21 +2,48 @@
 \label{sec:results_acceleration}
 
 \subsection{Nearest Neighbor Search}
-Figure~\ref{fig:result_hamming} shows the performance of nearest-neighbor search,
-normalized to the in-storage processing performance. We compared the performance
-of our system to configurations where data mostly fits in DRAM, and only 20\% of the
-accesses go to a secondary storage, either a disk or a commodity flash storage.
-It can be seen that flash storage coupled with an in-storage accelerator
-provides competitive performance against a realistic system where not all of the
-working set fits in DRAM. 
 
-The reason for this performance improvement is
-twofold: (1) The required computation could be offloaded to the in-storage processor
-that could process the incoming data at wire-speed by using a hardware
-accelerator, and (2) The internal bandwidth of our flash device was faster than
-what the PCIe link could sustain, which meant the in-storage processor had
-access to a higher flash bandwidth than the host software.
+Figure~\ref{fig:result_hamming} shows the performance of nearest-neighbor search
+with various data sources, normalized to the in-storage processing performance.
+We compared FlashBoost against a high-cost fully DRAM configuration, as well as
+realistic systems where some data cannot fit in DRAM.
+Table~\ref{tab:nearest_neighbor} describes the benchmarks depicted in
+Figure~\ref{fig:result_hamming}.
 
+It should be noted that we have throttled our flash storage throughput to
+600MB/s for this experiment, which is the bandwidth of the SATA 3.0
+specification. This is to compare only the benefits of the in-store processing
+architecture against other designs, otherwise the high bandwidth of the
+FlashBoost hardware will result in an unfair comparison. When using all of the
+2.4GB/s of our flash bandwidth, FlashBoost with ISP outperforms DRAM up to 4 threads.
+
+\begin{tabular}{l | p{0.25\paperwidth}}
+\label{tab:nearest_neighbor}
+Name & Description \\
+\hline \hline
+ISP & Process data in in-storage accelerator \\
+%\hline
+FlashBoost+SW & Use FlashBoost as raw storage \\
+%\hline
+DRAM & Store all data in DRAM \\
+%\hline
+10\% Flash & Store most data in DRAM. 10\% chance of hitting flash \\
+%\hline
+5\% Disk & Store most data in DRAM. 5\% chance of hitting disk \\
+\hline
+\end{tabular}
+
+It can be seen that streaming data directly from DRAM is obviously the fastest, and
+scales linearly with thread count because it becomes a computation-bound
+workload. The configuration that uses an in-storage processor to offload
+computation is consistently faster than the software implementation, because
+there is no software overhead involved, and the in-storage processor can process
+the data at wire speed. Using the full bandwidth of the storage system would
+have made this gap even more pronounced, as the software's bandwidth would be
+limited by the PCIe running at 1.6GB/s. It can be seen that when even most of
+the data can fit in DRAM, even rare access into storage can have a significant
+impact on performance. These results further reinforces our claim that better
+storage systems are required for effective analytics of very large datasets.
 
 \begin{figure}[h]
 	\begin{center}

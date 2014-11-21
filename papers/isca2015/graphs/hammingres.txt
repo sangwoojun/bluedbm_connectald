@@ -67,3 +67,17 @@ flash: 8888091 -- 0.414096
 
 
 
+
+
+
+ISP
+1.678099
+
+1 thread hamming
+2.128121
+
+2 threads
+2.011807
+
+4 threads hamming
+1.933938

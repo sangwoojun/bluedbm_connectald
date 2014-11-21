@@ -14,7 +14,7 @@ querying, the query is hashed using the same hash functions, and only the data
 in the matching buckets are actually compared. The bulk of the work during a
 query process is traversing hash buckets and reading the corresponding data to
 perform distance calculation. Because data pointed to by the hash buckets are
-most likely scattered across the dataset, access patterns are heavily random.
+most likely scattered across the dataset, access patterns are quite random.
 
 We have built a LSH query accelerator, where all of the data is stored in flash
 and the distance calculation is done by the in-storage processor on the storage

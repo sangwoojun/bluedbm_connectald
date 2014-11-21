@@ -1,6 +1,28 @@
 \section{Acceleration Performance Evaluation}
 \label{sec:results_acceleration}
 
+\begin{figure*}[ht]
+\centering
+\vspace{0pt}
+\begin{minipage}[c]{.3\textwidth}
+	\includegraphics[width=0.25\paperwidth]{graphs/obj/hamming-crop.pdf}
+	\caption{Nearest Neighbor with Throttled FlashBoost}
+	\label{fig:result_hamming}
+\end{minipage}\hfill
+\vspace{0pt}
+\begin{minipage}[c]{.3\textwidth}
+	\includegraphics[width=0.25\paperwidth]{graphs/obj/hammingfull-crop.pdf}
+	\caption{Nearest Neighbor with Full FlashBoost}
+	\label{fig:result_hammingfull}
+\end{minipage}\hfill
+\vspace{0pt}
+\begin{minipage}[c]{.3\textwidth}
+	\includegraphics[width=0.25\paperwidth]{graphs/obj/graph-crop.pdf}
+	\caption{Graph Traversal Performance}
+	\label{fig:result_graph}
+\end{minipage}
+\end{figure*}
+
 \subsection{Nearest Neighbor Search}
 
 Figure~\ref{fig:result_hamming} shows the performance of nearest-neighbor search
@@ -22,13 +44,9 @@ FlashBoost hardware will result in an unfair comparison. When using all of the
 Name & Description \\
 \hline \hline
 ISP & Process data in in-storage accelerator \\
-%\hline
 FlashBoost+SW & Use FlashBoost as raw storage \\
-%\hline
 DRAM & Store all data in DRAM \\
-%\hline
 10\% Flash & Store most data in DRAM. 10\% chance of hitting flash \\
-%\hline
 5\% Disk & Store most data in DRAM. 5\% chance of hitting disk \\
 \hline
 \end{tabular}
@@ -45,13 +63,6 @@ the data can fit in DRAM, even rare access into storage can have a significant
 impact on performance. These results further reinforces our claim that better
 storage systems are required for effective analytics of very large datasets.
 
-\begin{figure}[h]
-	\begin{center}
-	\includegraphics[width=0.3\paperwidth]{graphs/obj/hamming-crop.pdf}
-	\caption{Nearest Neighbor Search Performance}
-	\label{fig:result_hamming}
-	\end{center}
-\end{figure}
 
 \subsection{Graph Traversal}
 
@@ -60,13 +71,6 @@ accelerator, compared to a software implementation that accesses remote nodes
 over a separate network. It can be seen that the low latency access to flash
 becomes beneficial.
 
-\begin{figure}[h]
-	\begin{center}
-	\includegraphics[width=0.3\paperwidth]{graphs/obj/graph-crop.pdf}
-	\caption{Graph Traversal Performance}
-	\label{fig:result_graph}
-	\end{center}
-\end{figure}
 
 
 

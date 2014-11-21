@@ -115,14 +115,17 @@ attached to the flash device, taking advantage of flash parallelism.
 
 \subsection{Inter-Storage Network}
 
-FlashBoost provides an intuitive network infrastructure across all FlashBoost
-storage devices in the cluster.
-FlashBoost storage devices are linked among themselves via
-high-performance serial links that are separate from the host server network. 
-Each storage device has multiple network ports, and acts both as a network switch as
-well as a network client. The storage network is implemented entirely inside the
-FPGA, and provides very simple functionality such as routing, flow control and
-virtual channels to maintain an extremely low latency.
+FlashBoost provides a low-latency high-bandwidth network infrastructure across
+all FlashBoost storage devices in the cluster.  FlashBoost storage devices are
+linked among themselves via high-performance serial links that are separate from
+the host server network. For data traffic between the storage devices, the
+integrated network ports help avoid the overhead of going through software to
+access a separate network interface.
+
+Each storage device has multiple network ports, and
+acts both as a network switch as well as a network client. The storage network
+functionality such as routing, flow control and virtual channels while
+maintaining an extremely low latency.
 
 \subsubsection{Network Endpoint}
 
@@ -134,6 +137,7 @@ FIFOs act like normal FIFOs in that it provides back pressure across the
 network. Such intuitive characteristics of the network ease in-storage processor
 development.
 
+\begin{comment}
 \begin{verbatim}
 NetworkEndpoint#(type Bit#(64)) endpoint1 
      <- mkNetworkEndpoint(1); // endpoint id: 1
@@ -143,13 +147,12 @@ List endpoints =
      cons(endpoint1, cons(endpoint2, nil));
 NetworkArbiter arbiter 
      <- mkNetworkArbiter(endpoints);
-
 ...
 endpoint1.send(data,dest);
-
 ...
 tuple(data,src) <- endpoint1.receive;
 \end{verbatim}
+\end{comment}
 
 In our FlashBoost implementation, this network is implemented over the
 low-latency serial transceivers that are already included in the FPGA. By
@@ -227,43 +230,53 @@ always be consumed, such additional code can be omitted.
 
 \subsection{Host Interface}
 
-The near-data processing core can be accessed from the host server over either a
-low-level RPC-like interface or a file system abstraction. Our host interface
-was implemented using Connectal~\ref{connectal}, a hardware-software codesign
-framework built by Quanta Research Cambridge. Connectal reads the interface
-definition file written by the programmer and generates glue logic between
-hardware and software. Connectal automatically generates RPC-like interface from
-developer-provided interface specification, as well as a
-memory-mapped DMA interface for high bandwidth data transfer. Connectal provides
-a PCIe Gen 1 endpoint and driver pair, and provides up to 1.6GB/s DMA read to
-host DRAM bandwidth and 1GB/s of DMA write from host DRAM bandwidth. 
+The in-storage processing core can be accessed from the host server over either
+a direct interface that supports RPC and DMA operations, or a file system
+abstraction built on top of the direct interface. The file system interface is
+described in detail in Section~\ref{sec:software}.
 
-The software maintains two 128-page page buffers, each for reads and writes. When
-issuing a read or write request, the software sends the target or source page
-buffer index along with the request to let the hardware side host interface know
-where to read or write data from. Since this buffer is returned to the free list
-when each operation is finished, the buffer index effectively acts as the locally
-unique tag for each flash operation. Writing data is straightforward, as data is
-read in-order from the host page buffer and written in-order to each flash
-controller bus. 
-However, reading from flash is more complex because there is only a single data
-bus that connects to the flash interface, and data from different buses can
-arrive interleaved. This problem becomes even more
-difficult when a node is requesting data from multiple remote nodes, where 
-data corresponding to all requests in flight can arrive interleaved with each
-other. The naive way to fix this would be to have a FIFO for each possible
-tag, so that enough data for a DMA burst can be collected for each tag before
-starting a burst. However, this would be an inefficient use of FPGA memory
-resources.
-To fix this issue, we provide an implementation of a vector of FIFOs implemented
-in a single contiguous BRAM block, with BRAM support.
+In order to parallelize requests and maintain high performance, the host
+interface provides the software with 128 page buffers, each for reads and
+writes. When writing a page, the software will request a free write buffer, copy
+data to the write buffer, and send a write request over RPC with the
+physical address of the destination flash page.
+data from that buffer. The buffer will be returned to the free queue when the
+hardware has finished reading the data from the buffer. When reading a page, the
+software will request a free read buffer, and send a read request over RPC with
+the physical address of the source flash page. The software will receive an
+interrupt with the buffer index when the hardware has finished writing to
+software memory.
+
+Using DMA to write data to the storage device is straightforward to parallelize,
+but parallelizing reads is a bit more tricky, due to the characteristics of flash
+storage. When writing to storage, the DMA engine on the hardware will read data
+from each buffer in order in a contiguous stream. So having enough requests in
+the request queue is enough to make maximum use of the host-side link bandwidth.
+However, data read from flash chips on multiple buses in parallel can arrive
+interleaved at the DMA engine. Because the DMA engine needs to have enough
+contiguous data for a DMA burst before issuing a DMA burst, some reordering may
+be required at the DMA engine. This becomes even more tricky when the device is
+using the integrated network to receive data from remote nodes, where they might
+all be coming from different buses. To fix this issue, we provide dual-ported
+buffer in hardware providing the semantics of a vector of FIFOs, so that data
+for each request can be enqueued into its own FIFO until there is enough data
+for a burst.
+
+Our host interface was implemented using Connectal~\cite{connectal}, a
+hardware-software codesign framework built by Quanta Research Cambridge.
+Connectal reads the interface definition file written by the programmer and
+generates glue logic between hardware and software. Connectal automatically
+generates RPC-like interface from developer-provided interface specification, as
+well as a memory-mapped DMA interface for high bandwidth data transfer.
+Connectal provides a PCIe Gen 1 endpoint and driver pair, and provides up to
+1.6GB/s DMA read to host DRAM bandwidth and 1GB/s of DMA write from host DRAM
+bandwidth. 
 
 Reading or writing data from the host buffers were done by DMA read/write
 engines implemented in the Connectal framework. In our FlashBoost
 implementation, there are four read engines and four write engines each, in
-order to more easily make maximum use of the PCIe bandwidth. Since there are 16
-buses in total per storage node, each read/write engines manage data from four
-buses each. Figure~\ref{fig:hostinterface} describes the structure of the host
+order to more easily make maximum use of the PCIe bandwidth. 
+Figure~\ref{fig:hostinterface} describes the structure of the host
 interface.
 
 \begin{figure}[ht!]

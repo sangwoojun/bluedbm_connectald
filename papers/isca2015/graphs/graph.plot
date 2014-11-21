@@ -5,13 +5,13 @@ set mxtics 6
 set nokey
 set boxwidth 1.8
 set xtics ( \
-	"Flash to\nISP" 1.2, \
-	"Flash to\nSoftware" 2.2, \
-	"Remote DRAM\nto software" 3.2, \
-	"DRAM+Flash\nto software" 4.2, \
-	"DRAM+Disk\nto software" 5.2 \
+	"ISP" 1.2, \
+	"SW" 2.2, \
+	"DRAM" 3.2, \
+	"Flash" 4.2, \
+	"Disk" 5.2 \
 	) font "Helvetica,13"
-set xtic rotate by -45
+#set xtic rotate by -45
 set yrange [0:200]
 set xrange [.45:5.75]
 set bmargin 10

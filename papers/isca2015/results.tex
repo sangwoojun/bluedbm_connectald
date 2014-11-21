@@ -63,12 +63,13 @@ demonstrate high performance by removing the inefficiencies including the
 network interface and flash translation.
 
 It should be noted that we have used the FlashBoost integrated storage network
-as the network connection for all experiments, by exposing a raw network
+as the network connection for all experiments by exposing a raw network
 interface to the software. This was to normalize the network performance across
 different experiments and demonstrate only the architectural advantages. The
-latency of using a normal TCP connection over Ethernet was too high, and we felt
-that our network, compared to a software implementation of Ethernet, was too
-high to be a fair comparison.
+latency of using a normal TCP connection over Ethernet was too high, with over 100
+$\mu s$ of ping latency within the same switch.  We felt that our network
+latency was too low to be a fair comparison with a software implementation
+of Ethernet.
 
 \begin{figure}[h]
 	\begin{center}

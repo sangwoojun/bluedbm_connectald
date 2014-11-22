@@ -11,7 +11,7 @@
 #include <time.h>
 
 #include "StdDmaIndication.h"
-#include "MemserverRequest.h"
+#include "MemServerRequest.h"
 #include "MMURequest.h"
 #include "FlashIndication.h"
 #include "FlashRequest.h"
@@ -321,10 +321,10 @@ void readPage(int bus, int chip, int block, int page, int tag) {
 int main(int argc, const char **argv)
 {
 
-	MemserverRequestProxy *hostMemserverRequest = new MemserverRequestProxy(IfcNames_HostMemserverRequest);
+	MemServerRequestProxy *hostMemServerRequest = new MemServerRequestProxy(IfcNames_HostMemServerRequest);
 	MMURequestProxy *dmap = new MMURequestProxy(IfcNames_HostMMURequest);
-	DmaManager *dma = new DmaManager(hostMemserverRequest, dmap);
-	MemserverIndication *hostMemserverIndication = new MemserverIndication(dma, IfcNames_HostMemserverIndication);
+	DmaManager *dma = new DmaManager(dmap);
+	MemServerIndication *hostMemServerIndication = new MemServerIndication(hostMemServerRequest, IfcNames_HostMemServerIndication);
 	MMUIndication *hostMMUIndication = new MMUIndication(dma, IfcNames_HostMMUIndication);
 
 	fprintf(stderr, "Main::allocating memory...\n");

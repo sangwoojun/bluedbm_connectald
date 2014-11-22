@@ -3,7 +3,7 @@ import FIFO::*;
 import FIFOF::*;
 import GetPut::*;
 import Vector::*;
-import PortalMemory::*;
+import ConnectalMemory::*;
 import MemTypes::*;
 import MemreadEngine::*;
 import MemwriteEngine::*;

@@ -26,7 +26,7 @@ import FIFO::*;
 import Connectable::*;
 import BRAMFIFO::*;
 
-import PortalMemory::*;
+import ConnectalMemory::*;
 import Dma::*;
 import MemreadEngine::*;
 import MemwriteEngine::*;
@@ -86,8 +86,8 @@ endinterface
 module mkInterfaceRequest#(
 			InterfaceIndication indication,
 			PlatformIndication platformIndication,
-			ObjectReadServer#(64) dma_read_server,
-			ObjectWriteServer#(64) dma_write_server)(Interface);
+			MemReadServer#(64) dma_read_server,
+			MemWriteServer#(64) dma_write_server)(Interface);
 
 	Integer pageSize = 8192;
 

@@ -10,7 +10,7 @@ import Directory::*;
 import CtrlMux::*;
 import Portal::*;
 import Leds::*;
-import PortalMemory::*;
+import ConnectalMemory::*;
 import Dma::*;
 import DmaUtils::*;
 import MemServer::*;
@@ -77,8 +77,8 @@ module mkPortalTop
    DmaIndicationProxy dmaIndicationProxy <- mkDmaIndicationProxy(DmaIndication);
    DmaReadBuffer#(64,32)   dma_read_chan <- mkDmaReadBuffer();
    DmaWriteBuffer#(64,32) dma_write_chan <- mkDmaWriteBuffer();
-   Vector#(NumMasters, ObjectReadClient#(64))   readClients = cons(dma_read_chan.dmaClient, nil);
-   Vector#(NumMasters, ObjectWriteClient#(64)) writeClients = cons(dma_write_chan.dmaClient, nil);
+   Vector#(NumMasters, MemReadClient#(64))   readClients = cons(dma_read_chan.dmaClient, nil);
+   Vector#(NumMasters, MemWriteClient#(64)) writeClients = cons(dma_write_chan.dmaClient, nil);
    MemServer#(addrWidth, 64, NumMasters)   dma <- mkMemServer(dmaIndicationProxy.ifc, readClients, writeClients);
    DmaConfigWrapper dmaRequestWrapper <- mkDmaConfigWrapper(DmaConfig,dma.request);
 

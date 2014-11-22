@@ -11,10 +11,10 @@
 #include <time.h>
 
 #include "StdDmaIndication.h"
-#include "DmaDebugRequestProxy.h"
-#include "MMUConfigRequestProxy.h"
-#include "FlashIndicationWrapper.h"
-#include "FlashRequestProxy.h"
+#include "MemserverRequest.h"
+#include "MMURequest.h"
+#include "FlashIndication.h"
+#include "FlashRequest.h"
 
 #define BLOCKS_PER_CHIP 2
 #define CHIPS_PER_BUS 8
@@ -321,11 +321,11 @@ void readPage(int bus, int chip, int block, int page, int tag) {
 int main(int argc, const char **argv)
 {
 
-	DmaDebugRequestProxy *hostDmaDebugRequest = new DmaDebugRequestProxy(IfcNames_HostDmaDebugRequest);
-	MMUConfigRequestProxy *dmap = new MMUConfigRequestProxy(IfcNames_HostMMUConfigRequest);
-	DmaManager *dma = new DmaManager(hostDmaDebugRequest, dmap);
-	DmaDebugIndication *hostDmaDebugIndication = new DmaDebugIndication(dma, IfcNames_HostDmaDebugIndication);
-	MMUConfigIndication *hostMMUConfigIndication = new MMUConfigIndication(dma, IfcNames_HostMMUConfigIndication);
+	MemserverRequestProxy *hostMemserverRequest = new MemserverRequestProxy(IfcNames_HostMemserverRequest);
+	MMURequestProxy *dmap = new MMURequestProxy(IfcNames_HostMMURequest);
+	DmaManager *dma = new DmaManager(hostMemserverRequest, dmap);
+	MemserverIndication *hostMemserverIndication = new MemserverIndication(dma, IfcNames_HostMemserverIndication);
+	MMUIndication *hostMMUIndication = new MMUIndication(dma, IfcNames_HostMMUIndication);
 
 	fprintf(stderr, "Main::allocating memory...\n");
 

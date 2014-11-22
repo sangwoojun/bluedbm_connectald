@@ -31,7 +31,7 @@ import ClientServer::*;
 import Vector::*;
 import List::*;
 
-import PortalMemory::*;
+import ConnectalMemory::*;
 import MemTypes::*;
 import MemreadEngine::*;
 import MemwriteEngine::*;
@@ -85,8 +85,8 @@ Integer dmaBurstsPerPage = pageSizeUser/dmaBurstBytes;
 
 interface MainIfc;
 	interface FlashRequest request;
-	interface Vector#(1, ObjectWriteClient#(WordSz)) dmaWriteClient;
-	interface Vector#(1, ObjectReadClient#(WordSz)) dmaReadClient;
+	interface Vector#(1, MemWriteClient#(WordSz)) dmaWriteClient;
+	interface Vector#(1, MemReadClient#(WordSz)) dmaReadClient;
 	interface Aurora_Pins#(4) aurora_fmc1;
 	interface Aurora_Clock_Pins aurora_clk_fmc1;
 endinterface
@@ -420,8 +420,8 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 
 
 
-	Vector#(1, ObjectWriteClient#(WordSz)) dmaWriteClientVec;
-	Vector#(1, ObjectReadClient#(WordSz)) dmaReadClientVec;
+	Vector#(1, MemWriteClient#(WordSz)) dmaWriteClientVec;
+	Vector#(1, MemReadClient#(WordSz)) dmaReadClientVec;
 	dmaWriteClientVec[0] = we.dmaClient;
 	dmaReadClientVec[0] = re.dmaClient;
 		
@@ -491,8 +491,8 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 
 	endinterface //FlashRequest
 
-   interface ObjectWriteClient dmaWriteClient = dmaWriteClientVec;
-   interface ObjectReadClient dmaReadClient = dmaReadClientVec;
+   interface MemWriteClient dmaWriteClient = dmaWriteClientVec;
+   interface MemReadClient dmaReadClient = dmaReadClientVec;
 
    interface Aurora_Pins aurora_fmc1 = flashCtrl.aurora;
    interface Aurora_Clock_Pins aurora_clk_fmc1 = gtx_clk_fmc1.aurora_clk;

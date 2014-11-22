@@ -113,65 +113,85 @@ attached to the flash device, taking advantage of flash parallelism.
 	\end{center}
 \end{figure}
 
-\subsection{Inter-Storage Network}
+\subsection{Integrated Storage Network}
+
 
 FlashBoost provides a low-latency high-bandwidth network infrastructure across
 all FlashBoost storage devices in the cluster.  FlashBoost storage devices are
 linked among themselves via high-performance serial links that are separate from
 the host server network. For data traffic between the storage devices, the
-integrated network ports help avoid the overhead of going through software to
+integrated network ports removes the overhead of going through software to
 access a separate network interface.
 
 Each storage device has multiple network ports, and
 acts both as a network switch as well as a network client. The storage network
 functionality such as routing, flow control and virtual channels while
-maintaining an extremely low latency.
+maintaining high performance an extremely low latency.
 
 \subsubsection{Network Endpoint}
 
-Each virtual channel is implemented as a pair of send and receive FIFOs that can
-be used to send and receive data to and from any node. The programmer can define
-multiple virtual channels of arbitrary datatype, and the network infrastructure
-serializes and schedules each link onto the network link. These send and receive
-FIFOs act like normal FIFOs in that it provides back pressure across the
-network. Such intuitive characteristics of the network ease in-storage processor
-development.
-
-\begin{comment}
-\begin{verbatim}
-NetworkEndpoint#(type Bit#(64)) endpoint1 
-     <- mkNetworkEndpoint(1); // endpoint id: 1
-NetworkEndpoint#(type Bit#(256)) endpoint2 
-     <- mkNetworkEndpoint(8); // endpoint id: 8
-List endpoints = 
-     cons(endpoint1, cons(endpoint2, nil));
-NetworkArbiter arbiter 
-     <- mkNetworkArbiter(endpoints);
-...
-endpoint1.send(data,dest);
-...
-tuple(data,src) <- endpoint1.receive;
-\end{verbatim}
-\end{comment}
-
-In our FlashBoost implementation, this network is implemented over the
-low-latency serial transceivers that are already included in the FPGA. By
-implementing routing in the hardware and using a very low-latency network
-fabric, we were able to achieve very high performance, with 0.5$\mu s$ of
-latency per network hop, and near 10Gbps of bandwidth per link. Our
-implementation has a network fan-out of 8 ports per storage node, so the
-aggregate network bandwidth available to a node reaches up to 8GB/s, including
-packet overhead.
+The FlashBoost network infrastructure exposes virtual channel semantics to the
+in-storage processor by providing it with a vector of endpoints. Each endpoint
+exposes two interfaces, \texttt{send} and \texttt{receive}. An in-storage
+processor can send data to a remote node by calling \texttt{send} with a pair of
+data and destination node index, or receive data from remote nodes by calling
+\texttt{receive}, which returns a pair of data and source node index. These
+interfaces provide back pressure, so that each endpoint can be treated like a FIFO
+interface across the whole cluster. Such intuitive characteristics of the
+network ease in-storage processor development.
 
 \subsubsection{Link Layer}
 
-The link layer managed physical connections between network ports in the storage
+The link layer manages physical connections between network ports in the storage
 nodes. The most important aspect of the link layer is the simple token-based
-flow control implementation. This assures that no packet will drop if the data
-rate is higher than what the network can manage, or if the data is not received
-from the destination node quick enough.
+flow control implementation. This provides back pressure across the link and
+assures that no packet will drop if the data rate is higher than what the
+network can manage, or if the data is not received from the destination node
+quick enough.
 
 \subsubsection{Routing Layer}
+
+The goals of the FlashBoost network infrastructure is to maintain a simple
+design while maintaining high bandwidth and low latency, and this requirement
+prompted many design choices.
+
+One important aspect of the routing design is that the routing table can have
+more than one network port entry per node index. This is because each pair of
+nodes can have more than one immediate link connecting between them, and there may be
+multiple viable paths between a pair of two remote nodes. In order to make
+maximum use of the available bandwidth in such cases, the routing table can have
+entries for multiple valid ports for the next hop. In order to ensure in-order
+arrival, the endpoint id of the origin endpoint is hashed to deterministically
+decide which entry to use in the routing table. In-order arrival is desirable in
+a hardware implementation because completion buffers may be expensive. If an
+in-storage processing engine wants higher bandwidth for a single bus, it can
+break a wide data bus into multiple endpoints and send them over in parallel.
+Figure~\ref{fig:networkrouting} shows packet routing in an example network.
+The routing table is populated by the software during initialization. And if the
+software wants to direct more traffic over a certain link, it can choose to
+populate the routing table with more than one instances of the same port.
+
+
+\begin{figure}[h]
+	\begin{center}
+	\includegraphics[scale=0.4]{figures/network-routing-crop.pdf}
+	\caption{Router Architecture}
+	\label{fig:networkinterface}
+	\end{center}
+\end{figure}
+
+It should be noted that the infrastructure does not assure that the receiving
+side will always be able to receive the data being transferred. If a destination
+endpoint is unable to receive data at a fast enough rate, it might result in
+related parts of the network being blocked. This was an intentional design
+choice to build an extremely low-latency network while maintaining low resource
+usage. The programmer can choose to use our provided end-to-end flow control
+module on top of the network infrastructure to ensure the data source will only
+send data that the receiver have space for, but this results higher network
+latency as flow control packets frequently needs to be sent to ensure free space
+on the receiving end, and also consumes a large amount of memory, which can be
+scarce on an embedded system.  On the other hand, if the designer is sure that
+the packets will always be consumed, such additional layers can be omitted. 
 
 Figure~\ref{fig:networkinterface} shows the implementation of the router in each
 storage node. Each packet can either come from the network port's link layer
@@ -183,47 +203,11 @@ one of the four crossbar switches to be delivered to the correct destination.
 Fairness is implemented using a round-robin priority ordering to ensure maximum
 throughput while ensuring no port starves.
 
-It is important to note that the routing table can have more than one network
-port entry per destination node index. This is because each pair of nodes can
-have more than one immediate link connecting between them, and there may be
-multiple viable paths between a pair of two remote nodes. In order to make
-maximum use of the available bandwidth in such cases, the routing table can have
-entries for multiple valid ports for the next hop. In order to ensure in-order
-arrival, the endpoint id of the origin endpoint is hashed to deterministically
-decide which entry to use in the routing table. In-order arrival is desirable in
-a hardware implementation because completion buffers may be expensive.
-Because of this characteristic, if the in-storage processing engine want to
-ensure more bandwidth, it can break a wide data bus into multiple endpoints and
-send data over them in parallel. Figure~\ref{fig:networkrouting} shows packet
-routing in an example network.
-
 \begin{figure}[h]
 	\begin{center}
 	\includegraphics[width=0.4\textwidth]{figures/routing-crop.pdf}
 	\caption{Routing Packets Across the Network}
 	\label{fig:networkrouting}
-	\end{center}
-\end{figure}
-
-It should be noted that the infrastructure does not assure that the receiving
-side will always be able to receive the data being transferred. If a
-destination endpoint is unable to receive data at a fast enough rate, it might
-result in related parts of the network being blocked. This was an intentional
-design choice to build an extremely low-latency network while maintaining low
-resource usage. The programmer can choose to use our provided end-to-end flow
-control module on top of the network infrastructure to ensure the data source
-will only send data that the receiver have space for, but this results higher
-network latency as flow control packets frequently needs to be sent to ensure
-free space on the receiving end. This is exacerbated by the fact that memory
-resource for large buffers is scarce on the FPGA hardware. On the other hand,
-If the designer is sure that the packets will
-always be consumed, such additional code can be omitted. 
-
-\begin{figure}[h]
-	\begin{center}
-	\includegraphics[scale=0.4]{figures/network-routing-crop.pdf}
-	\caption{Network Interface}
-	\label{fig:networkinterface}
 	\end{center}
 \end{figure}
 
@@ -261,21 +245,6 @@ all be coming from different buses. To fix this issue, we provide dual-ported
 buffer in hardware providing the semantics of a vector of FIFOs, so that data
 for each request can be enqueued into its own FIFO until there is enough data
 for a burst.
-
-Our host interface was implemented using Connectal~\cite{connectal}, a
-hardware-software codesign framework built by Quanta Research Cambridge.
-Connectal reads the interface definition file written by the programmer and
-generates glue logic between hardware and software. Connectal automatically
-generates RPC-like interface from developer-provided interface specification, as
-well as a memory-mapped DMA interface for high bandwidth data transfer.
-Connectal provides a PCIe Gen 1 endpoint and driver pair, and provides up to
-1.6GB/s DMA read to host DRAM bandwidth and 1GB/s of DMA write from host DRAM
-bandwidth. 
-
-Reading or writing data from the host buffers were done by DMA read/write
-engines implemented in the Connectal framework. In our FlashBoost
-implementation, there are four read engines and four write engines each, in
-order to more easily make maximum use of the PCIe bandwidth. 
 Figure~\ref{fig:hostinterface} describes the structure of the host
 interface.
 

@@ -5,13 +5,23 @@ We have built a 20-node FlashBoost cluster to explore the capabilities of the
 architecture. Figure~\ref{fig:bluedbmcluster} shows the photo of our
 implementation.
 
-\begin{figure}[ht]
-	\begin{center}
-	\includegraphics[width=0.3\paperwidth]{figures/rackserver.jpg}
-	%\includegraphics[width=0.3\paperwidth]{figures/rack.jpg}
-	\caption{A 20-node FlashBoost Cluster}
+%\begin{figure}[ht]
+%	\begin{center}
+%	\includegraphics[width=0.3\paperwidth]{figures/rackserver.jpg}
+%	%\includegraphics[width=0.3\paperwidth]{figures/rack.jpg}
+%	\caption{A 20-node FlashBoost Cluster}
+%	\label{fig:bluedbmcluster}
+%	\end{center}
+%\end{figure}
+
+\begin{figure}[ht!]
+	\centering
+	\subfloat[A FlashBoost Rack]
+		{\includegraphics[width=0.23\textwidth]{figures/rackserver2.jpg}}
+	\subfloat[A FlashBoost Rack Node]
+		{\includegraphics[width=0.23\textwidth]{figures/racknode.jpg}}
+	\caption{A 20-Node FlashBoost Cluster}
 	\label{fig:bluedbmcluster}
-	\end{center}
 \end{figure}
 
 The cluster consists of 20 Xeon servers mounted in two racks, each with a Xilinx
@@ -61,3 +71,33 @@ The flash board also hosts 8 SATA connectors, 4 of
 which pin out the high-speed serial ports on the host Virtex 7 FPGA,
 and 4 of whch pin out the high-speed serial ports on the Artix 7 chip.
 The serial ports are capable of 10Gbps and 6.6Gbps of bandwidth, respectively.
+
+\subsection{Network Infrastructure}
+
+In our FlashBoost implementation, the link is implemented over the
+low-latency serial transceivers.  By
+implementing routing in the hardware and using a very low-latency network
+fabric, we were able to achieve very high performance, with 0.5$\mu s$ of
+latency per network hop, and near 10Gbps of bandwidth per link. Our
+implementation has a network fan-out of 8 ports per storage node, so the
+aggregate network bandwidth available to a node reaches up to 8GB/s, including
+packet overhead.
+
+\subsection{Software Interface}
+
+Our host interface was implemented using Connectal~\cite{connectal}, a
+hardware-software codesign framework built by Quanta Research Cambridge.
+Connectal reads the interface definition file written by the programmer and
+generates glue logic between hardware and software. Connectal automatically
+generates RPC-like interface from developer-provided interface specification, as
+well as a memory-mapped DMA interface for high bandwidth data transfer.
+Connectal provides a PCIe Gen 1 endpoint and driver pair, and provides up to
+1.6GB/s DMA read to host DRAM bandwidth and 1GB/s of DMA write from host DRAM
+bandwidth. 
+
+Reading or writing data from the host buffers were done by DMA read/write
+engines implemented in the Connectal framework. In our FlashBoost
+implementation, there are four read engines and four write engines each, in
+order to more easily make maximum use of the PCIe bandwidth. 
+
+

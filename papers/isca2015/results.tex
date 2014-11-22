@@ -1,9 +1,7 @@
 \section{Evaluation}
 \label{sec:results}
 
-This section evaluates the performance of FlashBoost by measuring its latency,
-bandwidth and scalability, as well as demonstrating the performance benefits of
-simple analytics accelerators doing in-storage computation.
+This section evaluates the characteristics of the FlashBoost implementation.
 
 \subsection{FPGA Resource Utilization}
 
@@ -25,6 +23,28 @@ Node Total & 240 \\
 
 \end{tabular}
 
+\begin{figure*}[ht]
+\centering
+\vspace{0pt}
+\begin{minipage}[c]{.3\textwidth}
+	\includegraphics[width=0.25\paperwidth]{graphs/obj/network-crop.pdf}
+	\caption{FlashBoost Integrated Network Performance}
+	\label{fig:result_network}
+\end{minipage}\hfill
+\vspace{0pt}
+\begin{minipage}[c]{.3\textwidth}
+	\includegraphics[width=0.25\paperwidth]{graphs/obj/latency-crop.pdf}
+	\caption{Latency of Data Access in FlashBoost}
+	\label{fig:result_latency}
+\end{minipage}\hfill
+\vspace{0pt}
+\begin{minipage}[c]{.3\textwidth}
+	\includegraphics[width=0.25\paperwidth]{graphs/obj/bandwidth-crop.pdf}
+	\caption{Bandwidth of Data Access in BlueDBM}
+	\label{fig:result_bandwidth}
+\end{minipage}
+\end{figure*}
+
 \subsection{Network Performance}
 
 Figure~\ref{fig:result_network} shows the bandwidth and latency characteristics
@@ -37,13 +57,13 @@ $\mu s$ away. Even if we assume a naive ring network of 20 nodes with 4 lanes
 each to next and previous nodes, the average latency to a remote node would be
 2.5 $\mu s$, with the ring throughput of 32.8 Gbps.
 
-\begin{figure}[h]
-	\begin{center}
-	\includegraphics[width=0.3\paperwidth]{graphs/obj/network-crop.pdf}
-	\caption{FlashBoost Integrated Network Performance}
-	\label{fig:result_network}
-	\end{center}
-\end{figure}
+%\begin{figure}[h]
+%	\begin{center}
+%	\includegraphics[width=0.3\paperwidth]{graphs/obj/network-crop.pdf}
+%	\caption{FlashBoost Integrated Network Performance}
+%	\label{fig:result_network}
+%	\end{center}
+%\end{figure}
 
 \subsection{Latency}
 
@@ -71,13 +91,13 @@ $\mu s$ of ping latency within the same switch.  We felt that our network
 latency was too low to be a fair comparison with a software implementation
 of Ethernet.
 
-\begin{figure}[h]
-	\begin{center}
-	\includegraphics[width=0.3\paperwidth]{graphs/obj/latency-crop.pdf}
-	\caption{Latency of Data Access in FlashBoost}
-	\label{fig:result_latency}
-	\end{center}
-\end{figure}
+%\begin{figure}[h]
+%	\begin{center}
+%	\includegraphics[width=0.3\paperwidth]{graphs/obj/latency-crop.pdf}
+%	\caption{Latency of Data Access in FlashBoost}
+%	\label{fig:result_latency}
+%	\end{center}
+%\end{figure}
 %Latency for 
 %
 %fpga<-> flash
@@ -99,11 +119,11 @@ processing node has much better bandwidth access to flash. Even with all 8
 bandwidth of data. Some network compression might be beneficial for future
 investigation.
 
-\begin{figure}[h]
-	\begin{center}
-	\includegraphics[width=0.3\paperwidth]{graphs/obj/bandwidth-crop.pdf}
-	\caption{Bandwidth of Data Access in BlueDBM}
-	\label{fig:result_bandwidth}
-	\end{center}
-\end{figure}
+%\begin{figure}[h]
+%	\begin{center}
+%	\includegraphics[width=0.3\paperwidth]{graphs/obj/bandwidth-crop.pdf}
+%	\caption{Bandwidth of Data Access in BlueDBM}
+%	\label{fig:result_bandwidth}
+%	\end{center}
+%\end{figure}
 

@@ -43,67 +43,47 @@ easily with many in-storage processing engines.
 
 \subsection{Flash Interface}
 
-Access to flash storage is provided by the flash controller via a
-fast, low-level and error-free interface with minimal bandwidth and
-latency overhead. This interface exposes the internal memory organization of
-the flash device, namely the buses/channels, chips, blocks and pages.
-The interface is designed to stream data in
-and out of the flash chips as fast as possible without concern for
-flash management. Garbage collection, bad block management and
-wear-leveling functionalities are handled by the flash-aware file system
-in the host kernel (discussed in Section~\ref{sec:software}). The key advantage of such
-a low-level interface is that in-store processors have direct access to
-the data in a streaming fashion with minimal buffering and insignificant
-latency overhead. 
-
-The raw flash interface, in hardware, is defined below:
-
-%[captionpos=b, caption={Flash Controller Interface}, label={lst:hwifc}]
-\begin{lstlisting}
-interface FlashIfc;       
-  method sendCmd (FlashOp op, Bit#(4) bus,
-                  Bit#(3) chip, Bit#(16) block, 
-                  Bit#(8) page, Bit#(8) tag);        
-  method writeWord (Bit#(128) data, Bit#(8) tag);
-  method Tuple2#(Bit#(128), Bit#(8)) readWord (); 
-  method Bit#(8) writeDataReq ();
-  method Tuple2#(Bit#(8), StatusT) ackStatus ();
-endinterface 
-\end{lstlisting}
-
-To access the flash, the user issues a flash command
-(\textit{sendCmd} method) with the operation, the address and
-a free tag. For writes, the user awaits for a write data request from
-the controller scheduler (\textit{writeDataReq} method), and then sends
-the write data corresponding to that request in 128-bit bursts
-(\textit{writeWord} method). An acknowledgement is received when the
-operation completes (\textit{ackStatus} method). For read operations,
-data will return in 128-bit bursts along with the command tag that the
-burst corresponds to. We emphasize that for maximum performance, the
-controller sends these data bursts \textbf{out of order} with respect to
-the issued request and \textbf{interleaved} with other read requests.
-Thus completion buffers may be required on the user side. Furthermore,
-we note that to saturate the bandwidth of the flash device, multiple
-commands must be in-flight at the same time, since flash operations
-have latencies of tens to thousands of microseconds. 
+Access to flash storage is provided by the flash controller via a fast,
+low-level and error-free interface with minimal overhead. This interface exposes
+the internal memory organization of the flash device, namely the buses/channels,
+chips, blocks and pages.  The interface is designed to stream data in and out of
+the flash chips as fast as possible without concern for flash management. Flash
+management functionalities such as garbage collection, bad block management and
+wear-leveling are handled by the flash-aware file system described int
+Section~\ref{sec:software}, or implemented inside the in-store processor itself.
+The key advantage of such a low-level interface is that the in-store processors
+have direct access to data with minimal overhead.
 
 In our architecture, multiple users may need shared access to the
 flash controller interface. For example, a particular flash controller may
 be accessed by local in-store processors, local host software over PCIe
-DMA, or remote in-store processors. Thus, we include as part of the
-platform, an interface multiplexer that converts one flash interface
-into a parametrizable number of additional interfaces. 
-
-%TODO: give a name to this module?
+DMA, or remote in-store processors. 
 To ease development of hardware accelerators (i.e. in-store processors),
 we also provide a parametrizable module that converts a flash interface
 into multiple simple in-order request/response interfaces
-(Figure~\ref{?}). We allow the user to adjust the interface width, the
+(Figure~\ref{flashinterface}). We allow the user to adjust the interface width, the
 command queue depth and number of interfaces of the converter.
 Internally, the converter renames tags and uses completion buffers to
 order data. This design easily permits multiple accelerators to be
 attached to the flash device, taking advantage of flash parallelism. 
 
+
+To access the flash, the user first issues a flash command
+with the operation, the address and a unique tag.
+For writes, the user then awaits for a write data request from
+the controller scheduler, which tells the user that the flash controller is
+ready to receive the data for that write. The user will send the write data
+corresponding to that request in 128-bit bursts. The controller returns an
+acknowledgement once write is finished. 
+For read operations, after a command is issued,
+data will return in 128-bit bursts along with the command tag that the
+burst corresponds to. We emphasize that for maximum performance, the
+controller may send these data bursts \emph{out of order} with respect to
+the issued request and \emph{interleaved} with other read requests.
+Thus completion buffers may be required on the user side. Furthermore,
+we note that to saturate the bandwidth of the flash device, multiple
+commands must be in-flight at the same time, since flash operations
+can have latencies of tens to thousands of microseconds. 
 
 \begin{figure}[h]
 	\begin{center}
@@ -114,7 +94,6 @@ attached to the flash device, taking advantage of flash parallelism.
 \end{figure}
 
 \subsection{Integrated Storage Network}
-
 
 FlashBoost provides a low-latency high-bandwidth network infrastructure across
 all FlashBoost storage devices in the cluster.  FlashBoost storage devices are
@@ -131,7 +110,7 @@ maintaining high performance an extremely low latency.
 \subsubsection{Network Endpoint}
 
 The FlashBoost network infrastructure exposes virtual channel semantics to the
-in-storage processor by providing it with a vector of endpoints. Each endpoint
+in-storage processor by providing it with a parameterized number of endpoints. Each endpoint
 exposes two interfaces, \texttt{send} and \texttt{receive}. An in-storage
 processor can send data to a remote node by calling \texttt{send} with a pair of
 data and destination node index, or receive data from remote nodes by calling
@@ -155,6 +134,16 @@ The goals of the FlashBoost network infrastructure is to maintain a simple
 design while maintaining high bandwidth and low latency, and this requirement
 prompted many design choices.
 
+\begin{figure}[h]
+	\begin{center}
+	\includegraphics[width=0.4\textwidth]{figures/routing-crop.pdf}
+	\caption{Routing Packets Across the Network}
+	\label{fig:networkrouting}
+	\end{center}
+\end{figure}
+
+
+
 One important aspect of the routing design is that the routing table can have
 more than one network port entry per node index. This is because each pair of
 nodes can have more than one immediate link connecting between them, and there may be
@@ -172,14 +161,6 @@ software wants to direct more traffic over a certain link, it can choose to
 populate the routing table with more than one instances of the same port.
 
 
-\begin{figure}[h]
-	\begin{center}
-	\includegraphics[scale=0.4]{figures/network-routing-crop.pdf}
-	\caption{Router Architecture}
-	\label{fig:networkinterface}
-	\end{center}
-\end{figure}
-
 It should be noted that the infrastructure does not assure that the receiving
 side will always be able to receive the data being transferred. If a destination
 endpoint is unable to receive data at a fast enough rate, it might result in
@@ -193,6 +174,14 @@ on the receiving end, and also consumes a large amount of memory, which can be
 scarce on an embedded system.  On the other hand, if the designer is sure that
 the packets will always be consumed, such additional layers can be omitted. 
 
+\begin{figure}[h]
+	\begin{center}
+	\includegraphics[scale=0.4]{figures/network-routing-crop.pdf}
+	\caption{Router Architecture}
+	\label{fig:networkinterface}
+	\end{center}
+\end{figure}
+
 Figure~\ref{fig:networkinterface} shows the implementation of the router in each
 storage node. Each packet can either come from the network port's link layer
 interface, or from the user's network endpoint. Each incoming packet's
@@ -202,15 +191,6 @@ to a local endpoint if its destination is the current node. It then goes through
 one of the four crossbar switches to be delivered to the correct destination. 
 Fairness is implemented using a round-robin priority ordering to ensure maximum
 throughput while ensuring no port starves.
-
-\begin{figure}[h]
-	\begin{center}
-	\includegraphics[width=0.4\textwidth]{figures/routing-crop.pdf}
-	\caption{Routing Packets Across the Network}
-	\label{fig:networkrouting}
-	\end{center}
-\end{figure}
-
 
 \subsection{Host Interface}
 
@@ -260,3 +240,24 @@ interface.
 \end{figure}
 
 %TODO: \subsubsection{Storage Bridge to Host}
+
+
+%%%% Comments!
+
+\begin{comment}
+The raw flash interface, in hardware, is defined below:
+
+%[captionpos=b, caption={Flash Controller Interface}, label={lst:hwifc}]
+\begin{lstlisting}
+interface FlashIfc;       
+  method sendCmd (FlashOp op, Bit#(4) bus,
+                  Bit#(3) chip, Bit#(16) block, 
+                  Bit#(8) page, Bit#(8) tag);        
+  method writeWord (Bit#(128) data, Bit#(8) tag);
+  method Tuple2#(Bit#(128), Bit#(8)) readWord (); 
+  method Bit#(8) writeDataReq ();
+  method Tuple2#(Bit#(8), StatusT) ackStatus ();
+endinterface 
+\end{lstlisting}
+\end{comment}
+

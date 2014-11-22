@@ -16,11 +16,11 @@ implementation.
 
 \begin{figure}[ht!]
 	\centering
-	\subfloat[A FlashBoost Rack]
+	\subfloat[One of the two 10-node FlashBoost Racks]
 		{\includegraphics[width=0.23\textwidth]{figures/rackserver2.jpg}}
 	\subfloat[A FlashBoost Rack Node]
 		{\includegraphics[width=0.23\textwidth]{figures/racknode.jpg}}
-	\caption{A 20-Node FlashBoost Cluster}
+	\caption{FlashBoost Cluster}
 	\label{fig:bluedbmcluster}
 \end{figure}
 
@@ -30,6 +30,8 @@ hosts two custom-built flash boards with SATA connectors. The VC707 board,
 coupled with two custom flash boards is mounted on top of each server.
 The host servers run the Ubuntu distribution of Linux.
 Figure~\ref{fig:bluedbmnode} shows the components of a single node.
+One of the servers also had a 512GB Samsung M.2 PCIe SSD for performance
+comparisons.
 
 We used Connectal~\cite{connectal} and its PCIe Gen 1 implementation for the
 host link. This PCIe implementation caps our performance at 1.6GB/s reads and
@@ -77,7 +79,7 @@ The serial ports are capable of 10Gbps and 6.6Gbps of bandwidth, respectively.
 In our FlashBoost implementation, the link is implemented over the
 low-latency serial transceivers.  By
 implementing routing in the hardware and using a very low-latency network
-fabric, we were able to achieve very high performance, with 0.5$\mu s$ of
+fabric, we were able to achieve very high performance, with less than 0.5$\mu s$ of
 latency per network hop, and near 10Gbps of bandwidth per link. Our
 implementation has a network fan-out of 8 ports per storage node, so the
 aggregate network bandwidth available to a node reaches up to 8GB/s, including

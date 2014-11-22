@@ -5,6 +5,7 @@ set y2label "Latency (us)" offset 2,0 font "Helvetica,20"
 set y2tics nomirror
 set ytics nomirror 
 set yrange [0:10]
+set y2range [0:2.5]
 set bmargin 4
 set tmargin 1
 set lmargin 3

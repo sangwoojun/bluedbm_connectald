@@ -17,7 +17,8 @@ set size square
 set output "hammingfull.ps"
 plot 'hammingfull.dat' u 1:2 title col w linespoints lw 2 ps 1 pt 2, \
      'hammingfull.dat' u 1:3 title col w lines lw 3, \
-     'hammingfull.dat' u 1:4 title col w linespoints lw 4 ps 1 pt 4
+     'hammingfull.dat' u 1:4 title col w linespoints lw 4 ps 1 pt 4, \
+     'hammingfull.dat' u 1:5 title col w linespoints lw 5 ps 1 pt 6
 
 
 

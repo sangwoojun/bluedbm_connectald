@@ -49,17 +49,17 @@ performance improvement.
 
 \subsection{Hardware-Accelerated String Search}
 
-We implemented a hardware-accelerated string search that interacts with the file
-system. Our file system is modified so that it can provide the physical location
-of each file to the user software. The user software consults the file system for the locations of a
-particular file, and streams the list of physical addresses to the in-store
-processor. The in-store processor can read the files from flash, perform string
-search using a hardware accelerator, and return only the results back to the
-user software. 
-
-This example demonstrates that our in-storage processor platform can easily be
-used in conjunction with the high-level file system, so that the developer does
-not have to deal with high level issues like file layout and permissions while
-not sacrificing performance.
-
-Ming and Sungjin writing string search
+Finally, we implemented hardware-accelerated string search based on the
+Morris-Pratt algorithm~\cite{?} on FlashBoost to further demonstrate the
+integration of a hardware accelerator with the file system, flash controller
+and application software.  The software portion of string search initially sets
+up the accelerator by transferring the target string pattern (needle) and a set
+of precomputed MP constants over DMA. Then it consults the file system for a
+list of physical addresses of the files to search (haystack).  This list is
+streamed to the accelerator, which uses these addresses to request for pages
+from the flash controller.  The accelerated MP engines may operate in parallel
+either by searching multiple files or by dividing up the haystack into equal
+segments (with some overlaps). This choice depends on the number of files and
+size of each file. Since two read commands can saturate a single flash bus, we
+use two engines per bus for a total of 16 to maximize the flash bandwidth. Only
+search results are returned to the server. 

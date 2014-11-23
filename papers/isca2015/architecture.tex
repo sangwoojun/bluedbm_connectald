@@ -18,30 +18,33 @@ in-storage processor.
 
 \subsection{Flash Interface}
 
-Access to flash storage is provided by the flash controller via a fast,
-low-level and error-free interface with minimal overhead. This interface exposes
-the internal memory organization of the flash device, namely the buses/channels,
-chips, blocks and pages.  The interface is designed to stream data in and out of
-the flash chips as fast as possible without concern for flash management. Flash
-management functionalities such as garbage collection, bad block management and
-wear-leveling are handled by the flash-aware file system described int
-Section~\ref{sec:software}, or implemented inside the in-store processor itself.
-The key advantage of such a low-level interface is that the in-store processors
-have direct access to data with minimal overhead.
+Flash devices or SSDs achieve high bandwidth by grouping multiple flash chips
+into several channels, all of which can operate in parallel. Because NAND flash
+has limited program/erase cycles and frequent errors, complex flash management
+algorithms are required to guarantee reliability. These include wear leveling,
+garbage collection, bit error correction and bad block management. These
+functions are typically handled by multiple ARM-based cores in the SSD
+controller. The host side interface of an SSD is typically SATA or PCIe, using
+AHCI or NVMe protocols to communicate with host. SSDs are viewed
+as a typical block device to the host operating system, and its internal
+architecture and management algorithms are completely hidden. 
 
-In our architecture, multiple users may need shared access to the
-flash controller interface. For example, a particular flash controller may
-be accessed by local in-store processors, local host software over PCIe
-DMA, or remote in-store processors. 
-To ease development of hardware accelerators (i.e. in-store processors),
-we also provide a parametrizable module that converts a flash interface
-into multiple simple in-order request/response interfaces
-(Figure~\ref{fig:flashinterface}). We allow the user to adjust the interface width, the
-command queue depth and number of interfaces of the converter.
-Internally, the converter renames tags and uses completion buffers to
-order data. This design easily permits multiple accelerators to be
-attached to the flash device, taking advantage of flash parallelism. 
+However, this additional layer of management has shown to be redundant with
+file system functionalities and adds significant latency~\cite{redo}.
+Furthermore, in a distributed storage environment, such as FlashBoost,
+independent flash devices do not have a holistic view of the system and thus
+cannot efficiently manage flash. Finally, in-store processors that we have
+introduced in FlashBoost would also incur performance penalties if passing
+through this extra layer. 
 
+Thus in FlashBoost, we chose to shift flash management
+away from the device and into file system/block device driver (discussed in
+Section\ref{sec:software}). Our flash controller exposes a low-level, thin,
+fast and bit-error corrected hardware interface to raw NAND flash chips, buses,
+blocks and pages. This has the benefit of (i) cutting down on access latency
+from the network and in-store processors; (ii) exposing all degrees of
+parallelism of the device and (iii) allowing higher level system stacks (file
+system, database storage engine) to more intelligently manage data. 
 
 To access the flash, the user first issues a flash command
 with the operation, the address and a unique tag.
@@ -59,6 +62,34 @@ Thus completion buffers may be required on the user side. Furthermore,
 we note that to saturate the bandwidth of the flash device, multiple
 commands must be in-flight at the same time, since flash operations
 can have latencies of tens to thousands of microseconds. 
+
+%Access to flash storage is provided by the flash controller via a fast,
+%low-level and error-free interface with minimal overhead. This interface exposes
+%the internal memory organization of the flash device, namely the buses/channels,
+%chips, blocks and pages.  The interface is designed to stream data in and out of
+%the flash chips as fast as possible without concern for flash management. Flash
+%management functionalities such as garbage collection, bad block management and
+%wear-leveling are handled by the flash-aware file system described int
+%Section~\ref{sec:software}, or implemented inside the in-store processor itself.
+%The key advantage of such a low-level interface is that the in-store processors
+%have direct access to data with minimal overhead.
+
+Multiple hardware endpoints in FlashBoost may need shared access to this
+flash controller interface. For example, a particular controller may
+be accessed by local in-store processors, local host software over PCIe
+DMA, or remote in-store processors over the network. Thus we implemented a
+Flash Interface Splitter with tag renaming to manage multiple users (Figure~\ref{flashinterface}). In addition, 
+to ease development of hardware in-store processors,
+we also provide an optional Flash Server module as part of FlashBoost. This server
+converts the out-of-order and interleaved flash interface into
+multiple simple in-order request/response interfaces
+using page buffers. It also contains an Address Translation Unit that 
+maps file handles to incoming streams of physical addresses from the host. The in-store processor
+simply makes a request with the file handle, offset and length, and the Flash Server will perform
+the flash operation at the corresponding physical location. The software
+support for this function is discussed in Section~\ref{sec:software}). The Flash
+Server's width, command queue depth and number of interfaces is adjustable 
+based on the application.
 
 \begin{figure}[h]
 	\begin{center}

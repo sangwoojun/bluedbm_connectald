@@ -24,6 +24,15 @@ implementation.
 	\label{fig:bluedbmcluster}
 \end{figure}
 
+In our implementation of FlashBoost, we have used a Field Programmable Gate
+Array (FPGA) to implement the in-store processor and also the flash, host and
+network controllers. However, the FlashBoost Architecture should not be limited
+to an FPGA-based implementation.  Development of FlashBoost was done in the
+high-level hardware description language Bluespec. As a result, all services
+expose a high-level language interface using latency-insensitive FIFOs for
+communication. This makes the services intuitive to use, and flexible to be used
+easily with many in-storage processing engines.
+
 The cluster consists of 20 Xeon servers mounted in two racks, each with a Xilinx
 VC707 FPGA development board connected via a PCIe connection. Each VC707 board
 hosts two custom-built flash boards with SATA connectors. The VC707 board,

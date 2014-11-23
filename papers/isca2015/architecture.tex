@@ -49,10 +49,10 @@ has limited program/erase cycles and frequent errors, complex flash management
 algorithms are required to guarantee reliability. These include wear leveling,
 garbage collection, bit error correction and bad block management. These
 functions are typically handled by multiple ARM-based cores in the SSD
-controller.  Today's flash drives or SSDs are typically SATA or PCIe attached
-devices, using AHCI or NVMe protocols to communicate with host. SSDs are viewed
+controller. The host side interface of an SSD is typically SATA or PCIe, using
+AHCI or NVMe protocols to communicate with host. SSDs are viewed
 as a typical block device to the host operating system, and its internal
-architecture and algorithms are hidden. 
+architecture and management algorithms are completely hidden. 
 
 However, this additional layer of management has shown to be redundant with
 file system functionalities and adds significant latency~\cite{redo}.
@@ -112,7 +112,7 @@ using page buffers. It also contains an Address Translation Unit that
 maps file handles to incoming streams of physical addresses from the host. The in-store processor
 simply makes a request with the file handle, offset and length, and the Flash Server will perform
 the flash operation at the corresponding physical location. The software
-support for this function is discussed in Section\ref{sec:software}). The Flash
+support for this function is discussed in Section~\ref{sec:software}). The Flash
 Server's width, command queue depth and number of interfaces is adjustable 
 based on the application.
 

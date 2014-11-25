@@ -6,9 +6,10 @@ This section evaluates the characteristics of the FlashBoost implementation.
 \subsection{FPGA Resource Utilization}
 
 \subsection{Power Consumption}
-Table~\ref{tab:power} shows the overall power consumption of the system. Thanks
-to the low power consumption of the FPGA and flash devices, FlashBoost does not
-add much power consumption to the system.
+Table~\ref{tab:power} shows the overall power consumption of the system, which
+were estimated using values from the datasheet. Thanks to the low power
+consumption of the FPGA and flash devices, FlashBoost does not add much power
+consumption to the system.
 
 \begin{tabular}{l | r}
 \label{tab:power}
@@ -27,19 +28,19 @@ Node Total & 240 \\
 \centering
 \vspace{0pt}
 \begin{minipage}[c]{.3\textwidth}
-	\includegraphics[width=0.25\paperwidth]{graphs/obj/network-crop.pdf}
+	\includegraphics[width=0.27\paperwidth]{graphs/obj/network-crop.pdf}
 	\caption{FlashBoost Integrated Network Performance}
 	\label{fig:result_network}
 \end{minipage}\hfill
 \vspace{0pt}
 \begin{minipage}[c]{.3\textwidth}
-	\includegraphics[width=0.25\paperwidth]{graphs/obj/latency-crop.pdf}
-	\caption{Latency of Data Access in FlashBoost}
+	\includegraphics[width=0.27\paperwidth]{graphs/obj/latency-crop.pdf}
+	\caption{Latency of Remote Data Access in FlashBoost}
 	\label{fig:result_latency}
 \end{minipage}\hfill
 \vspace{0pt}
 \begin{minipage}[c]{.3\textwidth}
-	\includegraphics[width=0.25\paperwidth]{graphs/obj/bandwidth-crop.pdf}
+	\includegraphics[width=0.27\paperwidth]{graphs/obj/bandwidth-crop.pdf}
 	\caption{Bandwidth of Data Access in BlueDBM}
 	\label{fig:result_bandwidth}
 \end{minipage}
@@ -48,14 +49,15 @@ Node Total & 240 \\
 \subsection{Network Performance}
 
 Figure~\ref{fig:result_network} shows the bandwidth and latency characteristics
-of the integrated storage network. The network can sustain up to 8.2Gbps of
-bandwidth per link, at 0.48 $\mu s$ per network hop. Each node in our FlashBoost
-implementation includes a fan-out of 8 network ports, so each node can have an
-aggregate full duplex bandwidth of 8.2GB/s. With such a high fan-out, it would
-be unlikely that a remote node in a rack-class cluster to be over 4 hops, or 2
-$\mu s$ away. Even if we assume a naive ring network of 20 nodes with 4 lanes
-each to next and previous nodes, the average latency to a remote node would be
-2.5 $\mu s$, with the ring throughput of 32.8 Gbps.
+of the integrated storage network. After protocol overhead, the network can
+sustain up to 8.2Gbps of bandwidth per link, at 0.48 $\mu s$ per network hop.
+Each node in our FlashBoost implementation includes a fan-out of 8 network
+ports, so each node can have an aggregate full duplex bandwidth of 8.2GB/s. With
+such a high fan-out, it would be unlikely that a remote node in a rack-class
+cluster to be over 4 hops, or 2 $\mu s$ away. Even if we assume a naive ring
+network of 20 nodes with 4 lanes each to next and previous nodes, the average
+latency to a remote node would be 2.5 $\mu s$, with the ring throughput of 32.8
+Gbps.
 
 %\begin{figure}[h]
 %	\begin{center}
@@ -68,19 +70,19 @@ each to next and previous nodes, the average latency to a remote node would be
 \subsection{Latency}
 
 Figure~\ref{fig:result_latency} shows the access latency of reading data from
-various locations in FlashBoost to various locations. We measured the latency of
-a page of data access from (2) Local FlashBoost storage to its in-storage
-processor, (2) local FlashBoost storage to software, (3) remote FlashBoost
-storage over the integrated network to software, (4) remote host's DRAM over the integrated
-network, (5) remote FlashBoost storage over a separate network interface, and
-(6) remote off-the-shelf flash device over a separate network interface. It
-can be seen that remote flash access over the integrated network link has
-competitive latency characteristics, even compared to accessing a remote host's
-DRAM. Performance was worst when accessing an off-the-shelf remote flash with a separate
-network, which in turn had its own translation layer latency. This is because
-data access has to go through the most number of layers. We were able to
-demonstrate high performance by removing the inefficiencies including the
-network interface and flash translation.
+various locations in FlashBoost over various datapaths. We measured the latency of
+a page of data access (1) from remote flash storage to local in-store processor
+over the integrated network, (2) from remote flash storage to local software
+over the integrated network, (3) from remote DRAM to local software, and (4)
+from remote flash storage to local software while accessing flash storage and
+networks using separate software interfaces.
+
+It can be seen that remote flash access over the integrated network link reduces
+a significant amount of latency compared to using flash and networks as separate
+devices. This is because integrating the network into storage removed a layer of
+host software access between flash and network access. Having the in-store
+procesor consume data removed the need for data to be transferred to host
+software at all, reducing latency even further.
 
 It should be noted that we have used the FlashBoost integrated storage network
 as the network connection for all experiments by exposing a raw network
@@ -112,11 +114,16 @@ of Ethernet.
 \subsection{Bandwidth}
 
 Figure~\ref{fig:result_bandwidth} shows the read bandwidth performance of
-FlashBoost while over various datapaths. Once we try to stream all data to the
+FlashBoost over various datapaths, including streaming in data from remove nodes
+over multiple serial links. Since each node is capable of delivering 2.4GB/s of
+bandwidth, Once we try to stream all data to the
 host software, we are quickly bottlenecked by the PCIe link. The in-store
-processing node has much better bandwidth access to flash. Even with all 8
-10Gbps network links, it is only possible to sustain less than 3 flash node's
-bandwidth of data. Some network compression might be beneficial for future
+processing node has much better bandwidth access to flash, as it exists before
+the PCIe link. Even though the integrated network has very high bandwidth, 
+using 4 10Gbps network links at a total of 4.1GB/s is not enough to sustain 3 nodes' bandwidth of
+data, which is 7.2GB/s. Moving computation to storage will be crucial in getting
+maximum performance.
+Additionally, some accelerated network compression might be beneficial for future
 investigation.
 
 %\begin{figure}[h]

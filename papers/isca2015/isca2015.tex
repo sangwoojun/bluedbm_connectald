@@ -56,23 +56,26 @@ Big Data analytics.
 In this paper we have presented FlashBoost, an appliance for Big Data analytics
 that uses flash storage, in-storage processing and integrated networks for
 cost-effective analytics of large datasets. We have demonstrated the performance
-benefits of the system using simple examples on large amounts of data.
+benefits of the system using simple examples on large amounts of data, and showed
+that FlashBoost shows superior performance compared to a generic flash-based
+system without such architectural improvements.
 
 As we have demonstrated the benefits of our architecture and implementation, we
 plan to move onto exploring the applicability of our architecture and machine in
-specific application areas. Some planned applications include:
-
-\textbf{SQL Database Acceleration}: description
-
-\textbf{Sparse-Matrix Based Linear Algebra Acceleration}: description
-
-\textbf{Hardware-Optimized MapReduce}: description
+specific application areas. Some planned applications include: (1) \textbf{SQL
+Database Acceleration} by offloading query processing and filtering to in-store
+processors, (2) \textbf{Sparse-Matrix Based Linear Algebra Acceleration} and (3)
+\textbf{FlashBoost-Optimized MapReduce}, which attempts to optimize data flow of
+MapReduce to best fit an SSD-based cluster with in-store processors. We also
+hope to collaborate with other research groups to explore solving many Big Data
+problems with our FlashBoost implementation.
 
 We believe that our system will provide an attractive point on the
 cost-performance relationship for many large scale applications, so that the
 benefits of Big Data analytics can be more widely enjoyed.
 
-
+\vfill
+\pagebreak
 
 \bstctlcite{bstctl:etal, bstctl:nodash, bstctl:simpurl}
 \bibliographystyle{IEEEtranS}

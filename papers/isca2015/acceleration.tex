@@ -2,7 +2,7 @@
 \label{sec:acceleration}
 
 In this section, we demonstrate the performance and benefits of the FlashBoost
-architecture by presenting some simple accelerator examples. 
+architecture by presenting some accelerator demonstrations. 
 
 \subsection{Nearest Neighbor Search}
 
@@ -19,48 +19,46 @@ most likely scattered across the dataset, access patterns are quite random.
 We have built a LSH query accelerator, where all of the data is stored in flash
 and the distance calculation is done by the in-storage processor on the storage
 device. For simplicity, we assume 8KB data items, and calculate the hamming
-distance between the query data and each of the items in the has bucket. The
+distance between the query data and each of the items in the hash bucket. The
 software sends a stream of addresses from a hash bucket along with the query
 data, and the system will return the index of the item most closely matching the
 query. By offloading computation to the in-storage accelerator, we
-show XXX\% performance improvement over the non-accelerated implementation.
+show an order of magnitude performance improvement over the non-accelerated
+implementation. This puts our LSH implementation on par with a system where a
+request has a very high chance of being serviced by DRAM.
 
 
 
 \subsection{Graph Traversal}
 
 Efficient graph traversal is a very important component of any graph processing
-system. It is also a very latency-bound problem because one often cannot predict
-the next node to visit, until the previous node is visited and processed. We
-demonstrate the performance benefits of our FlashBoost architecture by
-implementing graph traversal that takes advantages of the in-storage processor
-and the integrated storage network, which allows extremely low-latency access
-into both local and remote flash storage. The difference latency has on graph
-traversal queries can be seen in Figure~\ref{fig:graph_accel}. We demonstrate that compared to a
-naive implementation that uses flash only as a storage device, we have XXX\%
-performance improvement.
+system. Fast graph traversal enable solving many problems in graph theory,
+including maximum flow, shortest path and graph search. It is also a very
+latency-bound problem because one often cannot predict the next node to visit,
+until the previous node is visited and processed. We demonstrate the performance
+benefits of our FlashBoost architecture by implementing distributed graph
+traversal that takes advantages of the in-storage processor and the integrated
+storage network, which allows extremely low-latency access into both local and
+remote flash storage.  We demonstrate that we have nearly 3x
+performance improvement compared to a naive implementation that uses flash only
+as a storage device, and on par with a system where 70\% of the requests are
+serviced by the DRAM.
 
-%\begin{figure}[h]
-%	\begin{center}
-%	\includegraphics[width=0.4\paperwidth]{figures/graph_accel.pdf}
+%The difference latency has on graph traversal queries can
+%be seen in Figure~\ref{fig:graph_accel}.
+%\begin{figure}[ht!]
+%	\centering
+%
+%		\hfill
+%	\subfloat[Using ISP and Integrated Network]
+%		{\includegraphics[width=0.12\textwidth]{figures/graph_isp-crop.pdf}}
+%		\hfill
+%	\subfloat[Using Software]
+%		{\includegraphics[width=0.12\textwidth]{figures/graph_sw-crop.pdf}}
+%		\hfill
 %	\caption{Graph Traversal Comparison}
 %	\label{fig:graph_accel}
-%	\end{center}
 %\end{figure}
-
-\begin{figure}[ht!]
-	\centering
-
-		\hfill
-	\subfloat[Using ISP and Integrated Network]
-		{\includegraphics[width=0.12\textwidth]{figures/graph_isp-crop.pdf}}
-		\hfill
-	\subfloat[Using Software]
-		{\includegraphics[width=0.12\textwidth]{figures/graph_sw-crop.pdf}}
-		\hfill
-	\caption{Graph Traversal Comparison}
-	\label{fig:graph_accel}
-\end{figure}
 
 \subsection{String Search}
 
@@ -68,7 +66,7 @@ String search is common operation in analytics, often used in
 database table scans, DNA sequence matching and cheminformatics. It is 
 primarily a sequential read and compare workload. We
 examine its performance on FlashBoost with assistance from in-store Morris-Pratt (MP) 
-string search engines~\cite{?} fully integrated with the file system, flash controller
+string search engines~\cite{mpalgo} fully integrated with the file system, flash controller
 and application software.  The software portion of string search initially sets
 up the accelerator by transferring the target string pattern (needle) and a set
 of precomputed MP constants over DMA. Then it consults the file system for a

@@ -20,6 +20,8 @@ NAND-Flash-based SSD devices are gaining traction as a faster alternative to
 disks, and close the performance gap between DRAM and persistent storage.
 SSDs have the benefit of an order of magnitude cheaper price compared to DRAM,
 and an order of magnitude faster performance compared to disk.
+Many existing database and analytics softwares have been demonstrated to have
+improved performance with SSDs~\cite{hadoopperf,ssdhadoop,ssddatabase}.
 Several SSD-optimized analytics softwares, such as the SanDisk
 Zetascale~\cite{zetascale} have demonstrated promising
 performance while using SSD has the primary data storage.
@@ -39,11 +41,9 @@ Moneta~\cite{ucsd_moneta} modifies the operating system's storage management
 components to reduce software overhead when accessing NVM storage devices.
 Willow~\cite{ucsd_willow} provides an easy way to augment SSD controllers with
 additional interface semantics that make better use of SSD characteristics, in
-addition to a backwards compatible storage interface.  Due to the high
-performance of SSDs, even the software stack QuickSAN~\cite{ucsd_quicksan} is an
-attempt to remove a layer of software overhead by augmenting the storage device
-with a low-latency NIC, so that remote storage access does not need to go
-through a separate network software stack.
+addition to a backwards compatible storage interface.  Attempts to remove the
+translation layers and let the databse make high-level decisions~\cite{noftl}
+have shown to be beneficial. 
 
 Another important attempt to accelerate SSD storage performance is in-storage
 processing, where some data analytics is offloaded to embedded processors inside
@@ -67,12 +67,25 @@ forwarded to software. On the other end of the spectrum, systems such as
 XSD~\cite{xsd} embeds a GPU into a SSD controller, and demonstrates high
 performance accelerating MapReduce.
 
+Due to their high performance, SSDs also effect the network requirements.  The
+latency to access disk over Ethernet was dominated by the disk seek latency.
+However, in a SSD-based cluster the storage access latency could even be lower
+than network access. These concerns are being addressed by faster network
+fabrics such as 10GbE and Infiniband~\cite{infiniband}, and by low-overhead
+software protocols such as RDMA~\cite{rdmampi, rdmahdfs, homrmapreduce, rdmahpc,
+rdmampi, hadoopinfiniband} or user-level TCP stacks that bypass the operating
+system~\cite{usertcp,userlevelprotocol}. QuickSAN~\cite{ucsd_quicksan} is an
+attempt to remove a layer of software overhead by augmenting the storage device
+with a low-latency NIC, so that remote storage access does not need to go
+through a separate network software stack.
+
+
 Building specialized hardware for databases have been extensively studied and
 productized. Companies such as Oracle~\cite{exadata} and
 IBM/Netezza~\cite{netezza} have used FPGAs to offload database queries.
 FPGAs have been used to accelerate operations such as hash index
 lookups~\cite{walkers}. Domain-specific processors for database queries are
-recently being developed, such as Q100~\cite{q100} and LINQits~\cite{linqits}.
+being developed~\cite{databasefpga, hybridsql}, including Q100~\cite{q100} and LINQits~\cite{linqits}.
 Q100 is a data-flow style processor with an instruction set architecture that
 supported SQL queries. LINQits mapped a query language called LINQ to a set of
 accelerated hardware templates on a heterogeneous SoC (FPGA + ARM). Both designs
@@ -81,8 +94,31 @@ specialized hardware for data processing is very advantageous.
 %However, in both cases, experiments were
 %conducted with data that is on-chip or in DRAM.
 Some database accelerators benefit from being on the datapath of normal data
-movement. Accelerators have been place in-path to extract meta-data such as
-histograms of tables without additional overhead.
+movement. Accelerators have been place in-path to perform low-latency operations
+at wire speed~\cite{fpgastreamquery}, or to collect information such as
+histogram tables~\cite{histogramssideeffect}.
+
+\begin{figure*}[t!]
+\centering
+\vspace{0pt}
+\begin{minipage}[c]{.4\paperwidth}
+\begin{center}
+	\includegraphics[width=\textwidth]{figures/architecture_small-crop.pdf}
+	\caption{FlashBoost Overall Architecture}
+	\label{fig:architecture}
+\end{center}
+\end{minipage}\hfill
+\vspace{0pt}
+\begin{minipage}[c]{.4\paperwidth}
+\begin{center}
+	\includegraphics[width=0.7\textwidth]{figures/architecture_node-crop.pdf}
+	\caption{FlashBoost Node Architecture}
+	\label{fig:architecture_node}
+\end{center}
+\end{minipage}
+\end{figure*}
+
+
 
 Incorporating reconfigurable hardware accelerators into large datacenters are
 being actively investigates as well. Microsoft recently has built and
@@ -98,8 +134,6 @@ to host the entire dataset.
 
 FlashBoost incorporates ideas such as in-storage processing and integrated
 networks to construct a high-performance flash-based analytics appliance.
-Previous work such as BlueDBM~\cite{bluedbm} have demonstrated the feasibility
-of such an approach at a small scale, but the system described in BlueDBM was
-too small and slow to accurately evaluate its benefits and trade-offs with
-real-world problems.  FlashBoost presents a system with modern components and
-sufficient capacity to handle Big Data problems.
+Previous work such as BlueDBM~\cite{bluedbm} have included similar features, but
+FlashBoost differs in the sense that it has enough capacity to explore
+real-world Big Data applications.

@@ -1,26 +1,6 @@
 \section{System Architecture}
 \label{sec:architecture}
 
-\begin{figure*}[ht]
-\centering
-\vspace{0pt}
-\begin{minipage}[c]{.4\paperwidth}
-\begin{center}
-	\includegraphics[width=\textwidth]{figures/architecture_small-crop.pdf}
-	\caption{FlashBoost Overall Architecture}
-	\label{fig:architecture}
-\end{center}
-\end{minipage}\hfill
-\vspace{0pt}
-\begin{minipage}[c]{.4\paperwidth}
-\begin{center}
-	\includegraphics[width=0.7\textwidth]{figures/architecture_node-crop.pdf}
-	\caption{FlashBoost Node Architecture}
-	\label{fig:architecture_node}
-\end{center}
-\end{minipage}
-\end{figure*}
-
 
 The FlashBoost architecture is a homogeneous cluster of host servers coupled
 with a FlashBoost storage device. Each FlashBoost storage device is plugged into
@@ -128,7 +108,7 @@ based on the application.
 
 \subsection{Integrated Storage Network}
 
-\begin{figure}[h]
+\begin{figure}[t]
 	\begin{center}
 	\includegraphics[width=0.5\textwidth]{figures/network-architecture-crop.pdf}
 	\caption{Network Architecture}
@@ -169,7 +149,7 @@ the routing across a topology can be configured dynamically by the software.
 %Endpoints}, which provide virtual channel semantics, to access the network in a
 %virtualized manner.
 
-\begin{figure}[ht!]
+\begin{figure}[t!]
 	\centering
 	\subfloat[Distributed Star]
 		{\includegraphics[scale=0.35]{figures/topology_dist_star-crop.pdf}}
@@ -285,7 +265,7 @@ for a burst.
 Figure~\ref{fig:hostinterface} describes the structure of the host interface for
 flash reads.
 
-\begin{figure}[ht!]
+\begin{figure}[t!]
 	\centering
 	\includegraphics[width=0.3\textwidth]{figures/dmawrite-crop.pdf}
 	\caption{Host-FPGA Interface Over PCIe}

@@ -35,16 +35,29 @@ the next node to visit, until the previous node is visited and processed. We
 demonstrate the performance benefits of our FlashBoost architecture by
 implementing graph traversal that takes advantages of the in-storage processor
 and the integrated storage network, which allows extremely low-latency access
-into both local and remote flash storage. We demonstrate that compared to a
+into both local and remote flash storage. The difference latency has on graph
+traversal queries can be seen in Figure~\ref{fig:graph_accel}. We demonstrate that compared to a
 naive implementation that uses flash only as a storage device, we have XXX\%
 performance improvement.
 
-\begin{figure}[h]
-	\begin{center}
-	\includegraphics[width=0.4\paperwidth]{figures/graph_accel.pdf}
+%\begin{figure}[h]
+%	\begin{center}
+%	\includegraphics[width=0.4\paperwidth]{figures/graph_accel.pdf}
+%	\caption{Graph Traversal Comparison}
+%	\label{fig:graph_accel}
+%	\end{center}
+%\end{figure}
+
+\begin{figure}[ht!]
+	\centering
+	\subfloat[Using ISP and Integrated Network]
+		{\includegraphics[width=0.18\textwidth]{figures/graph_isp-crop.pdf}}
+		\hfill
+	\subfloat[Using Software]
+		{\includegraphics[width=0.18\textwidth]{figures/graph_sw-crop.pdf}}
+		\hfill
 	\caption{Graph Traversal Comparison}
 	\label{fig:graph_accel}
-	\end{center}
 \end{figure}
 
 \subsection{Hardware-Accelerated String Search}

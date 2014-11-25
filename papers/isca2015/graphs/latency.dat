@@ -1,7 +1,6 @@
-"Type"	"Latency"
-"Local Flash to ISP"	120
-"Local flash"	200
-"Remote flash over integrated network" 202
-"Remote DRAM over separate network" 140
-"Remote flash over separate network"	280
-"Remote flash appliance over separate network"	480
+"Type"	"Software"	"Storage Access"	"Data Transfer"	"Network"
+"LF ISP"	0	72.8091426964	44.4978572143	0
+"LF SW"	60.3723394107	72.8091426964	44.4978572143	0
+"RF IN" 56.9291046379	72.8114474828	44.4965523621	2
+"DRAM SN"	57.234501	53.933999375	43.09400025	2
+"RF SN"	4	4	4	4

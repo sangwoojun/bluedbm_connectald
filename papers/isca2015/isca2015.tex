@@ -3,6 +3,7 @@
 %replace XXX with the submission number you are given from the ISCA submission site.
 \newcommand{\iscasubmissionnumber}{XXX}
 
+\usepackage{multirow}
 \usepackage{listings}
 \usepackage[normalem]{ulem}
 
@@ -22,16 +23,20 @@ Big Data analytics have been shown to provide deep insights which are both
 commercially valuable and socially impactful. Complex data queries, because of
 their need for random accesses, have proven to be slow unless all the data can
 be accommodated in DRAM. There are many domains, such as genomics, geological
-data and daily twitter feeds where the datasets of interest are 5 to 20 TB. A cluster with a
-total DRAM capacity of 10 TB may easily cost \$300K and consume 30
-KW of power. In this paper we present FlashBoost, a rack-level
-flash-based system which is significantly cheaper, and has an order of magnitude
-smaller power and area footprint. A node in a FlashBoost appliance consists of a
-server, a flash storage device capable of in-store processing, and an integrated
-network between the storage devices. We present the rationale underlying
-FlashBoost and show that it outperforms a rack-level cluster with SSDs. For many
-applications, FlashBoost provides an attractive alternative to large clusters in
-terms of price-performance tradeoff.
+data and daily twitter feeds where the datasets of interest are 5 to 20 TB. For
+such a dataset, one would need a cluster with 100 servers to accommodate all the
+data in its DRAM. On the other hand, such datasets could easily be accommodated
+in a rack-sized cluster with flash storage. Flash storage has much better random
+access performance than hard disks, which makes them desirable for analytics
+workloads. In this paper we present FlashBoost, a rack-level system with
+flash-based storage with in-store processing capability and a low-latency
+high-throughput inter-controller network.  We show that FlashBoost outperforms a
+flash-based system without these features by a factor of 10 for some
+applications. We also show that the performance of a ram-cloud system falls
+sharply even if only 5 10\% of the references is to the secondary storage. This
+behavior is not an issue in FlashBoost, where all the data is flash-resident.
+FlashBoost presents an attractive point in the cost-performance trade-off, for
+Big Data analytics. 
 \end{abstract}
 
 
@@ -41,9 +46,9 @@ terms of price-performance tradeoff.
 \input{related}
 \input{architecture}
 \input{software}
-\input{acceleration}
 \input{implementation}
 \input{results}
+\input{acceleration}
 \input{results_acceleration}
 
 \section{Conclusion and Future Work}

@@ -44,7 +44,7 @@ The results are sent to software memory and the user application can be notified
 
 It is worth noting that, in FlashBoost, all the user requests, including both
 user queries and data, are sent to the hardware directly, bypassing almost all
-OS kernel, except for essential driver modules.  This helps us to avoid deep OS
+of the operating system's kernel, except for essential driver modules.  This helps us to avoid deep OS
 kernel stacks that often cause long I/O latencies.  It is also very common that
 multiple user-applications compete for the limited and precious hardware
 acceleration units. For efficient sharing of hardware resources, FlashBoost runs

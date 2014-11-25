@@ -15,14 +15,39 @@ implementation.
 %\end{figure}
 
 \begin{figure}[ht!]
-	\centering
-	\subfloat[One of the two 10-node FlashBoost Racks]
-		{\includegraphics[width=0.23\textwidth]{figures/rackserver2.jpg}}
-	\subfloat[A FlashBoost Rack Node]
-		{\includegraphics[width=0.23\textwidth]{figures/racknode.jpg}}
-	\caption{FlashBoost Cluster}
+	\begin{tabular}{cc}
+
+	\multirow{2}{*}{
+	\begin{minipage}[c]{.22\textwidth}
+	\includegraphics[width=\textwidth]{figures/rackserver2.jpg}
+	\caption{One of the two 10-node FlashBoost Racks}
 	\label{fig:bluedbmcluster}
+	\end{minipage}
+	}
+	& 
+	\begin{minipage}[c]{.22\textwidth}
+	\includegraphics[width=\textwidth]{figures/flashboard.jpg}
+	\caption{A Custom Flash Card}
+	\label{fig:flashboard}
+	\end{minipage} \\
+	&
+	\begin{minipage}[c]{.22\textwidth}
+	\includegraphics[width=\textwidth]{figures/racknode.jpg}
+	\caption{A FlashBoost Rack Node}
+	\label{fig:flashrack}
+	\end{minipage}
+	\end{tabular}
 \end{figure}
+%\begin{figure}[ht]
+%	\begin{center}
+%	\includegraphics[width=0.4\textwidth]{figures/flashboard.jpg}
+%	\caption{A Custom-Built Flash Board with 512GB of NAND Flash}
+%	\label{fig:flashboard}
+%	\end{center}
+%\end{figure}
+%	\subfloat[One of the two 10-node FlashBoost Racks]
+%		{\includegraphics[width=0.22\textwidth]{figures/rackserver2.jpg}}
+%	} 
 
 In our implementation of FlashBoost, we have used a Field Programmable Gate
 Array (FPGA) to implement the in-store processor and also the flash, host and
@@ -50,7 +75,7 @@ including later generation PCIe links.
 
 \begin{figure}[ht]
 	\begin{center}
-	\includegraphics[width=0.4\paperwidth]{figures/storagenode-crop.pdf}
+	\includegraphics[width=0.4\textwidth]{figures/storagenode-crop.pdf}
 	\caption{A FlashBoost Storage Node}
 	\label{fig:bluedbmnode}
 	\end{center}
@@ -59,13 +84,13 @@ including later generation PCIe links.
 
 \subsection{Custom Flash Board}
 
-\begin{figure}[ht]
-	\begin{center}
-	\includegraphics[width=0.4\paperwidth]{figures/flashboard.jpg}
-	\caption{A Custom-Built Flash Board with 512GB of NAND Flash}
-	\label{fig:flashboard}
-	\end{center}
-\end{figure}
+%\begin{figure}[ht]
+%	\begin{center}
+%	\includegraphics[width=0.4\textwidth]{figures/flashboard.jpg}
+%	\caption{A Custom-Built Flash Board with 512GB of NAND Flash}
+%	\label{fig:flashboard}
+%	\end{center}
+%\end{figure}
 
 We have designed and built a high-capacity custom flash board with high-speed
 serial connectors, with the help of Quanta Inc., and Xilinx Inc.

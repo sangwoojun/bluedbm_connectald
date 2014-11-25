@@ -1,6 +1,9 @@
 "Type"	"Throughput"
-"ISP" 150
-"SW"	60
-"Remote DRAM"	180
-"Remote 80% DRAM+Flash"	100
-"Remote 80% DRAM+Disk"	40
+ISP 1
+SW 0.819444444
+Flash 0.3493975904
+50% 0.726153846
+30% 0.984153461
+DRAM 2.107142857
+
+

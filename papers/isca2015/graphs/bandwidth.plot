@@ -6,10 +6,10 @@ set nokey
 set boxwidth 1.8
 set xtics ("To Software" 1.2, \
 	"To ISP" 2.2, \
-	"+1 Link" 3.2, \
-	"+4 Links" 4.2, \
-	"+8 Links" 5.2) font "Helvetica,13" 
-set xtic rotate by -45
+	"+1 L" 3.2, \
+	"+4 L" 4.2, \
+	"+8 L" 5.2) font "Helvetica,13" 
+#set xtic rotate by -45
 set yrange [0:12]
 set xrange [.45:5.75]
 set bmargin 10

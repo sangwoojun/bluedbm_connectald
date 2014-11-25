@@ -1,19 +1,20 @@
 set term postscript monochrome enhanced font "Helvetica" 16 butt dashed
 set ylabel "Throughput" offset 2,0 font "Helvetica,20"
 set xlabel "Access Type" font "Helvetica,20"
-set mxtics 6
+set mxtics 7
 set nokey
 set boxwidth 1.8
 set xtics ( \
 	"ISP" 1.2, \
 	"SW" 2.2, \
-	"DRAM" 3.2, \
-	"Flash" 4.2, \
-	"Disk" 5.2 \
+	"Flash" 3.2, \
+	"50\%%" 4.2, \
+	"30\%%" 5.2, \
+	"DRAM" 6.2 \
 	) font "Helvetica,13"
 #set xtic rotate by -45
-set yrange [0:200]
-set xrange [.45:5.75]
+set yrange [0:2.5]
+set xrange [.45:6.75]
 set bmargin 10
 set tmargin 1
 set lmargin 3
@@ -29,4 +30,4 @@ set output "graph.ps"
 
 set multiplot
 
-plot 'graph.dat' u ($2) t "Graph Traversal"
+plot 'graph.dat' u ($2) t "Graph Traversal" fillstyle pattern 2

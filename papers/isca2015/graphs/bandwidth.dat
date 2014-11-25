@@ -1,6 +1,6 @@
 "Type"	"Throughput"
 "Local Flash over PCIe"	1.6
-"Local Flash to ISP"	3.2
-"Local Flash+1 Link"	4.2
-"Local Flash+4 Links"	7.3
-"Local Flash+8 Links"	11.4
+"Local Flash to ISP"	2.4
+"Local Flash+1 Link"	3.42
+"Local Flash+4 Links"	6.5
+"Local Flash+8 Links"	10.6

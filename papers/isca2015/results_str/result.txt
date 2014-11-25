@@ -1,0 +1,14 @@
+BlueDBM + HW MP engines
+
+8 engines:  	2048 MB data in 3.93s, 		508 MB/s		0.4% CPU for all
+16 engines: 	2048 MB data in 2.58s, 		770 MB/s
+32 engines: 	2048 MB data in 1.93s, 		1060 MB/s
+
+Software Grep HDD
+3168 MB in 21.46s, 		147 MB/s			13% CPU, single core
+
+Software Grep Samsung SSD
+3168 MB in 3.51s			902 MB/s			
+12673 MB in 12.31s		1030 MB/s			65% CPU
+
+

@@ -1,4 +1,4 @@
-TARGETS=network.pdf latency.pdf bandwidth.pdf hamming.pdf graph.pdf hammingfull.pdf
+TARGETS=network.pdf latency.pdf bandwidth.pdf hamming.pdf graph.pdf hammingfull.pdf strstr.pdf
 
 %.ps: %.plot
 	gnuplot $<

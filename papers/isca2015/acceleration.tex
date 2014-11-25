@@ -62,11 +62,13 @@ performance improvement.
 	\label{fig:graph_accel}
 \end{figure}
 
-\subsection{Hardware-Accelerated String Search}
+\subsection{String Search}
 
-Finally, we implemented hardware-accelerated string search based on the
-Morris-Pratt algorithm~\cite{?} on FlashBoost to further demonstrate the
-integration of a hardware accelerator with the file system, flash controller
+String search is common operation in analytics, often used in
+database table scans, DNA sequence matching and cheminformatics. It is 
+primarily a sequential read and compare workload. We
+examine its performance on FlashBoost with assistance from in-store Morris-Pratt (MP) 
+string search engines~\cite{?} fully integrated with the file system, flash controller
 and application software.  The software portion of string search initially sets
 up the accelerator by transferring the target string pattern (needle) and a set
 of precomputed MP constants over DMA. Then it consults the file system for a
@@ -75,6 +77,6 @@ streamed to the accelerator, which uses these addresses to request for pages
 from the flash controller.  The accelerated MP engines may operate in parallel
 either by searching multiple files or by dividing up the haystack into equal
 segments (with some overlaps). This choice depends on the number of files and
-size of each file. Since two read commands can saturate a single flash bus, we
-use two engines per bus for a total of 16 to maximize the flash bandwidth. Only
+size of each file. Since 4 read commands can saturate a single flash bus, we
+use 4 engines per bus to maximize the flash bandwidth. Only
 search results are returned to the server. 

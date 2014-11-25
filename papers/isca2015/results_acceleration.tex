@@ -87,8 +87,28 @@ becomes beneficial.
 
 \subsection{Hardware-Accelerate String Search}
 
-We were able to saturate the bandwidth of the flash store using multiple string
-search cores.
-
-This section is being written by Ming and Sungjin
-
+We compared our implementation of hardware-accelerated string search running on
+FlashBoost to the Linux Grep utility querying for exact string matches running
+on both SSD and hard disk. Processing bandwidth and server CPU utilizations are
+shown in Figure~\ref{fig:result_strstr}. We observe that the parallel MP
+engines in FlashBoost are able to process a search at 1.1GB/s, which is 92\% of
+the maximum sequential bandwidth a single flash board. Using FlashBoost, the
+query consumes almost no CPU cycles on the host server since the query is
+entirely offloaded and only the location of matched strings are returned, which
+we assume is a tiny fraction of the file (0.01\% is used in our experiments).
+This is 7.5x faster than software string search (Grep) on hard disks, which is
+I/O bound by disk bandwidth and consumes 13\% CPU. On SSD, software string
+search remains I/O bound by the storage device, but CPU utilization increases
+significantly to 65\% even for this type of simple streaming compare operation.
+This high utilization is problematic because string search is often only a small portion 
+of more complex analytic queries that can quickly become compute bound.  As we
+have shown in the results, FlashBoost can effectively alleviate this by
+offloading search to the in-store processor thereby freeing up the server CPU
+for other tasks. 
+\begin{figure}[ht!]
+	\centering
+	\includegraphics[width=0.35\paperwidth]{graphs/obj/strstr-crop.pdf}
+	\caption{String Search Bandwidth and CPU Utilization}
+	\label{fig:result_strstr}
+\end{figure}
+ 

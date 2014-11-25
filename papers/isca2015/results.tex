@@ -5,14 +5,64 @@ This section evaluates the characteristics of the FlashBoost implementation.
 
 \subsection{FPGA Resource Utilization}
 
+The FPGA resource usage of each of the two Artix-7 chips are shown in
+Table~\ref{tab:artixutil}. 46\% of the I/O pins were used either to communicate
+with the FMC port or to control the flash chips.
+
+\begin{table}[h]\footnotesize
+\centering
+\begin{tabular}{l | c | c | c | c |}
+Module Name & \# & LUTs & Registers & BRAM \\
+\hline \hline
+Bus Controller & 8 & 7131 & 4870 & 21 \\
+$\rightarrow$ ECC Decoder & 2 & 1790 & 1233 & 2 \\
+$\rightarrow$ Scoreboard & 1 & 1149 & 780 & 0 \\
+$\rightarrow$ PHY & 1 & 1635 & 607 & 0 \\
+$\rightarrow$ ECC Encoder & 2 & 565 & 222 & 0 \\
+\hline
+SerDes & 1 & 3061 & 3463 & 13 \\
+\hline \hline
+\multicolumn{2}{c}{
+Artix-7 Total
+} & 75225 (56\%) & 62801 (23\%) & 181 (50\%)
+\end{tabular}
+\caption{Artix 7 Resource Usage}
+\label{tab:artixutil}
+\end{table}
+
+The FPGA resource usage of the Virtex 7 FPGA chip on the VC707 board is shown in
+Table~\ref{tab:virtexutil}.
+
+\begin{table}[h]\footnotesize
+\centering
+\begin{tabular}{l | c | c | c | c | c |}
+Module Name & \# & LUTs & Registers & RAMB36 & RAMB18 \\
+\hline \hline
+Flash Interface & 1 & 1389 & 2139 & 0 & 0 \\
+Network Interface& 1 & 29591 & 27509 & 0 & 0\\
+DRAM Interface& 1 & 11045 & 7937 & 0  & 0\\
+Host Interface& 1 & 88376 & 46065 & 169 & 14 \\
+\hline \hline
+\multicolumn{2}{c}{
+Virtex-7 Total
+} & 135271& 135897 & 224 & 18 \\
+\multicolumn{2}{c}{
+} & (45\%) & (22\%) & (22\%) & (1\%)
+\end{tabular}
+\caption{Virtex 7 Resource Usage}
+\label{tab:virtexutil}
+\end{table}
+
+
 \subsection{Power Consumption}
 Table~\ref{tab:power} shows the overall power consumption of the system, which
 were estimated using values from the datasheet. Thanks to the low power
 consumption of the FPGA and flash devices, FlashBoost does not add much power
 consumption to the system.
 
+\begin{table}[h]\footnotesize
+\centering
 \begin{tabular}{l | r}
-\label{tab:power}
 Component & Power (Watts) \\
 \hline \hline
 VC707 & 30 \\
@@ -23,6 +73,9 @@ Storage Total & 40 \\
 Node Total & 240 \\
 
 \end{tabular}
+\caption{FlashBoost Estimated Power Consumption}
+\label{tab:power}
+\end{table}
 
 \begin{figure*}[ht]
 \centering
@@ -75,11 +128,17 @@ a page of data access (1) from remote flash storage to local in-store processor
 over the integrated network, (2) from remote flash storage to local software
 over the integrated network, (3) from remote DRAM to local software, and (4)
 from remote flash storage to local software while accessing flash storage and
-networks using separate software interfaces.
+networks using separate software interfaces. The latency is broken up into four
+components. First is the local software overhead of accessing the network
+interface. Second is the storage access latency, or the time it takes for the
+first data byte to come out of the storage device. Third is the amount of times
+it takes to transfer the data until the last byte is sent back over the network,
+and last is the network latency.
 
 It can be seen that remote flash access over the integrated network link reduces
 a significant amount of latency compared to using flash and networks as separate
-devices. This is because integrating the network into storage removed a layer of
+devices. When storage and network are used as separate devices, their latencies
+are additive. Integrating the network into storage removes a layer of
 host software access between flash and network access. Having the in-store
 procesor consume data removed the need for data to be transferred to host
 software at all, reducing latency even further.

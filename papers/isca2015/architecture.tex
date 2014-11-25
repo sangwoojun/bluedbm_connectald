@@ -33,7 +33,7 @@ as a typical block device to the host operating system, and its internal
 architecture and management algorithms are completely hidden. 
 
 However, this additional layer of management has shown to be duplicated with
-file system functionalities and adds significant latency~\cite{redo}.
+file system functionalities and adds significant latency~\cite{rfs}.
 Furthermore, in a distributed storage environment, such as FlashBoost,
 independent flash devices do not have a holistic view of the system and thus
 cannot efficiently manage flash. Finally, in-store processors that we have
@@ -198,7 +198,7 @@ quick enough.
 
 \begin{figure}[h]
 	\begin{center}
-	\includegraphics[width=0.4\textwidth]{figures/routing-crop.pdf}
+	\includegraphics[width=0.35\textwidth]{figures/routing-crop.pdf}
 	\caption{Routing Packets Across the Network}
 	\label{fig:networkrouting}
 	\end{center}

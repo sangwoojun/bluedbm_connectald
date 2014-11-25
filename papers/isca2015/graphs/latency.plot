@@ -17,6 +17,7 @@ set tmargin 1
 set lmargin 3
 set rmargin 6
 
+set key invert
 set key on inside left top samplen 2 #font "Helvetica,8"
 set style fill pattern
 set style data histograms

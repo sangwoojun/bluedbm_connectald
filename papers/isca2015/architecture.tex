@@ -3,7 +3,7 @@
 
 
 The FlashBoost architecture is a homogeneous cluster of host servers coupled
-with a FlashBoost storage device. Each FlashBoost storage device is plugged into
+with a FlashBoost storage device (See Figure~\ref{fig:architecture}). Each FlashBoost storage device is plugged into
 the host server via a PCIe link, and it consists of flash storage, an in-storage
 processing engine, 8 high-speed network interfaces and on-board DRAM. The host
 servers are networked together using Ethernet or other general-purpose
@@ -16,8 +16,7 @@ The in-store processing engine has access to four major services: The flash
 interface, network interface, host interface and the on-storage DRAM buffer.
 Figure~\ref{fig:architecture_node} shows the four services available to the
 in-storage processor. In the following sections we describe the flash interface,
-network interface and host interface in order. We omit the DRAM buffer because
-its design is very generic.
+network interface and host interface in order. We omit the DRAM buffer because there is nothing special about its design.
 
 \subsection{Flash Interface}
 
@@ -32,14 +31,14 @@ AHCI or NVMe protocols to communicate with host. SSDs are viewed
 as a typical block device to the host operating system, and its internal
 architecture and management algorithms are completely hidden. 
 
-However, this additional layer of management has shown to be duplicated with
-file system functionalities and adds significant latency~\cite{rfs}.
+However, this additional layer of management duplicates some file system functions and adds significant latency~\cite{rfs}.
 Furthermore, in a distributed storage environment, such as FlashBoost,
 independent flash devices do not have a holistic view of the system and thus
 cannot efficiently manage flash. Finally, in-store processors that we have
 introduced in FlashBoost would also incur performance penalties if passing
 through this extra layer. 
 
+\subsubsection{An Interface for High Performance Flash Access}
 Thus in FlashBoost, we chose to shift flash management
 away from the device and into file system/block device driver (discussed in
 Section~\ref{sec:software}). Our flash controller exposes a low-level, thin,
@@ -50,15 +49,14 @@ parallelism of the device and (iii) allowing higher level system stacks (file
 system, database storage engine) to more intelligently manage data. 
 
 To access the flash, the user first issues a flash command
-with the operation, the address and a unique tag.
+with the operation, the address and a tag to identify the request.
 For writes, the user then awaits for a write data request from
 the controller scheduler, which tells the user that the flash controller is
 ready to receive the data for that write. The user will send the write data
 corresponding to that request in 128-bit bursts. The controller returns an
 acknowledgement once write is finished. 
-For read operations, after a command is issued,
-data will return in 128-bit bursts along with the command tag that the
-burst corresponds to. We emphasize that for maximum performance, the
+For read operations, the data is returned in 128-bit bursts along with the request tag.
+We emphasize that for maximum performance, the
 controller may send these data bursts \emph{out of order} with respect to
 the issued request and \emph{interleaved} with other read requests.
 Thus completion buffers may be required on the user side to maintain FIFO
@@ -118,8 +116,7 @@ based on the application.
 
 
 FlashBoost provides a low-latency high-bandwidth network infrastructure across
-all FlashBoost storage devices in the cluster, while maintaining a simple design
-with low resource usage. FlashBoost storage devices form a separate network
+all FlashBoost storage devices in the cluster, using a simple design with low buffer requirements. FlashBoost storage devices form a separate network
 among themselves via high-performance serial links.  The FlashBoost network is a
 packet-switched mesh network, in which each storage device has multiple network
 ports and is capable of routing packets across the network without requiring a
@@ -186,8 +183,7 @@ The link layer manages physical connections between network ports in the storage
 nodes. The most important aspect of the link layer is the simple token-based
 flow control implementation. This provides back pressure across the link and
 assures that no packet will drop if the data rate is higher than what the
-network can manage, or if the data is not received from the destination node
-quick enough.
+network can manage, or if the data is not received by the destination node which is running slowly.
 
 \subsubsection{Routing Layer}
 
@@ -253,10 +249,10 @@ but parallelizing reads is a bit more tricky due to the characteristics of flash
 storage. When writing to storage, the DMA engine on the hardware will read data
 from each buffer in order in a contiguous stream. So having enough requests in
 the request queue is enough to make maximum use of the host-side link bandwidth.
-However, data read from flash chips on multiple buses in parallel can arrive
+However, data reads from flash chips on multiple buses in parallel can arrive
 interleaved at the DMA engine. Because the DMA engine needs to have enough
 contiguous data for a DMA burst before issuing a DMA burst, some reordering may
-be required at the DMA engine. This becomes even more tricky when the device is
+be required at the DMA engine. This becomes even trickier when the device is
 using the integrated network to receive data from remote nodes, where they might
 all be coming from different buses. To fix this issue, we provide dual-ported
 buffer in hardware providing the semantics of a vector of FIFOs, so that data
@@ -293,4 +289,5 @@ interface FlashIfc;
 endinterface 
 \end{lstlisting}
 \end{comment}
+
 

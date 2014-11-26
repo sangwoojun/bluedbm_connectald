@@ -1,3 +1,4 @@
+
 \section{Introduction}
 \label{sec:intro}
 By many accounts, complex analysis of Big Data is going to be the biggest
@@ -25,9 +26,10 @@ better random accesses performance than hard disks.  We call our system
 FlashBoost and it provides the following capabilities:
 
 \begin{enumerate}
-\item A-20 node system with large enough flash storage to host Big Data workloads in the 10\textasciitilde20 TB range;
+\item A 20-node system with large enough flash storage to host Big Data
+workloads up to 20 TBs;
 \item Near-uniform latency access into a network of storage devices that form a global address space;
-\item Capacity to implement user-defined in-storage processing engines;
+\item Capacity to implement user-defined in-store processing engines;
 \item Flash card design which exposes an interface to make application-specific optimizations in flash accesses.
 \end{enumerate}
 
@@ -38,7 +40,7 @@ an architecture whose price-performance-power characteristics provide an
 attractive alternative for doing similar scale applications in a ram cloud.
 
 As we will discuss in the related work section, almost every element of our
-system in present in some commercial system. Yet our system architecture as a
+system is present in some commercial system. Yet our system architecture as a
 whole is unique.  The main contributions of this work are: (1) Design and
 implementation of a scalable flash-based system with a global address space,
 in-store computing capability and a flexible inter-controller network. (2) A
@@ -53,10 +55,11 @@ explore some existing research related to our system. In
 section~\ref{sec:architecture} we describe the architecture of our rack-level
 system, and in section~\ref{sec:software} we describe the software interface
 that can be used to access flash and the accelerators. In
-section~\ref{sec:implementation} we describe our hardware implementation of
+section~\ref{sec:implementation} we describe a hardware implementation of
 FlashBoost, and show our results from the implementation in
 section~\ref{sec:results}.  In section~\ref{sec:acceleration} we describe and
 evaluate some example accelerators we have built for the FlashBoost system. 
+Section~\ref{sec:conclusion} summarizes our paper.
 
 
 

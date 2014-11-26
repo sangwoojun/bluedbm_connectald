@@ -4,10 +4,10 @@ set xlabel "Access Type" font "Helvetica,17"
 set mxtics 5
 #set nokey
 set boxwidth 0.8
-set xtics ("ISP" 1, \
-	"SW" 2,  \
-	"DRAM" 3,  \
-	"Flash" 4 \
+set xtics ("ISP-F" 1, \
+	"H-F" 2,  \
+	"H-RH-F" 3, \
+	"H-D" 4  \
 	) font "Helvetica,13" 
 #set xtic rotate by -45
 set yrange [0:350]

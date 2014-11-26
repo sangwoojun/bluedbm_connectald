@@ -5,39 +5,39 @@ We have built a 20-node FlashBoost cluster to explore the capabilities of the
 architecture. Figure~\ref{fig:bluedbmcluster} shows the photo of our
 implementation.
 
-%\begin{figure}[ht]
-%	\begin{center}
-%	\includegraphics[width=0.3\paperwidth]{figures/rackserver.jpg}
-%	%\includegraphics[width=0.3\paperwidth]{figures/rack.jpg}
-%	\caption{A 20-node FlashBoost Cluster}
-%	\label{fig:bluedbmcluster}
-%	\end{center}
-%\end{figure}
-
-\begin{figure}[ht!]
-	\begin{tabular}{cc}
-
-	\multirow{2}{*}{
-	\begin{minipage}[c]{.20\textwidth}
-	\includegraphics[width=\textwidth]{figures/rackserver2.jpg}
-	\caption{One of the two 10-node FlashBoost Racks}
+\begin{figure}[ht]
+	\begin{center}
+	\includegraphics[width=0.4\paperwidth]{figures/rackserver-crop.pdf}
+	%\includegraphics[width=0.3\paperwidth]{figures/rack.jpg}
+	\caption{A 20-node FlashBoost Cluster}
 	\label{fig:bluedbmcluster}
-	\end{minipage}
-	}
-	& 
-	\begin{minipage}[c]{.20\textwidth}
-	\includegraphics[width=\textwidth]{figures/flashboard.jpg}
-	\caption{A Custom Flash Card}
-	\label{fig:flashboard}
-	\end{minipage} \\
-	&
-	\begin{minipage}[c]{.20\textwidth}
-	\includegraphics[width=\textwidth]{figures/racknode.jpg}
-	\caption{A FlashBoost Rack Node}
-	\label{fig:flashrack}
-	\end{minipage}
-	\end{tabular}
+	\end{center}
 \end{figure}
+
+%\begin{figure}[ht!]
+%	\begin{tabular}{cc}
+%
+%	\multirow{2}{*}{
+%	\begin{minipage}[c]{.20\textwidth}
+%	\includegraphics[width=\textwidth]{figures/rackserver2.jpg}
+%	\caption{One of the two 10-node FlashBoost Racks}
+%	\label{fig:bluedbmcluster}
+%	\end{minipage}
+%	}
+%	& 
+%	\begin{minipage}[c]{.20\textwidth}
+%	\includegraphics[width=\textwidth]{figures/flashboard.jpg}
+%	\caption{A Custom Flash Card}
+%	\label{fig:flashboard}
+%	\end{minipage} \\
+%	&
+%	\begin{minipage}[c]{.20\textwidth}
+%	\includegraphics[width=\textwidth]{figures/racknode.jpg}
+%	\caption{A FlashBoost Rack Node}
+%	\label{fig:flashrack}
+%	\end{minipage}
+%	\end{tabular}
+%\end{figure}
 %\begin{figure}[ht]
 %	\begin{center}
 %	\includegraphics[width=0.4\textwidth]{figures/flashboard.jpg}
@@ -53,12 +53,9 @@ In our implementation of FlashBoost, we have used a Field Programmable Gate
 Array (FPGA) to implement the in-store processor and also the flash, host and
 network controllers. However, the FlashBoost Architecture should not be limited
 to an FPGA-based implementation.  Development of FlashBoost was done in the
-high-level hardware description language Bluespec. As a result, all services
-expose a high-level language interface using latency-insensitive FIFOs for
-communication. This makes the services intuitive to use, and flexible to be used
-easily with many in-storage processing engines.
+high-level hardware description language Bluespec. It is possible to develop in-store processors in any hardware description language, as long as they conform to the interface exposed by the FlashBoost system services. Most of the interfaces are latency-insensitive FIFOs with backpressure. Bluespec provides a lot of support for such interfaces, making in-store accelerator development easier.
 
-The cluster consists of 20 Xeon servers mounted in two racks, each with a Xilinx
+The cluster consists of 20 rack-mounted Xeon servers, each with a Xilinx
 VC707 FPGA development board connected via a PCIe connection. Each VC707 board
 hosts two custom-built flash boards with SATA connectors. The VC707 board,
 coupled with two custom flash boards is mounted on top of each server.
@@ -75,7 +72,7 @@ including later generation PCIe links.
 
 \begin{figure}[ht]
 	\begin{center}
-	\includegraphics[width=0.3\textwidth]{figures/storagenode-crop.pdf}
+	\includegraphics[width=0.5\textwidth]{figures/racknode-crop.pdf}
 	\caption{A FlashBoost Storage Node}
 	\label{fig:bluedbmnode}
 	\end{center}
@@ -122,7 +119,7 @@ packet overhead.
 \subsection{Software Interface}
 
 Our host interface was implemented using Connectal~\cite{connectal}, a
-hardware-software codesign framework built by Quanta Research Cambridge.
+hardware-software codesign framework built by Quanta Research.
 Connectal reads the interface definition file written by the programmer and
 generates glue logic between hardware and software. Connectal automatically
 generates RPC-like interface from developer-provided interface specification, as
@@ -135,5 +132,6 @@ Reading or writing data from the host buffers were done by DMA read/write
 engines implemented in the Connectal framework. In our FlashBoost
 implementation, there are four read engines and four write engines each, in
 order to more easily make maximum use of the PCIe bandwidth. 
+
 
 

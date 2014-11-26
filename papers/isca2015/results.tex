@@ -26,12 +26,14 @@ SerDes & 1 & 3061 & 3463 & 13 \\
 Artix-7 Total
 } & 75225 (56\%) & 62801 (23\%) & 181 (50\%)
 \end{tabular}
-\caption{Artix 7 Resource Usage}
+\caption{Flash Controller on Artix 7 Resource Usage}
 \label{tab:artixutil}
 \end{table}
 
 The FPGA resource usage of the Virtex 7 FPGA chip on the VC707 board is shown in
-Table~\ref{tab:virtexutil}.
+Table~\ref{tab:virtexutil}. As it can be seen, there is still enough space for accelerator development on the Virtex FPGA.
+
+
 
 \begin{table}[h]\footnotesize
 \centering
@@ -49,7 +51,7 @@ Virtex-7 Total
 \multicolumn{2}{c}{
 } & (45\%) & (22\%) & (22\%) & (1\%)
 \end{tabular}
-\caption{Virtex 7 Resource Usage}
+\caption{Host Virtex 7 Resource Usage}
 \label{tab:virtexutil}
 \end{table}
 
@@ -69,7 +71,6 @@ VC707 & 30 \\
 Flash Board x2 & 10 \\
 Xeon Server & 200 \\
 \hline
-Storage Total & 40 \\
 Node Total & 240 \\
 
 \end{tabular}
@@ -101,16 +102,17 @@ Node Total & 240 \\
 
 \subsection{Network Performance}
 
-Figure~\ref{fig:result_network} shows the bandwidth and latency characteristics
-of the integrated storage network. After protocol overhead, the network can
-sustain up to 8.2Gbps of bandwidth per link, at 0.48 $\mu s$ per network hop.
+We measured the performance of the network by transferring a single stream of 128 bit data packets through multiple nodes across the network in a non-contentious traffic setting. The maximum physical link bandwidth is 10Gbps, and per-hop latency is 0.48 $\mu s$.
+Figure~\ref{fig:result_network} shows that we are able to sustain 8.2Gbps of bandwidth per stream across multiple network hops. This shows that the protocol overhead is under 18\%. The latency is 0.48 $\mu s$ per network hop, the end-to-end latency is simply a multiple of network hops to the destination. 
+
 Each node in our FlashBoost implementation includes a fan-out of 8 network
 ports, so each node can have an aggregate full duplex bandwidth of 8.2GB/s. With
 such a high fan-out, it would be unlikely that a remote node in a rack-class
 cluster to be over 4 hops, or 2 $\mu s$ away. Even if we assume a naive ring
 network of 20 nodes with 4 lanes each to next and previous nodes, the average
 latency to a remote node would be 2.5 $\mu s$, with the ring throughput of 32.8
-Gbps.
+Gbps. \emph{Assuming a flash access latency of 50 $\mu s$, such a network will only add 5\% latency in the worst case, giving the illusion of a uniform access storage.}
+
 
 %\begin{figure}[h]
 %	\begin{center}
@@ -120,37 +122,34 @@ Gbps.
 %	\end{center}
 %\end{figure}
 
-\subsection{Latency}
+\subsection{Remote Storage Access Latency}
+\label{sec:latency}
 
-Figure~\ref{fig:result_latency} shows the access latency of reading data from
-various locations in FlashBoost over various datapaths. We measured the latency of
-a page of data access (1) from remote flash storage to local in-store processor
-over the integrated network, (2) from remote flash storage to local software
-over the integrated network, (3) from remote DRAM to local software, and (4)
-from remote flash storage to local software while accessing flash storage and
-networks using separate software interfaces. The latency is broken up into four
-components. First is the local software overhead of accessing the network
+We measured the latency of remote storage access by reading an 8K page of data from the following sources using the integrated storage network: 
+
+\begin{enumerate}
+\item ISP-F: From in-store processor to remote flash storage;
+\item H-F: From host server to remote flash storage;
+\item H-RH-F: From host server to remote flash storage via its host server.
+\item H-D: From host server to remote DRAM; 
+\end{enumerate}
+
+In each case, the request is sent from either the host server or the in-store processor on the local FlashBoost node. In the third and fourth case, the request is processed by the remote server, instead of the remote in-store processor, adding extra latency. However, data is always transferred back via the integrated storage network. We could have also measured the accesses to remote servers via Ethernet, but that latency is at least 100x of the integrated network, and will not be particularly illuminating.
+
+\begin{figure}[b]
+	\centering
+	\includegraphics[width=0.30\textwidth]{figures/latencybreak-crop.pdf}
+	\caption{Breakdown of Remote Storage Access Latency}
+	\label{fig:latencybreak}
+\end{figure}
+
+The latency is broken up into four components as shown in Figure~\ref{fig:latencybreak}. First is the local software overhead of accessing the network
 interface. Second is the storage access latency, or the time it takes for the
 first data byte to come out of the storage device. Third is the amount of times
 it takes to transfer the data until the last byte is sent back over the network,
 and last is the network latency.
 
-It can be seen that remote flash access over the integrated network link reduces
-a significant amount of latency compared to using flash and networks as separate
-devices. When storage and network are used as separate devices, their latencies
-are additive. Integrating the network into storage removes a layer of
-host software access between flash and network access. Having the in-store
-procesor consume data removed the need for data to be transferred to host
-software at all, reducing latency even further.
-
-It should be noted that we have used the FlashBoost integrated storage network
-as the network connection for all experiments by exposing a raw network
-interface to the software. This was to normalize the network performance across
-different experiments and demonstrate only the architectural advantages. The
-latency of using a normal TCP connection over Ethernet was too high, with over 100
-$\mu s$ of ping latency within the same switch.  We felt that our network
-latency was too low to be a fair comparison with a software implementation
-of Ethernet.
+Figure~\ref{fig:result_latency} shows the exact latency breakdown for each experiment. Notice in all 4 cases, the network latency is insignificant. The data transfer latency is similar except when data is transferred from DRAM (H-D), where it is slightly lower. Notice that except in the case of ISP-F, storage access incurs the additional overhead of PCIe and host software latencies. If we compare ISP-F to H-RH-F, we can see the benefits of an integrated storage network, as the former allows overlapping the latencies of storage and network access. 
 
 %\begin{figure}[h]
 %	\begin{center}
@@ -170,20 +169,20 @@ of Ethernet.
 %fpga<-> remote ssd using samsung...
 
 
-\subsection{Bandwidth}
+\subsection{Storage Access Bandwidth}
 
-Figure~\ref{fig:result_bandwidth} shows the read bandwidth performance of
-FlashBoost over various datapaths, including streaming in data from remove nodes
-over multiple serial links. Since each node is capable of delivering 2.4GB/s of
-bandwidth, Once we try to stream all data to the
-host software, we are quickly bottlenecked by the PCIe link. The in-store
-processing node has much better bandwidth access to flash, as it exists before
-the PCIe link. Even though the integrated network has very high bandwidth, 
-using 4 10Gbps network links at a total of 4.1GB/s is not enough to sustain 3 nodes' bandwidth of
-data, which is 7.2GB/s. Moving computation to storage will be crucial in getting
-maximum performance.
-Additionally, some accelerated network compression might be beneficial for future
-investigation.
+We measured the bandwidth of FlashBoost by sending a stream of millions of random read requests for 8KB size pages to local and remote storage nodes, and measuring the elapsed time to process all of the requests.
+We measured the bandwidth under the following scenarios:
+\begin{enumerate}
+\item Host-Local: Host sends requests to the local flash and all data is streamed returned over PCIe;
+\item ISP-Local: Host sends requests to the local flash and all data is consumed at the local in-store processor;
+\item ISP-2Nodes: Like ISP-Local except 50\% of the requests are sent to a remote flash controller. Only one serial link connects the two nodes;
+\item ISP-3Nodes: Like ISP-Local except 33\% of the requests are sent to each of the two remote flash controllers. Two serial links connect each remote controller to the local controller.
+\end{enumerate}
+
+Figure~\ref{fig:result_bandwidth} shows the read bandwidth performance for each of these cases. Our design of the flash card provides 1.2GB/s of bandwidth per card. Therefore in theory, if both cards are kept completely busy 2.4GB/s should be the maximum sustainable bandwidth from the in-store processor, and this is what we observe in the ISP-Local experiment. In our Host-Local experiment, we observed only 1.6GB/s of bandwidth. This is because this is the maximum bandwidth our PCIe implementation can sustain. In ISP-2Nodes, the aggregate bandwidth of two flash devices should add up to 4.8GB/s, but we only observe about 3.4GB/s, because remote storage access is limited by the single 8Gbps-serial link. In ISP-3Nodes, the aggregate bandwidth of three flash devices should add up to 7.2GB/s, but we only observe about 6.5GB/s because the aggregate bandwidth of the four serial links connecting the remote controllers is limited to 32.8Gbps (=4.1GB/s).
+
+What these sets of experiments show is that in order to make full use of flash storage, some combination of fast networks, fast host connections and low software overhead is necessary. These requirements can be somewhat mitigated if we make use of in-store computing capabilities, which is what we discuss next.
 
 %\begin{figure}[h]
 %	\begin{center}
@@ -192,4 +191,5 @@ investigation.
 %	\label{fig:result_bandwidth}
 %	\end{center}
 %\end{figure}
+
 

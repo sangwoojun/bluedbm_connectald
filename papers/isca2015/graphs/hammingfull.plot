@@ -3,7 +3,7 @@ set ylabel "Throughput" offset 2,0 font "Helvetica,20"
 set xlabel "Threads" offset 2,0 font "Helvetica,20"
 set ytics nomirror 
 set xrange [0.8:16]
-set yrange [0:9]
+set yrange [0:700]
 set bmargin 4
 set tmargin 1
 set lmargin 3
@@ -17,7 +17,6 @@ set size square
 set output "hammingfull.ps"
 plot 'hammingfull.dat' u 1:2 title col w linespoints lw 2 ps 1 pt 2, \
      'hammingfull.dat' u 1:3 title col w lines lw 3, \
-     'hammingfull.dat' u 1:4 title col w linespoints lw 4 ps 1 pt 4, \
      'hammingfull.dat' u 1:5 title col w linespoints lw 5 ps 1 pt 6
 
 

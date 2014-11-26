@@ -5,10 +5,10 @@ In FlashBoost, we aim to provide a set of software interfaces that support the
 execution of any existing application as well as modified applications that
 leverage the in-store processors in the system. Furthermore, software layers in
 FlashBoost must perform flash management functions since we chose to expose a
-raw flash interface in hardware for higher efficiency (previous discussed in
+raw flash interface in hardware for higher efficiency (previously discussed in
 Section~\ref{sec:flashInterface}). The software architecture is shown in
 Figure~\ref{fig:filesystem}.  Three interfaces are supplied to the user
-application: (i) a file system interface, (ii) block device driver interface
+application: (i) a file system interface, (ii) a block device driver interface
 and (iii) an accelerator interface. 
 
 %The primary design goal of the FlashBoost file system layer is to provide an
@@ -52,8 +52,7 @@ accelerators.  In the FlashBoost software stack, user-level applications can
 query the file system for the physical locations of files on the flash (see (1)
 in Figure~\ref{fig:filesystem}). This was made possible because the file system
 maintains the mapping information.  Applications can then provide in-storage
-processors with a stream of physical addresses(see (2))
-, so that the in-storage processors can directly read
+processors with a stream of physical addresses (see (2)), so that the in-storage processors can directly read
 data from flash with very low latency (see (3)).
 The results are sent to software memory and the user application can be notified
 (see (4)).

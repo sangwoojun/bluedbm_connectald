@@ -4,10 +4,10 @@ set xlabel "Access Type" font "Helvetica,20"
 set mxtics 5
 set nokey
 set boxwidth 1.8
-set xtics ("To Software" 1.2, \
-	"To ISP" 2.2, \
-	"+1 Link" 3.2, \
-	"+4 Links" 4.2 \
+set xtics ("Host-Local" 1.2, \
+	"ISP-Local" 2.2, \
+	"ISP-2Nodes" 3.2, \
+	"ISP-3Nodes" 4.2 \
 	) font "Helvetica,13" 
 #set xtic rotate by -45
 set yrange [0:9]

@@ -1,0 +1,65 @@
+
+\section{Introduction}
+\label{sec:intro}
+By many accounts, complex analysis of Big Data is going to be the biggest
+economic driver for the IT industry. For example, Google has predicted flu
+outbreaks by analyzing social network information a week faster than
+CDC~\cite{googleflu}; Analysis of twitter data can reveal social upheavals
+faster than journalists; Amazon is planning to use customer data for
+anticipatory
+shipping of products~\cite{amazonanticipatory}; Real-time analysis of personal genome may significantly
+aid in diagnostics. Big Data analytics are potentially going to have
+revolutionary impact on the way scientific discoveries are made. 
+
+Big Data by definition doesn’t fit in personal computers or DRAM of even
+moderate size clusters. Since the data may be stored on hard disks, latency and
+throughput of storage access is of primary concern. Historically, this has been
+mitigated by organizing the processing of data in a highly sequential manner.
+However, complex queries cannot always be organized for sequential data
+accesses, and thus high performance implementations of such queries pose a great
+challenge. One approach to solving this problem is \emph{ram
+cloud}~\cite{ramcloud}, where the cluster has enough collective DRAM to
+accommodate the entire dataset in DRAM.  In this paper, we explore a much
+cheaper alternative where Big Data analytics can be done with reasonable
+efficiency in a single rack with distributed flash storage, which has much
+better random accesses performance than hard disks.  We call our system
+FlashBoost and it provides the following capabilities:
+
+\begin{enumerate}
+\item A 20-node system with large enough flash storage to host Big Data
+workloads up to 20 TBs;
+\item Near-uniform latency access into a network of storage devices that form a global address space;
+\item Capacity to implement user-defined in-store processing engines;
+\item Flash card design which exposes an interface to make application-specific optimizations in flash accesses.
+\end{enumerate}
+
+Our preliminary experimental results show that for some applications, FlashBoost
+performance is an order of magnitude better than a conventional cluster where
+SSDs are used only as a disk replacement. FlashBoost unambiguously establishes
+an architecture whose price-performance-power characteristics provide an
+attractive alternative for doing similar scale applications in a ram cloud.
+
+As we will discuss in the related work section, almost every element of our
+system is present in some commercial system. Yet our system architecture as a
+whole is unique.  The main contributions of this work are: (1) Design and
+implementation of a scalable flash-based system with a global address space,
+in-store computing capability and a flexible inter-controller network. (2) A
+hardware-software codesign environment for incorporating user-defined in-store
+processing engines. (3) Performance measurements that show the advantage of such
+an architecture over using flash as a drop-in replacement for disks. (4)
+Demonstration of a complex data analytics appliance which is much cheaper and
+consumes an order of magnitude less power than the cloud-based alternative.
+
+The rest of the paper is organized as follows: In section~\ref{sec:related} we
+explore some existing research related to our system. In
+section~\ref{sec:architecture} we describe the architecture of our rack-level
+system, and in section~\ref{sec:software} we describe the software interface
+that can be used to access flash and the accelerators. In
+section~\ref{sec:implementation} we describe a hardware implementation of
+FlashBoost, and show our results from the implementation in
+section~\ref{sec:results}.  In section~\ref{sec:acceleration} we describe and
+evaluate some example accelerators we have built for the FlashBoost system. 
+Section~\ref{sec:conclusion} summarizes our paper.
+
+
+

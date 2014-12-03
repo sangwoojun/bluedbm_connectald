@@ -23,8 +23,9 @@ module mkAuroraExtFlowControl#(AuroraControllerIfc#(AuroraPhysWidth) auroraExt, 
 
 	Integer recvQDepth = 128;
 	Integer windowSize = 64;
-	SyncFIFOIfc#(AuroraIfcType) recvQ <- mkSyncFIFOToCC(4, aclk, arst);
+	SyncFIFOIfc#(AuroraIfcType) recvQ <- mkSyncFIFOToCC(2, aclk, arst);
 	FIFO#(AuroraIfcType) recvBufferQ <- mkSizedFIFO(recvQDepth, clocked_by aclk, reset_by arst);
+	FIFO#(AuroraIfcType) recvQ2 <- mkFIFO;
 
 	Reg#(Bit#(16)) maxInFlightUp <- mkReg(0, clocked_by aclk, reset_by arst);
 	Reg#(Bit#(16)) maxInFlightDown <- mkReg(0, clocked_by aclk, reset_by arst);
@@ -117,14 +118,18 @@ module mkAuroraExtFlowControl#(AuroraControllerIfc#(AuroraPhysWidth) auroraExt, 
 		recvBufferQ.deq;
 		recvQ.enq(recvBufferQ.first);
 	endrule
+	rule flushReadBuffer2;
+		recvQ.deq;
+		recvQ2.enq(recvQ.first);
+	endrule
 
 	
 	method Action send(AuroraIfcType data);
 		sendQ.enq(data);
 	endmethod
 	method ActionValue#(AuroraIfcType) receive;
-		recvQ.deq;
-		return recvQ.first;
+		recvQ2.deq;
+		return recvQ2.first;
 	endmethod
 	method Bit#(1) channel_up = auroraExt.channel_up;
 	method Bit#(1) lane_up = auroraExt.lane_up;

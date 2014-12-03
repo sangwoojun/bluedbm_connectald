@@ -3,15 +3,17 @@ import FIFOF::*;
 import Vector::*;
 import RWire::*;
 
+import XBar::*;
+
 import AuroraExtImport::*;
 import AuroraCommon::*;
 import AuroraExtGearbox::*;
 
 typedef 6 HeaderFieldSz;
-typedef TSub#(AuroraIfcWidth, TMul#(HeaderFieldSz, 4)) PayloadSz;
+typedef TSub#(AuroraIfcWidth, TMul#(HeaderFieldSz, 3)) PayloadSz;
 typedef struct {
 	Bit#(PayloadSz) payload;
-	Bit#(HeaderFieldSz) len; // not used now
+	//Bit#(HeaderFieldSz) len; // not used now
 	Bit#(HeaderFieldSz) ptype;
 	Bit#(HeaderFieldSz) src;
 	Bit#(HeaderFieldSz) dst;
@@ -19,7 +21,7 @@ typedef struct {
 function Bit#(AuroraIfcWidth) packPacket(AuroraPacket packet);
 	Bit#(AuroraIfcWidth) p = {
 		packet.payload,
-		packet.len,
+		//packet.len,
 		packet.ptype,
 		packet.src,
 		packet.dst
@@ -31,14 +33,14 @@ function AuroraPacket unpackPacket(Bit#(AuroraIfcWidth) d);
 	packet.dst = truncate(d);
 	packet.src = truncate(d>>valueOf(HeaderFieldSz));
 	packet.ptype = truncate(d>>(2*valueOf(HeaderFieldSz)));
-	packet.len = truncate(d>>(3*valueOf(HeaderFieldSz)));
-	packet.payload = truncate(d>>(4*valueOf(HeaderFieldSz)));
+	//packet.len = truncate(d>>(3*valueOf(HeaderFieldSz)));
+	packet.payload = truncate(d>>(3*valueOf(HeaderFieldSz)));
 	return packet;
 endfunction
 
 interface AuroraEndpointUserIfc#(type t);
-	method Action send(t data);
-	method ActionValue#(t) receive;
+	method Action send(t data, Bit#(HeaderFieldSz) dst);
+	method ActionValue#(Tuple2#(t, Bit#(HeaderFieldSz))) receive;
 endinterface
 interface AuroraEndpointCmdIfc;
 	interface AuroraExtUserIfc user;
@@ -47,21 +49,174 @@ interface AuroraEndpointCmdIfc;
 	method Bit#(6) portIdx;
 endinterface
 
-interface AuroraEndpointIfc;
-interface AuroraEndpointUserIfc#(AuroraPacket) user;
+interface AuroraEndpointIfc#(type t);
+interface AuroraEndpointUserIfc#(t) user;
 interface AuroraEndpointCmdIfc cmd;
 endinterface
-module mkAuroraEndpoint#(Integer pidx) ( AuroraEndpointIfc );
+
+module mkAuroraEndpoint#(Integer pidx, Reg#(Bit#(HeaderFieldSz)) myNetIdx) ( AuroraEndpointIfc#(t) )
+	provisos(Bits#(t,wt)
+		, Add#(wt,__a,PayloadSz)
+		, Log#(wt, wtlog)
+		);
+	
 	FIFO#(AuroraIfcType) sendQ <- mkFIFO;
 	FIFO#(AuroraIfcType) recvQ <- mkFIFO;
-	Reg#(Bit#(6)) myIdx <- mkReg(fromInteger(pidx));
+	Reg#(Bit#(HeaderFieldSz)) myIdx <- mkReg(fromInteger(pidx));
+
 interface AuroraEndpointUserIfc user;
-	method Action send(AuroraPacket data);
-		sendQ.enq(packPacket(data));
+	method Action send(t data, Bit#(HeaderFieldSz) dst);
+		AuroraPacket p;
+		p.dst = dst;
+		p.src = myNetIdx;
+		p.payload = zeroExtend(pack(data));
+		p.ptype = fromInteger(pidx);
+		sendQ.enq(packPacket(p));
 	endmethod
-	method ActionValue#(AuroraPacket) receive;
+	method ActionValue#(Tuple2#(t, Bit#(HeaderFieldSz))) receive;
 		recvQ.deq;
-		return unpackPacket(recvQ.first);
+		AuroraIfcType idata = recvQ.first;
+		AuroraPacket p = unpackPacket(idata);
+		t data = unpack(truncate(p.payload));
+		Bit#(HeaderFieldSz) src = p.src;
+		return tuple2(data,src);
+	endmethod
+endinterface
+interface AuroraEndpointCmdIfc cmd;
+	interface AuroraExtUserIfc user;
+		method Action send(AuroraIfcType data);
+			recvQ.enq(data);
+		endmethod
+		method ActionValue#(AuroraIfcType) receive;
+			sendQ.deq;
+			return sendQ.first;
+		endmethod
+		method Bit#(1) lane_up;
+			return 1;
+		endmethod
+		method Bit#(1) channel_up;
+			return 1;
+		endmethod
+	endinterface
+	method Bit#(6) portIdx;
+		return myIdx;
+	endmethod
+endinterface
+endmodule
+
+//FIXME This one has so many bugs!
+module mkAuroraEndpointTyped#(Integer pidx, Reg#(Bit#(HeaderFieldSz)) myNetIdx) ( AuroraEndpointIfc#(t) )
+	provisos(
+		Bits#(t,wt)
+		//, Add#(PayloadSz, __qq, wt)
+		, Add#(PayloadSz, wt, totalW)
+		, Add#(__a, wtlog, totalW)
+		//, Add#(__adf, wt,PayloadSz)
+		, Log#(wt, wtlog)
+		);
+	
+	Integer dataBits = valueOf(wt);
+	Integer beatWidth = valueOf(PayloadSz);
+
+	FIFO#(AuroraIfcType) sendQ <- mkFIFO;
+	FIFO#(AuroraIfcType) recvQ <- mkFIFO;
+	Reg#(Bit#(HeaderFieldSz)) myIdx <- mkReg(fromInteger(pidx));
+
+	FIFO#(Tuple2#(Bit#(wt), Bit#(HeaderFieldSz))) outDataQ <- mkFIFO;
+	Reg#(Bit#(wt)) outDataBuffer <- mkReg(0);
+	Reg#(Bit#(HeaderFieldSz)) outDataDst <- mkReg(0);
+	Reg#(Bit#(wtlog)) outDataIdx <- mkReg(0);
+
+	rule initDataSend( outDataIdx == 0 );
+		let od = outDataQ.first;
+		outDataQ.deq;
+		let data = tpl_1(od);
+		let dst = tpl_2(od);
+
+		Bit#(totalW) tempW = zeroExtend(data);
+		Bit#(PayloadSz) payload = truncate(tempW);
+
+
+		AuroraPacket p;
+		p.dst = dst;
+		p.src = myNetIdx;
+		p.payload = payload;
+		//p.payload = truncate(data);
+		p.ptype = fromInteger(pidx);
+		sendQ.enq(packPacket(p));
+		//$display ( "Sending data %x(%x) to %d from %d", payload, data, dst, pidx );
+
+		if ( dataBits > beatWidth ) begin
+			outDataBuffer <= data>>beatWidth;
+			outDataIdx <= fromInteger(dataBits-beatWidth);
+			outDataDst <= dst;
+		end
+	endrule
+
+	rule sendDataOut ( outDataIdx > 0 );
+		Bit#(totalW) outDataIdxT = zeroExtend(outDataIdx);
+		if ( outDataIdxT > fromInteger(beatWidth) ) begin
+			outDataIdx <= truncate(outDataIdxT - fromInteger(beatWidth));
+		end else begin
+			outDataIdx <= 0;
+		end
+		outDataBuffer <= outDataBuffer>>beatWidth;
+		
+		Bit#(totalW) tempW = zeroExtend(outDataBuffer);
+		Bit#(PayloadSz) payload = truncate(tempW);
+
+		AuroraPacket p;
+		p.dst = outDataDst;
+		p.src = myNetIdx;
+		p.payload = payload;
+		p.ptype = fromInteger(pidx);
+
+		sendQ.enq(packPacket(p));
+		//$display ( "Sending data %x to %d from %d -> %d", payload, outDataDst, pidx, outDataIdxT );
+
+	endrule
+
+	FIFO#(Tuple2#(t, Bit#(HeaderFieldSz))) inDataQ <- mkFIFO;
+	Reg#(Bit#(wt)) inDataBuffer <- mkReg(0);
+	//Reg#(Bit#(HeaderFieldSz)) inDataSrc <- mkReg(0);
+	//Reg#(Bit#(wtlog)) inDataIdx <- mkReg(0);
+	Reg#(Bit#(wtlog)) inDataOff <- mkReg(0);
+
+	rule recvInData;
+		let id = recvQ.first;
+		recvQ.deq;
+		AuroraPacket p = unpackPacket(id);
+		Bit#(totalW) tempW = zeroExtend(p.payload);
+		Bit#(totalW) offsetW = zeroExtend(inDataOff);
+		//Bit#(totalW) nextBuffer = zeroExtend(inDataBuffer<<beatWidth) | zeroExtend(p.payload);
+
+		Bit#(totalW) newDataOr = tempW << (offsetW*fromInteger(beatWidth));
+		Bit#(totalW) nextBuffer = zeroExtend(inDataBuffer) | newDataOr;
+		
+		//$display( "recv - %x %x %x %d, %d/%d", p.payload, nextBuffer, newDataOr, offsetW, (offsetW+1)*fromInteger(beatWidth), fromInteger(dataBits) );
+		if ( (offsetW+1)*fromInteger(beatWidth) < fromInteger(dataBits) ) begin
+			inDataOff <= inDataOff + 1;
+			inDataBuffer <= truncate(nextBuffer);
+		end else begin
+			Bit#(totalW) dataBitsT = fromInteger(dataBits);
+			Bit#(totalW) beatWidthT = fromInteger(beatWidth);
+
+			Bit#(wt) recvData = truncate(nextBuffer);
+			inDataQ.enq(tuple2(unpack(recvData), p.src));
+			//$display ( "Receiving data %x from %d from %d", recvData, p.src, pidx );
+			inDataOff <= 0;
+			inDataBuffer <= 0;
+		end
+	endrule
+	
+
+interface AuroraEndpointUserIfc user;
+	method Action send(t data, Bit#(HeaderFieldSz) dst);
+		outDataQ.enq(tuple2(pack(data), dst));
+	endmethod
+	method ActionValue#(Tuple2#(t, Bit#(HeaderFieldSz))) receive;
+		inDataQ.deq;
+		return inDataQ.first;
 	endmethod
 endinterface
 interface AuroraEndpointCmdIfc cmd;
@@ -87,150 +242,11 @@ interface AuroraEndpointCmdIfc cmd;
 endinterface
 endmodule
 
-interface FIFODeqIfc;
-	method Action deq;
-endinterface
-interface FIFOMD #(type t, /*type tdst, */numeric type ports);
-	method Action enq(t d);
-	method Maybe#(t) first;
-	interface Vector#(ports, FIFODeqIfc) deqs;
-endinterface
-
-module mkFIFOMD (FIFOMD#(t,ports))
-	provisos(Bits#(t,wt)
-		);
-
-	FIFOF#(t) dataQ <- mkSizedFIFOF(8);
-	Vector#(ports,Wire#(Bool)) deqWires <- replicateM(mkDWire(False));
-
-	rule deqrule;
-		Bool deqreq = False;
-		for ( Integer i = 0; i < valueOf(ports); i = i + 1 ) begin
-			deqreq = deqreq || deqWires[i];
-		end
-		//Bool deqreq = fold(funcOr, deqWires);
-		if ( deqreq ) begin
-			dataQ.deq;
-		end
-	endrule
-
-	Vector#(ports, FIFODeqIfc) deqifc;
-
-	for ( Integer idx = 0; idx < valueOf(ports); idx = idx + 1) begin
-		deqifc[idx] = interface FIFODeqIfc;
-			method Action deq;
-			deqWires[idx] <= True;
-			endmethod
-		endinterface: FIFODeqIfc;
-	end
-	method Action enq(t d);
-		dataQ.enq(d);
-	endmethod
-	method Maybe#(t) first;
-		Maybe#(t) fd = tagged Invalid;
-		if ( dataQ.notEmpty ) fd = tagged Valid dataQ.first;
-		return fd;
-	endmethod
-	interface deqs = deqifc;
-endmodule
-
-interface XBarInPortIfc #(type tData, type tDst);
-	method Action send(tData data, tDst dst);
-endinterface
-interface XBarOutPortIfc #(type tData);
-	method ActionValue#(tData) receive;
-	method Bool notEmpty;
-endinterface
-
-interface XBarIfc #(numeric type inPorts, numeric type outPorts, type tData, type tDst);
-	interface Vector#(inPorts, XBarInPortIfc#(tData, tDst)) userIn;
-	interface Vector#(outPorts, XBarOutPortIfc#(tData)) userOut;
-endinterface
-
-module mkXBar (XBarIfc#(inPorts, outPorts, tData, tDst))
-	provisos(
-		Bits#(tData, tDataSz), 
-		Bits#(tDst, tDstSz), 
-		Arith#(tDst),
-		Ord#(tDst),
-		PrimIndex#(tDst, tDstI)
-		);
-	Vector#(inPorts, FIFOMD#(tData, outPorts)) vBuffer <- replicateM(mkFIFOMD);
-	Vector#(inPorts, FIFOMD#(tDst, outPorts)) vDst <- replicateM(mkFIFOMD);
-	Vector#(outPorts, FIFOF#(tData)) vDstPortQ <- replicateM(mkFIFOF);
-
-	for ( Integer pidx = 0; pidx < valueOf(outPorts); pidx = pidx + 1 ) begin
-		Reg#(tDst) curPrioInPort <- mkReg(fromInteger(pidx));
-		FIFO#(tDst) readSrcQ <- mkFIFO;
-		rule relayOut;
-			Maybe#(tDst) srcIdx = tagged Invalid;
-			for ( Integer i = 0; i < valueof(inPorts); i = i + 1) begin
-				tDst checkInPort = fromInteger(i);
-				
-				let dstm = vDst[checkInPort].first;
-				if ( isValid(dstm) ) begin
-					if ( !isValid(srcIdx) || checkInPort == curPrioInPort ) begin
-
-						let dst = fromMaybe(?,dstm);
-						if ( dst == fromInteger(pidx) ) begin
-							srcIdx = tagged Valid checkInPort;
-						end
-					end
-				end
-			end
-			
-			if ( isValid(srcIdx) ) begin
-				let inidx = fromMaybe(?,srcIdx);
-				vDst[inidx].deqs[pidx].deq;
-				readSrcQ.enq(inidx);
-			end
-			
-			if (curPrioInPort + 1 >= fromInteger(valueOf(inPorts)) )
-				curPrioInPort <= 0;
-			else 
-				curPrioInPort <= curPrioInPort + 1;
-		endrule
-		rule relayData2;
-			let inidx = readSrcQ.first;
-			readSrcQ.deq;
-
-			vBuffer[inidx].deqs[pidx].deq;
-			let packetdm = vBuffer[inidx].first;
-			let packetd = fromMaybe(?,packetdm);
-			vDstPortQ[pidx].enq(packetd);
-		endrule
-	end
-
-	Vector#(inPorts, XBarInPortIfc#(tData,tDst)) usersin;
-	Vector#(outPorts, XBarOutPortIfc#(tData)) usersout;
-
-	for ( Integer idx = 0; idx < valueOf(inPorts); idx = idx + 1) begin
-		usersin[idx] = interface XBarInPortIfc#(tData, tDst);
-		method Action send(tData data, tDst dst);
-			vBuffer[idx].enq(data);
-			vDst[idx].enq(dst);
-		endmethod
-		endinterface:XBarInPortIfc;
-	end
-	for ( Integer idx = 0; idx < valueOf(outPorts); idx = idx + 1) begin
-		usersout[idx] = interface XBarOutPortIfc#(tData);
-		method ActionValue#(tData) receive;
-			vDstPortQ[idx].deq;
-			return vDstPortQ[idx].first;
-		endmethod
-		method Bool notEmpty;
-			return vDstPortQ[idx].notEmpty;
-		endmethod
-		endinterface: XBarOutPortIfc;
-	end
-	interface Vector userIn = usersin;
-	interface Vector userOut = usersout;
-endmodule
 
 typedef 20 NodeCount;
 
 interface AuroraExtArbiterIfc;
-	method Action setRoutingTable(Bit#(6) node, Bit#(8) portidx);
+	method Action setRoutingTable(Bit#(6) node, Bit#(8) portidx, Bit#(3) portsel);
 endinterface
 
 module mkAuroraExtArbiter#(Vector#(tPortCount, AuroraExtUserIfc) extports, Vector#(tEndpointCount, AuroraEndpointCmdIfc) endpoints, Reg#(Bit#(HeaderFieldSz)) myIdx) (AuroraExtArbiterIfc)
@@ -244,11 +260,9 @@ module mkAuroraExtArbiter#(Vector#(tPortCount, AuroraExtUserIfc) extports, Vecto
 	//function AuroraExtUserIfc uifc(AuroraEndpointCmdIfc cmd) = cmd.user;
 	//Vector#(tTotalInCount, AuroraExtUserIfc) ports = append(extports, map(uifc,endpoints));
 
-	//NOTE: routingTable contains a bitmap of valid aurora ports to a node
-	//Important: all ports in a bitmap should connect to the same immediate neighboring node
-	//so that all packets take the same path to the destination
-	//FIXME right now it's just used as an index map
-	Vector#(NodeCount, Reg#(Bit#(8))) routingTable <- replicateM(mkReg(0));
+	//NOTE: routingTable includes 8 possible ports to get to each node. 
+	//one of 8 is selected based on the packet type, so all 8 needs to be always filled!
+	Vector#(NodeCount, Vector#(8, Reg#(Bit#(8)))) routingTable <- replicateM(replicateM(mkReg(0)));
 
 	XBarIfc#(tPortCount, tPortCount,AuroraPacket, Bit#(HeaderFieldSz)) xbarPP <- mkXBar;
 	XBarIfc#(tEndpointCount, tEndpointCount,AuroraPacket, Bit#(HeaderFieldSz)) xbarEE <- mkXBar;
@@ -256,9 +270,18 @@ module mkAuroraExtArbiter#(Vector#(tPortCount, AuroraExtUserIfc) extports, Vecto
 	XBarIfc#(tEndpointCount, tPortCount,AuroraPacket, Bit#(HeaderFieldSz)) xbarEP <- mkXBar;
 	XBarIfc#(tPortCount, tEndpointCount,AuroraPacket, Bit#(HeaderFieldSz)) xbarPE <- mkXBar;
 
-	function Bit#(HeaderFieldSz) mapDstToPort(Bit#(HeaderFieldSz) dst);
+	function Bit#(HeaderFieldSz) mapDstToPort(Bit#(HeaderFieldSz) dst, Bit#(HeaderFieldSz) ptype);
 		//FIXME
-		Bit#(HeaderFieldSz) ret = truncate(routingTable[dst]);
+		let portsel = ptype[2:0]; // <- 8 possible lanes to same link. change?
+		Bit#(HeaderFieldSz) ret = truncate(routingTable[dst][portsel]);
+		return ret;
+	endfunction
+	function Bit#(HeaderFieldSz) mapPIdxToIdx(Bit#(HeaderFieldSz) pidx);
+		Bit#(HeaderFieldSz) ret = 0;
+		for ( Integer i = 0; i < endpointCount; i = i + 1 ) begin
+			if ( endpoints[i].portIdx == pidx ) ret = fromInteger(i);
+		end
+
 		return ret;
 	endfunction
 	
@@ -267,15 +290,20 @@ module mkAuroraExtArbiter#(Vector#(tPortCount, AuroraExtUserIfc) extports, Vecto
 			let d <- endpoints[idx].user.receive;
 			AuroraPacket packet = unpackPacket(d);
 			if ( packet.dst == myIdx ) begin
-				xbarEE.userIn[idx].send(packet, packet.ptype);
+				let dstpidx = mapPIdxToIdx(packet.ptype);
+				xbarEE.userIn[idx].send(packet, dstpidx);
 			end else begin
-				let dstport = mapDstToPort(packet.dst);
+				let dstport = mapDstToPort(packet.dst, packet.ptype);
 				xbarEP.userIn[idx].send(packet, dstport);
 			end
 		endrule
 
 		Reg#(Bool) prioEP <- mkReg(False);
 		rule forwardOutDataEP;
+			let epidx = endpoints[idx].portIdx;
+			//TODO have a table eipidx -> idx
+			// to know which userOut to poll
+			// deq will use first Integer idx
 			if ( prioEP ) begin
 				if ( xbarEE.userOut[idx].notEmpty ) begin
 					let d <- xbarEE.userOut[idx].receive;
@@ -305,9 +333,10 @@ module mkAuroraExtArbiter#(Vector#(tPortCount, AuroraExtUserIfc) extports, Vecto
 			let d <- extports[idx].receive;
 			AuroraPacket packet = unpackPacket(d);
 			if ( packet.dst == myIdx ) begin
-				xbarPE.userIn[idx].send(packet, packet.ptype);
+				let dstpidx = mapPIdxToIdx(packet.ptype);
+				xbarPE.userIn[idx].send(packet, dstpidx);
 			end else begin
-				let dstport = mapDstToPort(packet.dst);
+				let dstport = mapDstToPort(packet.dst, packet.ptype);
 				xbarPP.userIn[idx].send(packet, dstport);
 			end
 		endrule
@@ -339,8 +368,8 @@ module mkAuroraExtArbiter#(Vector#(tPortCount, AuroraExtUserIfc) extports, Vecto
 	end
 
 
-	method Action setRoutingTable(Bit#(6) node, Bit#(8) portmap);
-		routingTable[node] <= portmap;
+	method Action setRoutingTable(Bit#(6) node, Bit#(8) portidx, Bit#(3) portsel);
+		routingTable[node][portsel] <= portidx;
 	endmethod
 endmodule
 

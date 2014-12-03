@@ -765,10 +765,10 @@ set_property LOC OLOGIC_X1Y331 [get_cells -hier -filter {NAME =~ */ddr_phy_4lane
 set_property LOC OLOGIC_X1Y319 [get_cells -hier -filter {NAME =~ */ddr_phy_4lanes_0.u_ddr_phy_4lanes/ddr_byte_lane_B.ddr_byte_lane_B/ddr_byte_group_io/*slave_ts}]
 set_property LOC OLOGIC_X1Y307 [get_cells -hier -filter {NAME =~ */ddr_phy_4lanes_0.u_ddr_phy_4lanes/ddr_byte_lane_A.ddr_byte_lane_A/ddr_byte_group_io/*slave_ts}]
 
-set_property LOC PLLE2_ADV_X1Y5  [get_cells portalTop_dramImport/ddr3_ctrl/u_ddr3_v2_0/u_ddr3_v2_0_mig/u_ddr3_infrastructure/plle2_i]
-set_property LOC MMCME2_ADV_X1Y5 [get_cells portalTop_dramImport/ddr3_ctrl/u_ddr3_v2_0/u_ddr3_v2_0_mig/u_ddr3_infrastructure/gen_mmcm.mmcm_i ]
-#set_property LOC PLLE2_ADV_X1Y5 [get_cells -hier -filter { NAME =~ */u_ddr3_infrastructure/plle2_i }]
-#set_property LOC MMCME2_ADV_X1Y6 [get_cells -hier -filter { NAME =~ */u_ddr3_infrastructure/mmcm_i }]
+#set_property LOC PLLE2_ADV_X1Y5  [get_cells portalTop_dramImport/ddr3_ctrl/u_ddr3_v2_0/u_ddr3_v2_0_mig/u_ddr3_infrastructure/plle2_i]
+#set_property LOC MMCME2_ADV_X1Y6 [get_cells portalTop_dramImport/ddr3_ctrl/u_ddr3_v2_0/u_ddr3_v2_0_mig/u_ddr3_infrastructure/gen_mmcm.mmcm_i ]
+set_property LOC PLLE2_ADV_X1Y5 [get_cells -hier -filter { NAME =~ */u_ddr3_infrastructure/plle2_i }]
+set_property LOC MMCME2_ADV_X1Y6 [get_cells -hier -filter { NAME =~ */u_ddr3_infrastructure/mmcm_i }]
 
 
 ######################################################################################################
@@ -776,8 +776,8 @@ set_property LOC MMCME2_ADV_X1Y5 [get_cells portalTop_dramImport/ddr3_ctrl/u_ddr
 ######################################################################################################
 startgroup
 create_pblock pblock_ddr3
-resize_pblock pblock_ddr3 -add { SLICE_X120Y200:SLICE_X220Y360 DSP48_X13Y82:DSP48_X19Y137 RAMB18_X9Y82:RAMB18_X13Y137 RAMB36_X9Y41:RAMB36_X13Y68 }
-#resize_pblock pblock_ddr3 -add { SLICE_X146Y201:SLICE_X205Y348 DSP48_X13Y82:DSP48_X19Y137 RAMB18_X9Y82:RAMB18_X13Y137 RAMB36_X9Y41:RAMB36_X13Y68 }
+#resize_pblock pblock_ddr3 -add { SLICE_X120Y200:SLICE_X220Y360 DSP48_X13Y82:DSP48_X19Y137 RAMB18_X9Y82:RAMB18_X13Y137 RAMB36_X9Y41:RAMB36_X13Y68 }
+resize_pblock pblock_ddr3 -add { SLICE_X146Y201:SLICE_X205Y348 DSP48_X13Y82:DSP48_X19Y137 RAMB18_X9Y82:RAMB18_X13Y137 RAMB36_X9Y41:RAMB36_X13Y68 }
 add_cells_to_pblock pblock_ddr3 [get_cells [list portalTop_dramImport/ddr3_ctrl/u_ddr3_v2_0* ]]
 add_cells_to_pblock pblock_ddr3 [get_cells [list portalTop_dramImport/ddr3_ctrl/u_ddr3_v2_0/* ]]
 add_cells_to_pblock pblock_ddr3 [get_cells [list portalTop_dramImport/ddr3_ctrl/*] ]
@@ -810,32 +810,24 @@ set_max_delay -from [get_clocks ddr3_usrclk] -to [get_clocks ddr3_refclk] 5.000 
 #create_generated_clock -name ddr3_refclk -source [get_pins sys_clk/O] -divide_by 1 [get_pins clk_gen_pll/CLKOUT1]
 
 ###########################################
-set_multicycle_path -from [get_cells -hier -filter {NAME =~ */mc0/mc_read_idle_r_reg}] \
+set_multicycle_path -from [get_cells -hier -filter {NAME =~ */mc0/mc_read_idle_r_r*}] \
                     -to   [get_cells -hier -filter {NAME =~ */input_[?].iserdes_dq_.iserdesdq}] \
                     -setup 6
 
-set_multicycle_path -from [get_cells -hier -filter {NAME =~ */mc0/mc_read_idle_r_reg}] \
+set_multicycle_path -from [get_cells -hier -filter {NAME =~ */mc0/mc_read_idle_r_r*}] \
                     -to   [get_cells -hier -filter {NAME =~ */input_[?].iserdes_dq_.iserdesdq}] \
                     -hold 5
 set_max_delay -datapath_only -from [get_cells -hier -filter {NAME =~ *temp_mon_enabled.u_tempmon/*}] -to [get_cells -hier -filter {NAME =~ *temp_mon_enabled.u_tempmon/device_temp_sync_r1*}] 20
 set_max_delay -from [get_cells -hier *rstdiv0_sync_r1_reg*] -to [get_pins -filter {NAME =~ */RESET} -of [get_cells -hier -filter {REF_NAME == PHY_CONTROL}]] -datapath_only 5
 set_max_delay -datapath_only -from [get_cells -hier -filter {NAME =~ *ddr3_infrastructure/rstdiv0_sync_r1_reg*}] -to [get_cells -hier -filter {NAME =~ *temp_mon_enabled.u_tempmon/xadc_supplied_temperature.rst_r1*}] 20
 #############################################
-
-#set_multicycle_path -from [get_cells portalTop_dramImport/ddr3_ctrl/u_ddr3_v2_0/u_memc_ui_top_std/mem_intfc0/mc0/mc_read_idle_r_reg] \
-#                    -to   [get_cells -hier -filter {NAME =~ */ddr_byte_group_io/input_[?].iserdes_dq_.iserdesdq}] \
+#set_multicycle_path -from [get_cells -hier -filter {NAME =~ */mc0/mc_read_idle_r_reg}] \
+#                    -to   [get_cells -hier -filter {NAME =~ */input_[?].iserdes_dq_.iserdesdq}] \
 #                    -setup 6
-#set_multicycle_path -from [get_cells portalTop_dramImport/ddr3_ctrl/u_ddr3_v2_0/u_memc_ui_top_std/mem_intfc0/mc0/mc_read_idle_r_reg}] \
-#                    -to   [get_cells -hier -filter {NAME =~ */ddr_byte_group_io/input_[?].iserdes_dq_.iserdesdq}] \
+#
+#set_multicycle_path -from [get_cells -hier -filter {NAME =~ */mc0/mc_read_idle_r_reg}] \
+#                    -to   [get_cells -hier -filter {NAME =~ */input_[?].iserdes_dq_.iserdesdq}] \
 #                    -hold 5
-######################################################
-set_multicycle_path -from [get_cells -hier -filter {NAME =~ */mc0/mc_read_idle_r_reg}] \
-                    -to   [get_cells -hier -filter {NAME =~ */input_[?].iserdes_dq_.iserdesdq}] \
-                    -setup 6
-
-set_multicycle_path -from [get_cells -hier -filter {NAME =~ */mc0/mc_read_idle_r_reg}] \
-                    -to   [get_cells -hier -filter {NAME =~ */input_[?].iserdes_dq_.iserdesdq}] \
-                    -hold 5
 ########################################################
 set_false_path -through [get_pins -filter {NAME =~ */DQSFOUND} -of [get_cells -hier -filter {REF_NAME == PHASER_IN_PHY}]]
 

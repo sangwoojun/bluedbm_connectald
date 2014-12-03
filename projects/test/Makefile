@@ -15,7 +15,7 @@ CONNECTALFLAGS += -D IMPORT_HOSTIF -D PinType=Top_Pins --bscflags " -D DataBusWi
 
 ifeq ($(BOARD), vc707)
 CONNECTALFLAGS += \
-	--constraint ../../xilinx/ddr3_v2_0/vc707_ddr3.xdc \
+	--constraint ../../xilinx/ddr3_v2_0/vc707_ddr3_orig.xdc \
 	--verilog ../../xilinx/ddr3_v2_0/ \
 	--verilog ../../xilinx/aurora_8b10b_fmc1/ \
 	--verilog ../../xilinx/aurora_64b66b/ \

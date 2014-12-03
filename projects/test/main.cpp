@@ -85,7 +85,7 @@ void read_test() {
 int main(int argc, const char **argv)
 {
 	if ( argc < 2 ) {
-		fprintf(stderr, "usage: ./ubuntu.exe [nodeid]");
+		fprintf(stderr, "usage: ./ubuntu.exe [nodeid]\n");
 		return 1;
 	}
 
@@ -113,12 +113,15 @@ int main(int argc, const char **argv)
 	
 	printf( "Done allocating DMA buffers\n" ); fflush(stdout);
 
+	printf( "initializing aurora with node id %d\n", myid ); fflush(stdout);
+	auroraifc_start(myid);
 
 	/////////////////////////////////////////////////////////
 
 	fprintf(stderr, "Main::flush and invalidate complete\n");
 	if ( sem_init(&wait_sem, 1, 0) ) {
 		//error
+		fprintf(stderr, "sem_init failed!\n" );
 	}
 
 	for ( int j = 0; j < WRITE_BUFFER_COUNT; j++ ) {
@@ -132,15 +135,23 @@ int main(int argc, const char **argv)
 		}
 	}
 
-	printf ( "sending start msg\n" ); fflush(stdout);
+	printf( "testing DRAM\n" ); fflush(stdout);
+	//test_dram();
+	
 
+	sleep(5);
+
+	printf ( "sending start msg\n" ); fflush(stdout);
 	flashifc_start(/*datasource*/1);
-	printf( "initializing aurora with node id %d\n", myid );
-	auroraifc_start(myid);
+	auroraifc_sendTest();
+	
+	sleep(1);
+	
 
 	write_test();
 	
 	read_test();
+
 
 	//for ( int j = 0; j < 5; j++ ) {
 	for ( int j = 0; j < READ_BUFFER_COUNT; j++ ) {

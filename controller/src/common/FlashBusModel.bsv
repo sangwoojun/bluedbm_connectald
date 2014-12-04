@@ -136,11 +136,12 @@ module mkFlashBusModel(FlashBusModelIfc);
 
 		rule chipHandleCmd if (chipSt==ST_CMD);
 			let cmd = flashChipCmdQs[c].first;
-			if (cmd.page > fromInteger(pagesPerBlock-1)) begin
+			
+			if (cmd.page > fromInteger(pagesPerBlock-1) && valueOf(BSIM_USE_HASHED_DATA)==0) begin
 				$display("**ERROR: cmd page exceeds simulation pages available. Sim pages=%d", pagesPerBlock);
 				chipSt <= ST_ERROR;
 			end
-			else if (cmd.block > fromInteger(blocksPerCE-1)) begin
+			else if (cmd.block > fromInteger(blocksPerCE-1) && valueOf(BSIM_USE_HASHED_DATA)==0 ) begin
 				$display("**ERROR: cmd block exceeds simulation blocks available. Sim blocks=%d", blocksPerCE);
 				chipSt <= ST_ERROR;
 			end

@@ -26,7 +26,9 @@ endinterface
 */
 typedef TLog#(PageWords) PageOffsetSz;
 typedef struct {
-	FlashAddr faddr;
+	//FlashAddr faddr;
+	Bit#(8) page;
+	Bit#(16) block;
 	Bit#(PageOffsetSz) offset;
 } PageAddrOff deriving (Bits, Eq);
 
@@ -51,7 +53,7 @@ endinterface
 
 module mkTagBuffers(TagBuffers);
 
-	Vector#(NumMpEngines, FIFO#(Bit#(WordSz))) bufferQs <- replicateM(mkSizedBRAMFIFO(pageWords));
+	Vector#(NumMpEngines, FIFO#(Bit#(WordSz))) bufferQs <- replicateM(mkSizedBRAMFIFO(pageWords*2));
 	Vector#(NumMpEngines, FIFO#(FlashClientReq)) flashClientReqQs <- replicateM(mkFIFO);
 	Vector#(NumMpEngines, FIFO#(Bool)) doneQs <- replicateM(mkFIFO);
 	Vector#(NumMpEngines, FIFO#(FlashCmd)) flashCmdQs <- replicateM(mkFIFO());
@@ -71,22 +73,26 @@ module mkTagBuffers(TagBuffers);
 					$display("**ERROR: unaligned page reads unsupported!!");
 				end
 				
-				$display("TagBuffers: FlashRequest issued for: ftag=%d, bus=%d, chip=%d, blk=%d, page=%d", 
-					i, addrFlash.faddr.bus, addrFlash.faddr.chip, addrFlash.faddr.block, addrFlash.faddr.page);
-				$display("TagBuffers: Client Request is: addr=%x, len=%d", req.startAddr, req.len);
-
+	
+				Bit#(8) tmpI = fromInteger(i);
+				BusT busTmp = truncate(tmpI>>1);
+				ChipT chipTmp = zeroExtend(tmpI[0]);
 				FlashCmd fcmd = FlashCmd {
 					tag: fromInteger(i), //Use the ID as the tag. Only one tag per client
 					op: READ_PAGE,
-					bus: addrFlash.faddr.bus,
-					chip: addrFlash.faddr.chip,
-					block: addrFlash.faddr.block,
-					page: addrFlash.faddr.page
+					//FIXME: for now, assume good distribution. Force data at a loc
+					bus: busTmp,//addrFlash.faddr.bus, 
+					chip: chipTmp, //addrFlash.faddr.chip,
+					block: addrFlash.block,
+					page: addrFlash.page
 				};
 				//flashCmdQ.enq(fcmd);
 				flashCmdQs[i].enq(fcmd);
 				bytesRequested[i] <= bytesRequested[i] + fromInteger(pageSizeUser);
 				cmdBytesRequested[i] <= cmdBytesRequested[i] + fromInteger(pageSizeUser);
+				$display("TagBuffers: FlashRequest issued for: ftag=%d, bus=%d, chip=%d, blk=%d, page=%d", 
+					i, busTmp, chipTmp, addrFlash.block, addrFlash.page);
+				$display("TagBuffers: Client Request is: addr=%x, len=%d", req.startAddr, req.len);
 			end
 			else begin
 				cmdBytesRequested[i] <= 0;

@@ -1,4 +1,5 @@
 import FShow::*;
+import GetPut::*;
 
 //**********************************************************
 // Type definitions of the flash controller and submodules
@@ -12,7 +13,7 @@ typedef 8600 			PageSize;
 typedef 8192 			PageSizeUser;
 typedef 17 				PageECCBlks; //16 blocks of k=243; 1 block of k=208
 `ifdef BSIM
-	typedef 4 			PagesPerBlock;
+	typedef 16 			PagesPerBlock;
 	typedef 128			BlocksPerCE;
 	typedef 8 			ChipsPerBus;
 `elsif SLC
@@ -28,11 +29,14 @@ typedef 17 				PageECCBlks; //16 blocks of k=243; 1 block of k=208
 typedef 2											BusWordBytes;
 typedef TMul#(8, BusWordBytes) 				BusWordSz;
 typedef 16 											WordBytes;
+typedef TLog#(WordBytes)						WordBytesLog;
 typedef TMul#(8,WordBytes) 					WordSz;
 //Each burst is 128 bits via the controller interface
 typedef TDiv#(PageSizeUser, WordBytes) 	PageWords;
 typedef TMul#(TMul#(BlocksPerCE, PagesPerBlock), PageWords) WordsPerChip;
 
+typedef WordSz FlashDataWidth;
+typedef 44  FlashAddrWidth;
 
 Integer pageSize 			= valueOf(PageSize); //bytes
 Integer pageSizeUser 	= valueOf(PageSizeUser); //usable page size is 8k
@@ -66,6 +70,16 @@ typedef 128 NumTags;
 typedef Bit#(TLog#(NumTags)) TagT;
 typedef Bit#(TLog#(ChipsPerBus)) ChipT;
 typedef Bit#(TLog#(NUM_BUSES)) BusT;
+
+Integer num_tags = valueOf(NumTags);
+Integer num_buses = valueOf(NUM_BUSES);
+
+typedef enum {
+	SRC_HOST,
+	SRC_USER_HW
+} SourceT deriving (Bits, Eq, FShow);
+
+
 
 typedef enum {
 	ERASE_ERROR, 
@@ -181,6 +195,14 @@ typedef struct {
 	Bit#(8) page;
 } FlashCmd deriving (Bits, Eq);
 
+typedef struct {
+	Bit#(8) page;
+	Bit#(16) block;
+	ChipT chip;
+	BusT bus;
+} FlashAddr deriving (Bits, Eq);
+
+
 // Flash Controller User Ifc
 interface FlashCtrlUser;
 	method Action sendCmd (FlashCmd cmd);
@@ -189,6 +211,24 @@ interface FlashCtrlUser;
 	method ActionValue#(TagT) writeDataReq(); 
 	method ActionValue#(Tuple2#(TagT, StatusT)) ackStatus (); 
 endinterface
+
+
+typedef 16 NumMpEngines;   
+
+typedef struct {
+	Bit#(FlashAddrWidth) startAddr;
+	Bit#(FlashAddrWidth) len;
+} FlashClientReq deriving (Bits, Eq);
+
+
+interface FlashReadClient#(numeric type dataWidth);
+	interface Get#(FlashClientReq) flashClientReq;
+	interface Put#(Bit#(dataWidth)) rdata; 
+	interface Put#(Bool) done;
+endinterface
+
+
+
 
 
 instance FShow#(BusOp);

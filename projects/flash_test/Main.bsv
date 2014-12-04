@@ -30,7 +30,7 @@ import ClientServer::*;
 import Vector::*;
 import List::*;
 
-import PortalMemory::*;
+import ConnectalMemory::*;
 import MemTypes::*;
 import MemreadEngine::*;
 import MemwriteEngine::*;
@@ -80,10 +80,10 @@ typedef NumDmaChannels NumObjectClients;
 
 interface MainIfc;
 	interface FlashRequest request;
-	interface Vector#(NumObjectClients, ObjectReadClient#(WordSz)) dmaReadClient;
-	interface Vector#(NumObjectClients, ObjectWriteClient#(WordSz)) dmaWriteClient;
-	//interface ObjectReadClient#(WordSz) dmaReadClient;
-	//interface ObjectWriteClient#(WordSz) dmaWriteClient;
+	interface Vector#(NumObjectClients, MemReadClient#(WordSz)) dmaReadClient;
+	interface Vector#(NumObjectClients, MemWriteClient#(WordSz)) dmaWriteClient;
+	//interface MemReadClient#(WordSz) dmaReadClient;
+	//interface MemWriteClient#(WordSz) dmaWriteClient;
 	interface Aurora_Pins#(4) aurora_fmc1;
 	interface Aurora_Clock_Pins aurora_clk_fmc1;
 endinterface
@@ -283,8 +283,8 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 	endrule
 
    
-	Vector#(NumObjectClients, ObjectReadClient#(WordSz)) dmaReadClients;
-	Vector#(NumObjectClients, ObjectWriteClient#(WordSz)) dmaWriteClients;
+	Vector#(NumObjectClients, MemReadClient#(WordSz)) dmaReadClients;
+	Vector#(NumObjectClients, MemWriteClient#(WordSz)) dmaWriteClients;
 	for ( Integer idx = 0; idx < numDmaChannels; idx = idx + 1 ) begin
 		dmaReadClients[idx] = reV[idx].dmaClient;
 		dmaWriteClients[idx] = weV[idx].dmaClient;
@@ -366,8 +366,8 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 
 	endinterface
 
-   interface ObjectReadClient dmaReadClient = dmaReadClients;
-   interface ObjectWriteClient dmaWriteClient = dmaWriteClients;
+   interface MemReadClient dmaReadClient = dmaReadClients;
+   interface MemWriteClient dmaWriteClient = dmaWriteClients;
 
    interface Aurora_Pins aurora_fmc1 = flashCtrl.aurora;
    interface Aurora_Clock_Pins aurora_clk_fmc1 = gtx_clk_fmc1.aurora_clk;

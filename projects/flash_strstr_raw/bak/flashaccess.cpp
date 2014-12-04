@@ -10,11 +10,18 @@
 #include <list>
 #include <time.h>
 
+
 #include "StdDmaIndication.h"
 #include "MemServerRequest.h"
 #include "MMURequest.h"
 #include "FlashIndication.h"
 #include "FlashRequest.h"
+
+static int trace_memory = 0;
+extern "C" {
+#include "userReference.h"
+}
+
 
 #define BLOCKS_PER_CHIP 2
 #define CHIPS_PER_BUS 8
@@ -321,16 +328,16 @@ void readPage(int bus, int chip, int block, int page, int tag) {
 int main(int argc, const char **argv)
 {
 
-	MemServerRequestProxy *hostMemServerRequest = new MemServerRequestProxy(IfcNames_HostMemServerRequest);
-	MMURequestProxy *dmap = new MMURequestProxy(IfcNames_HostMMURequest);
+	//MemServerRequestProxy *hostMemServerRequest = new MemServerRequestProxy(IfcNames_HostMemServerRequest);
+	MMURequestProxy *dmap = new MMURequestProxy(IfcNames_BackingStoreMMURequest);
 	DmaManager *dma = new DmaManager(dmap);
-	MemServerIndication *hostMemServerIndication = new MemServerIndication(hostMemServerRequest, IfcNames_HostMemServerIndication);
-	MMUIndication *hostMMUIndication = new MMUIndication(dma, IfcNames_HostMMUIndication);
+	MemServerIndication *hostMemServerIndication = new MemServerIndication(IfcNames_HostMemServerIndication);
+	MMUIndication *hostMMUIndication = new MMUIndication(dma, IfcNames_BackingStoreMMUIndication);
 
 	fprintf(stderr, "Main::allocating memory...\n");
 
-	device = new FlashRequestProxy(IfcNames_FlashRequest);
-	FlashIndication *deviceIndication = new FlashIndication(IfcNames_FlashIndication);
+	device = new FlashRequestProxy(IfcNames_NandCfgRequest);
+	FlashIndication *deviceIndication = new FlashIndication(IfcNames_NandCfgIndication);
 	
 	srcAlloc = portalAlloc(srcAlloc_sz);
 	dstAlloc = portalAlloc(dstAlloc_sz);
@@ -389,7 +396,7 @@ int main(int argc, const char **argv)
 	//TODO: test writes and erases
 	
 
-	
+
 	//test erases
 	for (int blk = 0; blk < BLOCKS_PER_CHIP; blk++){
 		for (int chip = 0; chip < CHIPS_PER_BUS; chip++){
@@ -403,7 +410,6 @@ int main(int argc, const char **argv)
 		usleep(100);
 		if ( getNumErasesInFlight() == 0 ) break;
 	}
-	
 	
 	//read back erased pages
 	for (int blk = 0; blk < BLOCKS_PER_CHIP; blk++){

@@ -1,7 +1,10 @@
 CONNECTALDIR=../../tools/xbsv/
 
-S2H = FlashRequest
-H2S = FlashIndication
+INTERFACES = FlashRequest FlashIndication
+
+NUMBER_OF_MASTERS=1
+PIN_TYPE=Top_Pins
+DATA_BUS_WIDTH=128
 
 #Note: for some reason, xbsv can't parase ControllerTypes.bsv properly. So a soft link in current directory is created
 BSVFILES = Main.bsv Top.bsv \
@@ -12,9 +15,9 @@ BSVFILES = Main.bsv Top.bsv \
 	../../controller/src/hw_virtex/FlashCtrlVirtex.bsv
 
 CPPFILES=main.cpp
-#CONNECTALFLAGS=--bscflags " -D TRACE_AXI"
 
-CONNECTALFLAGS += -D IMPORT_HOSTIF -D PinType=Top_Pins --bscflags " -D DataBusWidth=128 " --clib rt
+CONNECTALFLAGS = -D IMPORT_HOSTIF -D DataBusWidth=128 -D PinType=Top_Pins --clib rt --bscflags " -D DataBusWidth=128 -D PinType=Top_Pins"
+#CONNECTALFLAGS=--bscflags " -D TRACE_AXI"
 
 
 ifeq ($(BOARD), vc707)

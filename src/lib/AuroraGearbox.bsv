@@ -1,5 +1,6 @@
 import FIFO::*;
 import FIFOF::*;
+import BRAMFIFO::*;
 import Clocks :: *;
 
 typedef 8 HeaderSz;
@@ -30,7 +31,7 @@ module mkAuroraGearbox#(Clock aclk, Reset arst, Bool waitForStartReq) (AuroraGea
 
 
 	SyncFIFOIfc#(Tuple2#(DataIfc,PacketType)) recvQ <- mkSyncFIFOToCC(4, aclk, arst);
-	FIFO#(Tuple2#(DataIfc,PacketType)) recvBufferQ <- mkSizedFIFO(recvQDepth, clocked_by aclk, reset_by arst);
+	FIFO#(Tuple2#(DataIfc,PacketType)) recvBufferQ <- mkSizedBRAMFIFO(recvQDepth, clocked_by aclk, reset_by arst);
 	Reg#(Bit#(16)) maxInFlightUp <- mkReg(0, clocked_by aclk, reset_by arst);
 	Reg#(Bit#(16)) maxInFlightDown <- mkReg(0, clocked_by aclk, reset_by arst);
 	Reg#(Bit#(16)) curInQUp <- mkReg(0, clocked_by aclk, reset_by arst);

@@ -72,7 +72,7 @@ module mkAuroraIntra#(Clock gtx_clk_p, Clock gtx_clk_n, Clock clk250) (AuroraIfc
 	endrule
 
 
-	AuroraGearboxIfc auroraGearbox <- mkAuroraGearbox(aclk, arst, False);
+	AuroraGearboxIfc auroraGearbox <- mkAuroraGearbox(aclk, arst);
 	rule auroraOut if (auroraIntraImport.user.channel_up==1);
 		let d <- auroraGearbox.auroraSend;
 		//if ( auroraIntraImport.user.channel_up == 1 ) begin

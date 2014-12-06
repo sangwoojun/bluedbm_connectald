@@ -51,8 +51,6 @@ import ControllerTypes::*;
 //import AuroraExtImport117::*;
 import AuroraCommon::*;
 
-//import PageCache::*;
-import DMABurstHelper::*;
 import ControllerTypes::*;
 import FlashCtrlVirtex::*;
 import FlashCtrlModel::*;

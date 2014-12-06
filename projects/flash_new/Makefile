@@ -1,4 +1,4 @@
-CONNECTALDIR=../../tools/xbsv/
+CONNECTALDIR=../../tools/connectal/
 
 INTERFACES = FlashRequest FlashIndication
 

@@ -437,13 +437,13 @@ int main(int argc, const char **argv)
 				//send request
 				writePage(bus, chip, blk, page, freeTag);
 			}
+			while (true) {
+				usleep(100);
+				if ( getNumWritesInFlight() == 0 ) break;
+			}
 		}
 		
 		
-		while (true) {
-			usleep(100);
-			if ( getNumWritesInFlight() == 0 ) break;
-		}
 	} //each bus
 	
 

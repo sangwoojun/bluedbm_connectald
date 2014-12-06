@@ -6,7 +6,7 @@ import GetPut::*;
 import ClientServer::*;
 import Vector::*;
 
-import ConnectalMemory::*;
+//import ConnectalMemory::*;
 import MemTypes::*;
 import MemreadEngine::*;
 import MemwriteEngine::*;

@@ -1,3 +1,0 @@
-- fix lock granularity in main.cpp
-- recompile controller with updated aurora
-- clean up, commit code

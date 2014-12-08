@@ -36,8 +36,8 @@
 #include "StdDmaIndication.h"
 #include "MMURequest.h"
 #include "GeneratedTypes.h" 
-#include "StrstrIndication.h"
-#include "StrstrRequest.h"
+#include "StrstrIndicationBDBM.h"
+#include "StrstrRequestBDBM.h"
 
 static int trace_memory = 1;
 extern "C" {
@@ -73,8 +73,8 @@ int main(int argc, const char **argv)
   DmaManager *nandsimDma = new DmaManager(nandsimMMURequest);
   MMUIndication *nandsimMMUIndication = new MMUIndication(nandsimDma,IfcNames_NandMMUIndication);
 
-  StrstrRequestProxy *strstrRequest = new StrstrRequestProxy(IfcNames_AlgoRequest);
-  StrstrIndication *strstrIndication = new StrstrIndication(IfcNames_AlgoIndication);
+  StrstrRequestBDBMProxy *strstrRequest = new StrstrRequestBDBMProxy(IfcNames_AlgoRequest);
+  StrstrIndicationBDBM *strstrIndication = new StrstrIndicationBDBM(IfcNames_AlgoIndication);
   
   MemServerIndication *hostMemServerIndication = new MemServerIndication(IfcNames_HostMemServerIndication);
   //MemServerIndication *nandsimMemServerIndication = new MemServerIndication(IfcNames_NandMemServerIndication);

@@ -1,19 +1,20 @@
-CONNECTALDIR=../../tools/xbsv/
+CONNECTALDIR=../../tools/connectal/
 
-INTERFACES = StrstrRequest StrstrIndication FlashRequest FlashIndication
+INTERFACES = StrstrRequestBDBM StrstrIndicationBDBM FlashRequest FlashIndication
 
-BSVFILES = $(CONNECTALDIR)/lib/strstr/bsv/Strstr.bsv \
-			  $(CONNECTALDIR)/lib/nandsim/bsv/NandSimNames.bsv Top.bsv FlashTop.bsv \
+#$(CONNECTALDIR)/lib/strstr/bsv/Strstr.bsv 
+BSVFILES =  Top.bsv FlashTop.bsv StrstrBDBM.bsv \
+			  	$(CONNECTALDIR)/lib/nandsim/bsv/NandSimNames.bsv \
 				../../xilinx/aurora_8b10b_fmc1/AuroraImportFmc1.bsv \
 				../../src/lib/AuroraCommon.bsv \
 				../../controller/src/common/FlashBusModel.bsv \
 				../../controller/src/model_virtex/FlashCtrlModel.bsv \
 				../../controller/src/hw_virtex/FlashCtrlVirtex.bsv
 #CPPFILES2=$(CONNECTALDIR)/examples/algo1_nandsim/test.cpp
-CPPFILES=test.cpp
+CPPFILES= test.cpp
 #CPPFILES=flashaccess.cpp
 CONNECTALFLAGS += -D DEGPAR=4
-CONNECTALFLAGS += -I$(CONNECTALDIR)/lib/strstr/cpp
+#CONNECTALFLAGS += -I$(CONNECTALDIR)/lib/strstr/cpp
 
 
 PIN_TYPE = Top_Pins

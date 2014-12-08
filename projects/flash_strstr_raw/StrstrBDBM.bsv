@@ -29,22 +29,22 @@ import Gearbox::*;
 import Connectable::*;
 import StmtFSM::*;
 import MemTypes::*;
-import MPEngine::*;
+import MPEngineBDBM::*;
 import MemreadEngine::*;
 import Pipe::*;
 import ControllerTypes::*;
 
-interface StrstrRequest;
+interface StrstrRequestBDBM;
    method Action setup(Bit#(32) needleSGLId, Bit#(32) mpNextSGLId, Bit#(32) needle_len);
    method Action search(Bit#(32) haystackSGLId, Bit#(32) haystack_len);
 endinterface
 
-interface StrstrIndication;
+interface StrstrIndicationBDBM;
    method Action searchResult(Int#(32) v);
 endinterface
 
-interface Strstr#(numeric type haystackBusWidth, numeric type configBusWidth);
-   interface StrstrRequest request;
+interface StrstrBDBM#(numeric type haystackBusWidth, numeric type configBusWidth);
+   interface StrstrRequestBDBM request;
    //interface MemReadClient#(haystackBusWidth) haystack_read_client;
 	interface Vector#(NumMpEngines, FlashReadClient#(haystackBusWidth)) haystack_flash_clients;
    interface MemReadClient#(configBusWidth) config_read_client;
@@ -55,7 +55,7 @@ function Bool my_or(Bool a, Bool b) = a || b;
    
 //typedef `DEGPAR DegPar;   
    
-module mkStrstr#(StrstrIndication indication)(Strstr#(haystackBusWidth, configBusWidth))
+module mkStrstrBDBM#(StrstrIndicationBDBM indication)(StrstrBDBM#(haystackBusWidth, configBusWidth))
    provisos( Add#(0,NumMpEngines,p)
 	    ,Log#(p,lp)
 
@@ -94,10 +94,10 @@ module mkStrstr#(StrstrIndication indication)(Strstr#(haystackBusWidth, configBu
 
    //let read_servers = zip(haystack_re.read_servers,config_re.read_servers);
    //Vector#(p, MPEngine#(haystackBusWidth,configBusWidth)) engines <- mapM(uncurry(mkMPEngine),read_servers);
-   Vector#(p, MPEngine#(haystackBusWidth,configBusWidth)) engines = newVector();
+   Vector#(p, MPEngineBDBM#(haystackBusWidth,configBusWidth)) engines = newVector();
 	Vector#(p, FlashReadClient#(haystackBusWidth)) mpengine_flash_clients = newVector();
 	for (Integer e=0; e<valueOf(p); e=e+1) begin
-		engines[e] <- mkMPEngine(config_re.read_servers[e]);
+		engines[e] <- mkMPEngineBDBM(config_re.read_servers[e]);
 		mpengine_flash_clients[e] = engines[e].flash_client;
 	end
 
@@ -178,7 +178,7 @@ module mkStrstr#(StrstrIndication indication)(Strstr#(haystackBusWidth, configBu
    endseq;
    FSM startFSM <- mkFSM(startStmt);
       
-   interface StrstrRequest request;
+   interface StrstrRequestBDBM request;
       method Action setup(Bit#(32) needle_sglId, Bit#(32) mpNext_sglId, Bit#(32) needle_len);
 	 if (verbose) $display("mkStrstr::setup %d %d %d", needle_sglId, mpNext_sglId, needle_len);
 	 needleLen <= needle_len;

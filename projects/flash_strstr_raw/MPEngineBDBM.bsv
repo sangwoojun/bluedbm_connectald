@@ -43,7 +43,7 @@ import EHR::*;
 
 import ControllerTypes::*;
 
-interface MPEngine#(numeric type haystackBusWidth, numeric type configBusWidth);
+interface MPEngineBDBM#(numeric type haystackBusWidth, numeric type configBusWidth);
    interface PipeIn#(Tripple#(Bit#(32))) setsearch;
    interface PipeOut#(Int#(32)) locdone;
 	interface FlashReadClient#(haystackBusWidth) flash_client;
@@ -61,8 +61,8 @@ typedef enum {Config_needle, Config_mpNext, Initialized, Search} Stage deriving 
 
 
 
-module mkMPEngine#( /*MemreadServer#(haystackBusWidth) haystackReader,*/
-		   MemreadServer#(configBusWidth) configReader) (MPEngine#(haystackBusWidth,configBusWidth))
+module mkMPEngineBDBM#( /*MemreadServer#(haystackBusWidth) haystackReader,*/
+		   MemreadServer#(configBusWidth) configReader) (MPEngineBDBM#(haystackBusWidth,configBusWidth))
 
    provisos(Add#(a__, 8, haystackBusWidth),
 	    Div#(haystackBusWidth,8,nc),

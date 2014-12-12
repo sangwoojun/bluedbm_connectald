@@ -26,7 +26,7 @@ TOP_HW_TB_BSV_PATH= $(COMMON_BSV_PATH):../src/hw_artix:../src/hw_artix/ECC:../..
 TOP_HW_TB_XDC			= ../../xilinx/constraints/artix_hw_8buses.xdc
 
 #Verilog simulation testbench + hardware controller + nand verilog model
-SIM_FLAGS			= -D NAND_SIM
+#SIM_FLAGS			= -D NAND_SIM
 TOP_SIM_TB			= mkTopTB
 TOP_SIM_TB_PATH	= ../src/hw_artix/tb/TopTB.bsv
 TOP_SIM_TB_BSV_PATH = $(COMMON_BSV_PATH):../src/hw_artix:../src/hw_artix/ECC:../../src/lib
@@ -67,6 +67,7 @@ compile_sim_tb: MSG = \>\>\> Compiling SIMULATION TESTBENCH + CONTROLLER \<\<\<
 compile_sim_tb: TOP_MODULE=$(TOP_SIM_TB)
 compile_sim_tb: TOP_PATH=$(TOP_SIM_TB_PATH)
 compile_sim_tb: BSV_PATH=$(TOP_SIM_TB_BSV_PATH)
+compile_sim_tb: BSC_FLAGS += -D NAND_SIM
 compile_sim_tb: compile
 
 compile:
@@ -76,10 +77,10 @@ compile:
 	mkdir -p $(V_DIR)
 	mkdir -p $(B_DIR)
 	bsc -u $(BSC_FLAGS) -verilog -vdir $(V_DIR) -bdir $(B_DIR) -info-dir $(B_DIR) -simdir $(B_DIR) -p +:$(BSV_PATH) -g $(TOP_MODULE) $(TOP_PATH)
+	cd $(V_DIR); $(ROOT_DIR)/verilogcopy.sh; cd $(ROOT_DIR)
 	@echo $(MSG)...DONE
 
 implement:
-	cd $(V_DIR); $(ROOT_DIR)/verilogcopy.sh; cd $(ROOT_DIR)
 	cp $(ROOT_DIR)/vivado-impl.tcl $(BUILD_DIR)/impl.tcl
 	cd $(BUILD_DIR); vivado -mode batch -source impl.tcl -tclargs $(TOP_MODULE) $(XDC_FILES)
 

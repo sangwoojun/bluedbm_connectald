@@ -6,12 +6,12 @@ import GetPut::*;
 //**********************************************************
 
 //NAND geometry
-//Actual page size is 8640B, but we don't need the last 40B for ECC
-//Valid Data: 2 x (243B x 16 + 208B) = 8192B; 
-//With ECC: 2 x (255B x 16 + 220B) = 8600
-typedef 8600 			PageSize;
-typedef 8192 			PageSizeUser;
-typedef 17 				PageECCBlks; //16 blocks of k=243; 1 block of k=208
+//Actual page size is 8640B
+//Valid Data: 2 x (243B x 16 + 224B) = 8224B; //8192+32B
+//With ECC: 2 x (255B x 16 + 236B) = 8632
+typedef 8632 			PageSize;
+typedef 8224 			PageSizeUser;
+typedef 17 				PageECCBlks; //16 blocks of k=243; 1 block of k=224
 `ifdef BSIM
 	typedef 16 			PagesPerBlock;
 	typedef 128			BlocksPerCE;
@@ -40,7 +40,7 @@ typedef 44  FlashAddrWidth;
 
 Integer pageSize 			= valueOf(PageSize); //bytes
 Integer pageSizeUser 	= valueOf(PageSizeUser); //usable page size is 8k
-Integer pageECCBlks 		= valueOf(PageECCBlks); //16 blocks of k=243; 1 block of k=208
+Integer pageECCBlks 		= valueOf(PageECCBlks); //16 blocks of k=243; 1 block of k=224
 Integer pagesPerBlock 	= valueOf(PagesPerBlock);
 Integer blocksPerCE 		= valueOf(BlocksPerCE);
 Integer chipsPerBus		= valueOf(ChipsPerBus);

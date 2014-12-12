@@ -81,7 +81,7 @@ function Bit#(64) getCurrVin(Bit#(64) vio_in);
 	Bit#(64) vin;
 	`ifdef NAND_SIM
 		//use fixed test suite for simulation
-		vin = 64'hFE00000000000000; 
+		vin = 64'hFF00000000000000; 
 	`else
 		vin = vio_in;
 	`endif
@@ -370,11 +370,12 @@ function FlashCmd getNextCmd (TagT tag, Bit#(8) testSetSel, Bit#(16) cmdCnt);
 	else if (testSetSel == 8'hFF) begin
 		bus = 0;
 		c = 0; 
-		blk = zeroExtend(cmdCnt[0]); 
-		if (cmdCnt < 2) begin
+		//blk = zeroExtend(cmdCnt[0]); 
+		blk = 0;
+		if (cmdCnt==0) begin
 			op = WRITE_PAGE;
 		end
-		else begin
+		else if (cmdCnt==1) begin
 			op = READ_PAGE;
 		end
 	end

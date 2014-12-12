@@ -367,7 +367,7 @@ module mkBusController#(
 			//Inject some errors if simulating
 			//TODO FIXME
 			`ifdef NAND_SIM
-				if (dataCnt[7:0]<6) begin //injection frequency
+				if (dataCnt>nDataBursts-6) begin //injection frequency
 					rd = rd & 16'hFF00; //inject err low
 					$display("@%t\t%m: injected read error LOW rd[%d]=%x", $time, dataCnt, rd);
 				end
@@ -380,7 +380,7 @@ module mkBusController#(
 			decodeInQ.enq(rd);
 			debugR0 <= rd;
 			dataCnt <= dataCnt + 1;
-			$display("@%t\t%m: read raw data: %x", $time, rd);
+			$display("@%t\t%m: read raw data[%d]: %x", $time, dataCnt, rd);
 			//if it's the first burst of a block, enq the decoder control info
 			if (rdEnqWordCnt == 0) 
 			begin

@@ -104,54 +104,57 @@ module mkChienSearch
 	    endaction
 	    else seq
 	       action
-		  $display ("  [chien %0d]  start: no_error_flag = False", block_number);
-		  i <= 254;
-		  loop_done <= False;
-		  count_error <= 0;
-		  lambda_out_q.enq (lambda_in.first);
-		  let lambda_a_new <- times_alpha_n_vec.func (lambda_in.first, t);
-		  lambda_a <= lambda_a_new;
-		  alpha_inv <= 2; // = alpha^(1) = alpha^(-254)
-		  lambda_in.deq;
+				  $display ("  [chien %0d]  start: no_error_flag = False", block_number);
+				  i <= 254;
+				  loop_done <= False;
+				  count_error <= 0;
+				  lambda_out_q.enq (lambda_in.first);
+				  let lambda_a_new <- times_alpha_n_vec.func (lambda_in.first, t);
+				  lambda_a <= lambda_a_new;
+				  alpha_inv <= 2; // = alpha^(1) = alpha^(-254)
+				  lambda_in.deq;
 	       endaction
 	       while (! loop_done) action    // for i = 254 downto 0
-		  $display ("  [chien %0d]  calc_loc, i = %0d", block_number, i);
+				  $display ("  [chien %0d]  calc_loc, i = %0d", block_number, i);
 
-		  Byte result_location = fold (gf_add, cons (1, lambda_a)); // lambda_a add up + 1
-		  alpha_inv <= times_alpha (alpha_inv);
-		  $display ("  [chien %0d]  calc_loc, result location = %0d", block_number, result_location);
-		  let is_no_error = (result_location != 0);
-      
-		  if (! is_no_error) begin
-		     count_error <= count_error + 1;
-           $display ("  [chien %0d]  count_error = ", block_number, count_error+1);
-		  end
+				  Byte result_location = fold (gf_add, cons (1, lambda_a)); // lambda_a add up + 1
+				  alpha_inv <= times_alpha (alpha_inv);
+				  $display ("  [chien %0d]  calc_loc, result location = %0d", block_number, result_location);
+				  let is_no_error = (result_location != 0);
+				
+				  let count_error_curr = count_error;
+				  if (! is_no_error) begin
+					  count_error_curr = count_error + 1;
+					  count_error <= count_error_curr;
+					  $display ("  [chien %0d]  count_error = ", block_number, count_error+1);
+				  end
 
-		  if (i == 0) begin
-		     loop_done <= True;
-			  //ML: can't correct if 
-			  // (1) the number of roots of lamda is != the degree of lamda
-			  // (2) degree of lamda is > T (note: max # of errors from RSParameters.bsv)
-			  // TODO: can probably fast track the second condition
-		     cant_correct_flag_q.enq ( (count_error != deg) || (deg > fromInteger(valueOf(T))) ); 
-		     t_in.deq;
-		     k_in.deq;
-		     no_error_flag_in.deq;
-			  deg_in.deq;
-		     block_number <= block_number + 1;
-                     loc_q.enq (tagged Invalid);
-                     alpha_inv_q.enq (tagged Invalid);
-		  end
-		  else begin
-                     let lambda_a_new <- times_alpha_n_vec.func (lambda_a, t);
-                     lambda_a <= lambda_a_new;
-                     $display ("  [chien %0d]  calc_loc, lambda_a = ", block_number, fshow (lambda_a_new));
-		     if ((i < k + 2 * t) && (i >= 2 * t) && (! is_no_error)) begin
-			alpha_inv_q.enq (tagged Valid alpha_inv);
-			loc_q.enq (tagged Valid (k + 2 * t - i - 1)); // process range 1 - k
-		     end
-		     i <= i - 1;
-		  end
+				  if (i == 0) begin
+					  loop_done <= True;
+					  //ML: can't correct if 
+					  // (1) the number of roots of lamda is != the degree of lamda
+					  // (2) degree of lamda is > T (note: max # of errors from RSParameters.bsv)
+					  // TODO: can probably fast track the second condition
+					  cant_correct_flag_q.enq ( (count_error_curr != deg) || (deg > fromInteger(valueOf(T))) ); 
+					  $display("count_error_curr=%d, deg=%d", count_error_curr, deg);
+					  t_in.deq;
+					  k_in.deq;
+					  no_error_flag_in.deq;
+					  deg_in.deq;
+					  block_number <= block_number + 1;
+									loc_q.enq (tagged Invalid);
+									alpha_inv_q.enq (tagged Invalid);
+				  end
+				  else begin
+									let lambda_a_new <- times_alpha_n_vec.func (lambda_a, t);
+									lambda_a <= lambda_a_new;
+									$display ("  [chien %0d]  calc_loc, lambda_a = ", block_number, fshow (lambda_a_new));
+					  if ((i < k + 2 * t) && (i >= 2 * t) && (! is_no_error)) begin
+					alpha_inv_q.enq (tagged Valid alpha_inv);
+					loc_q.enq (tagged Valid (k + 2 * t - i - 1)); // process range 1 - k
+					  end
+					  i <= i - 1;
+				  end
 	       endaction // while (! loop_done)
 	    endseq // if (no_error_flag) ... else begin
       endseq

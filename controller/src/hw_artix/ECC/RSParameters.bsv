@@ -39,7 +39,7 @@ Integer max_block_size = 255;
 // no. bytes of actual data out of 255 bytes of codeword          
 //typedef 223    K; 
 typedef 243    K; 
-typedef 208   K_LAST; 
+typedef 224   K_LAST; 
 
 // 2T = no. byte parity bytes
 typedef 6     T; 

@@ -79,7 +79,8 @@ endinterface
 typedef 128 DmaBurstBytes; 
 Integer dmaBurstBytes = valueOf(DmaBurstBytes);
 Integer dmaBurstWords = dmaBurstBytes/wordBytes; //128/16 = 8
-Integer dmaBurstsPerPage = pageSizeUser/dmaBurstBytes;
+Integer dmaBurstsPerPage = (pageSizeUser+dmaBurstBytes-1)/dmaBurstBytes; //ceiling, 65
+Integer dmaBurstWordsLast = (pageSizeUser%dmaBurstBytes)/wordBytes; //num bursts in last dma; 2 bursts
 
 interface MainIfc;
 	interface FlashRequest request;
@@ -118,6 +119,7 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 	//MemwriteEngineV#(WordSz, 2, NUM_BUSES) we <- mkMemwriteEngineBuff(1024);
 
 	Vector#(NUM_BUSES, Reg#(Bit#(16))) dmaWBurstCnts <- replicateM(mkReg(0));
+	Vector#(NUM_BUSES, Reg#(Bit#(16))) dmaWBurstPerPageCnts <- replicateM(mkReg(0));
 	Vector#(NUM_BUSES, FIFO#(TagT)) dmaReqQs <- replicateM(mkSizedFIFO(valueOf(NumTags)));//TODO make bigger?
 	Vector#(NUM_BUSES, FIFO#(Tuple2#(TagT, Bit#(32)))) dmaReq2RespQ <- replicateM(mkSizedFIFO(valueOf(NumTags))); //TODO make bigger?
 	Vector#(NUM_BUSES, Reg#(Bit#(32))) dmaWrReqCnts <- replicateM(mkReg(0));
@@ -172,7 +174,8 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 	endrule
 
 	for (Integer b=0; b<valueOf(NUM_BUSES); b=b+1) begin
-		rule doReqDMAStart;
+		Reg#(Bit#(16)) padCnt <- mkReg(0);
+		rule doReqDMAStart if (padCnt==0);
 			dmaWriteBuf[b].deq;
 			let taggedRdata = dmaWriteBuf[b].first;
 			dmaWriteBufOut[b].enq(taggedRdata);
@@ -182,6 +185,14 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 				dmaReqQs[b].enq(tag);
 				currTags[b] <= tag;
 				dmaWBurstCnts[b] <= dmaWBurstCnts[b] + 1;
+				dmaWBurstPerPageCnts[b] <= dmaWBurstPerPageCnts[b] + 1;
+			end
+			else if (dmaWBurstPerPageCnts[b]==fromInteger(dmaBurstsPerPage) && 
+							dmaWBurstCnts[b]==fromInteger(dmaBurstWordsLast-1)) begin
+				//last burst
+				dmaWBurstCnts[b] <= 0;
+				dmaWBurstPerPageCnts[b] <= 0;
+				padCnt <= fromInteger(dmaBurstWords - dmaBurstWordsLast);
 			end
 			else if (dmaWBurstCnts[b]==fromInteger(dmaBurstWords-1)) begin
 				if (tag != currTags[b]) begin
@@ -196,6 +207,14 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 				dmaWBurstCnts[b] <= dmaWBurstCnts[b] + 1;
 			end
 		endrule
+
+		rule doDmaPad if (padCnt>0);
+			dmaWriteBufOut[b].enq(tuple2(-1,?));
+			$display("main.bsv: pad -1 for bus=%d", b);
+			padCnt <= padCnt - 1;
+		endrule
+			
+			
 
 		//initiate dma pipeline
 		FIFO#(Tuple3#(TagT, Bit#(32), Bit#(32))) dmaWriteReqPipe <- mkFIFO;
@@ -233,10 +252,9 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 			end
 		endrule
 
-		//send data
+		//send data, pad with 0's if necessary
+
 		rule sendDmaWriteData;
-			//TODO: is it safe to send this data right away, before the request
-			//looks ok?
 			let taggedRdata = dmaWriteBufOut[b].first;
 			let data = tpl_1(taggedRdata);
 			dmaWriteBufOut[b].deq;
@@ -337,12 +355,17 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 		rule pipeDmaRdData;
 			let d <- toGet(re.dataPipes[b]).get;
 			let tag = dmaRdReq2RespQ[b].first;
-			writeWordPipe.enq(tuple2(d, tag));
-			//flashCtrl.user.writeWord(tuple2(d, tag));
-			$display("Main.bsv: forwarded dma read data [%d]: tag=%d, data=%x", dmaReadBurstCount[b],
-							tag, d);
+			if (dmaReadBurstCount[b] < fromInteger(pageWords)) begin
+				writeWordPipe.enq(tuple2(d, tag));
+				$display("Main.bsv: forwarded dma read data [%d]: tag=%d, data=%x", dmaReadBurstCount[b],
+								tag, d);
+			end
+			else begin 
+				//drop the data because it's just 0 padded
+				$display("Main.bsv: dropped dma read data[%d]", dmaReadBurstCount[b]);
+			end
 
-			if (dmaReadBurstCount[b] == fromInteger(pageWords-1)) begin
+			if (dmaReadBurstCount[b] == fromInteger(dmaBurstsPerPage*dmaBurstWords-1)) begin
 				dmaRdReq2RespQ[b].deq;
 				dmaReadBurstCount[b] <= 0;
 			end

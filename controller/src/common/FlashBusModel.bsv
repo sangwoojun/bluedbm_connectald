@@ -31,7 +31,8 @@ function Bit#(TLog#(WordsPerChip)) getRegAddr (Bit#(16) block, Bit#(8) page, Bit
 	Bit#(64) blockExt = zeroExtend(block);
 	Bit#(64) pageExt = zeroExtend(page);
 	Bit#(64) burstCntExt = zeroExtend(burstCnt);
-	Bit#(64) regAddr = (blockExt<<(log2(pageWords*pagesPerBlock))) + (pageExt<<log2(pageWords)) + burstCntExt;
+	//Bit#(64) regAddr = (blockExt<<(log2(pageWords*pagesPerBlock))) + (pageExt<<log2(pageWords)) + burstCntExt;
+	Bit#(64) regAddr = blockExt*fromInteger(pageWords*pagesPerBlock) + pageExt*fromInteger(pageWords) + burstCntExt;
 	return truncate(regAddr);
 endfunction
 

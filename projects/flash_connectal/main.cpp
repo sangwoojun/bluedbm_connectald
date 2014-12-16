@@ -20,7 +20,8 @@
 #define CHIPS_PER_BUS 8
 #define NUM_BUSES 8
 
-#define PAGE_SIZE 8192
+#define PAGE_SIZE (8192*2)
+#define PAGE_SIZE_VALID (8224)
 #define NUM_TAGS 128
 
 typedef enum {
@@ -80,7 +81,7 @@ bool checkReadData(int tag) {
 	int goldenData;
 	if (flashStatus[e.bus][e.chip][e.block]==WRITTEN) {
 		int numErrors = 0;
-		for (int word=0; word<PAGE_SIZE/sizeof(unsigned int); word++) {
+		for (int word=0; word<PAGE_SIZE_VALID/sizeof(unsigned int); word++) {
 			goldenData = hashAddrToData(e.bus, e.chip, e.block, word);
 			if (goldenData != readBuffers[tag][word]) {
 				fprintf(stderr, "LOG: **ERROR: read data mismatch! Expected: %x, read: %x\n", goldenData, readBuffers[tag][word]);
@@ -389,7 +390,7 @@ int main(int argc, const char **argv)
 	//TODO: test writes and erases
 	
 
-	
+
 	//test erases
 	for (int blk = 0; blk < BLOCKS_PER_CHIP; blk++){
 		for (int chip = 0; chip < CHIPS_PER_BUS; chip++){

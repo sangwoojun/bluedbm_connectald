@@ -20,7 +20,8 @@
 #define CHIPS_PER_BUS 8
 #define NUM_BUSES 8
 
-#define PAGE_SIZE 8192
+#define PAGE_SIZE (8192*2)
+#define PAGE_SIZE_VALID (8224)
 #define NUM_TAGS 128
 
 typedef enum {
@@ -80,7 +81,7 @@ bool checkReadData(int tag) {
 	int goldenData;
 	if (flashStatus[e.bus][e.chip][e.block]==WRITTEN) {
 		int numErrors = 0;
-		for (int word=0; word<PAGE_SIZE/sizeof(unsigned int); word++) {
+		for (int word=0; word<PAGE_SIZE_VALID/sizeof(unsigned int); word++) {
 			goldenData = hashAddrToData(e.bus, e.chip, e.block, word);
 			if (goldenData != readBuffers[tag][word]) {
 				fprintf(stderr, "LOG: **ERROR: read data mismatch! Expected: %x, read: %x\n", goldenData, readBuffers[tag][word]);
@@ -180,10 +181,10 @@ class FlashIndication : public FlashIndicationWrapper
 			pthread_mutex_unlock(&flashReqMutex);
 		}
 
-		virtual void debugDumpResp (unsigned int debug0, unsigned int debug1,  unsigned int debug2, unsigned int debug3) {
+		virtual void debugDumpResp (unsigned int debug0, unsigned int debug1,  unsigned int debug2, unsigned int debug3, unsigned int debug4, unsigned int debug5) {
 			//uint64_t cntHi = debugRdCntHi;
 			//uint64_t rdCnt = (cntHi<<32) + debugRdCntLo;
-			fprintf(stderr, "LOG: DEBUG DUMP: gearSend = %d, gearRec = %d, aurSend = %d, aurRec = %d\n", debug0, debug1, debug2, debug3);
+			fprintf(stderr, "LOG: DEBUG DUMP: gearSend = %d, gearRec = %d, aurSend = %d, aurRec = %d, readSend=%d, writeSend=%d\n", debug0, debug1, debug2, debug3, debug4, debug5);
 		}
 
 
@@ -352,6 +353,7 @@ int main(int argc, const char **argv)
 	portalDCacheFlushInval(srcAlloc, srcAlloc_sz, srcBuffer);
 	ref_dstAlloc = dma->reference(dstAlloc);
 	ref_srcAlloc = dma->reference(srcAlloc);
+	int elapsed = 0;
 
 	for (int t = 0; t < NUM_TAGS; t++) {
 		readTagTable[t].busy = false;
@@ -418,13 +420,12 @@ int main(int argc, const char **argv)
 		usleep(100);
 		if ( getNumReadsInFlight() == 0 ) break;
 	}
-
+	
 
 	//write pages
 	//FIXME: in old xbsv, simulatneous DMA reads using multiple readers cause kernel panic
 	//Issue each bus separately for now
 	for (int bus = 0; bus < NUM_BUSES; bus++){
-	
 		for (int blk = 0; blk < BLOCKS_PER_CHIP; blk++){
 			for (int chip = 0; chip < CHIPS_PER_BUS; chip++){
 				int page = 0;
@@ -438,12 +439,19 @@ int main(int argc, const char **argv)
 				writePage(bus, chip, blk, page, freeTag);
 			}
 		}
-		
-		
 		while (true) {
 			usleep(100);
+			if (elapsed == 0) {
+				elapsed=10000;
+				device->debugDumpReq(0);
+			}
+			else {
+				elapsed--;
+			}
 			if ( getNumWritesInFlight() == 0 ) break;
 		}
+		
+		
 	} //each bus
 	
 
@@ -465,7 +473,6 @@ int main(int argc, const char **argv)
 		}
 	}
 	
-	int elapsed = 0;
 	while (true) {
 		usleep(100);
 		if (elapsed == 0) {

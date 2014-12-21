@@ -328,7 +328,7 @@ int main(int argc, const char **argv)
 	MemServerIndication *hostMemServerIndication = new MemServerIndication(hostMemServerRequest, IfcNames_HostMemServerIndication);
 	MMUIndication *hostMMUIndication = new MMUIndication(dma, IfcNames_HostMMUIndication);
 
-	fprintf(stderr, "Main::allocating memory...\n");
+	fprintf(stderr, "Main::allocating memory (2)...\n");
 
 	device = new FlashRequestProxy(IfcNames_FlashRequest);
 	FlashIndication *deviceIndication = new FlashIndication(IfcNames_FlashIndication);

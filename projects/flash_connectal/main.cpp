@@ -16,7 +16,7 @@
 #include "FlashIndication.h"
 #include "FlashRequest.h"
 
-#define BLOCKS_PER_CHIP 2
+#define BLOCKS_PER_CHIP 12
 #define CHIPS_PER_BUS 8
 #define NUM_BUSES 8
 
@@ -432,10 +432,9 @@ int main(int argc, const char **argv)
 	//Issue each bus separately for now
 	printf ("write begins...");
 	fflush(stdout);
-	for (int bus = 0; bus < NUM_BUSES; bus++){
-	
-		for (int blk = 0; blk < BLOCKS_PER_CHIP; blk++){
-			for (int chip = 0; chip < CHIPS_PER_BUS; chip++){
+	for (int blk = 0; blk < BLOCKS_PER_CHIP; blk++){
+		for (int chip = 0; chip < CHIPS_PER_BUS; chip++){
+			for (int bus = 0; bus < NUM_BUSES; bus++){
 				int page = 0;
 				//get free tag
 				int freeTag = waitIdleWriteBuffer();
@@ -445,6 +444,7 @@ int main(int argc, const char **argv)
 				}
 				//send request
 				writePage(bus, chip, blk, page, freeTag);
+				printf ("getNumWritesInFlight = %llu\n", getNumWritesInFlight());
 			}
 			/*
 			while (true) {

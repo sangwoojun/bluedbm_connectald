@@ -5,9 +5,9 @@ cd tools;
 
 #new connectal
 git clone https://github.com/cambridgehackers/connectal.git connectal
-cd connectal;
-git reset --hard 696f3faa5ea3cf1073fe3f0b38a530df331ca796
-cd ../;
+#cd connectal;
+#git reset --hard 696f3faa5ea3cf1073fe3f0b38a530df331ca796
+#cd ../;
 #connectal version: 696f3faa5ea3cf1073fe3f0b38a530df331ca796
 #working on flash @ 1.2GB/s
 

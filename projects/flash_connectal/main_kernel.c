@@ -7,6 +7,7 @@
 #include "portalmem.h"
 
 #define MAX_INDARRAY 4
+/*#define MAX_INDARRAY 6*/
 
 DECLARE_COMPLETION(worker_completion);
 static DmaManagerPrivate priv;
@@ -155,16 +156,17 @@ int main (int argc, const char **argv)
   	pthread_t tid = 0;
 
 	/* create portals */
-	/*IfcNames_HostMMUConfigIndication*/
-	init_portal_internal (&intarr[2], IfcNames_HostMMURequest, NULL, NULL, NULL, NULL, MMURequest_reqsize); // fpga3
-	init_portal_internal (&intarr[0], IfcNames_HostMMUIndication, MMUIndication_handleMessage, &MMUIndication_cbTable, NULL, NULL, MMUIndication_reqsize); // fpga1
-	init_portal_internal (&intarr[3], IfcNames_FlashRequest, NULL, NULL, NULL, NULL, FlashRequest_reqsize); // fpga4
-	init_portal_internal (&intarr[1], IfcNames_FlashIndication, FlashIndication_handleMessage, &FlashIndication_cbTable, NULL, NULL, FlashIndication_reqsize); // fpga2
+	init_portal_internal (&intarr[2], IfcNames_HostMMURequest, NULL, NULL, NULL, NULL, MMURequest_reqinfo); // fpga3
+	init_portal_internal (&intarr[0], IfcNames_HostMMUIndication, MMUIndication_handleMessage, &MMUIndication_cbTable, NULL, NULL, MMUIndication_reqinfo); // fpga1
+	init_portal_internal (&intarr[3], IfcNames_FlashRequest, NULL, NULL, NULL, NULL, FlashRequest_reqinfo); // fpga4
+	init_portal_internal (&intarr[1], IfcNames_FlashIndication, FlashIndication_handleMessage, &FlashIndication_cbTable, NULL, NULL, FlashIndication_reqinfo); // fpga2
 
 	sem_init (&test_sem, 0, 0);
 	DmaManager_init (&priv, NULL, &intarr[2]);
 	srcAlloc = portalAlloc (srcAlloc_sz);
 	dstAlloc = portalAlloc (dstAlloc_sz);
+
+	printk (KERN_INFO "%llu", sizeof (uint32_t));
 
 	/* create and run a thread for message handling */
 	if (pthread_create (&tid, NULL, pthread_worker, NULL)) {
@@ -192,7 +194,9 @@ int main (int argc, const char **argv)
 		int byteOffset = t * FLASH_PAGE_SIZE;
 		dstBufBusy[t] = false;
 		srcBufBusy[t] = false;
+		printk (KERN_INFO "FlashRequest_addDmaWriteRefs\n");
 		FlashRequest_addDmaWriteRefs (&intarr[3], ref_dstAlloc, byteOffset, t);
+		printk (KERN_INFO "FlashRequest_addDmaReadRefs\n");
 		FlashRequest_addDmaReadRefs (&intarr[3], ref_srcAlloc, byteOffset, t);
 		readBuffers[t] = dstBuffer + byteOffset/sizeof(unsigned int);
 		writeBuffers[t] = srcBuffer + byteOffset/sizeof(unsigned int);
@@ -205,7 +209,7 @@ int main (int argc, const char **argv)
 		}
 	}
 
-	goto exit;
+	/*goto exit;*/
 
 
 	/* init a device */

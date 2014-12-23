@@ -46,7 +46,7 @@ endif
 
 obj-m := kernel_exe.o
 
-ccflags-y := -I$(src)/.. -I$(DRIVERDIR)/pcieportal -I$(DRIVERDIR)/portalmem -I$(src)/$(CPPDIR) -I$(src)/$(BOARDDIR) $(HARDWARE_FLAGS) -DBOARD_$(BOARD)
+ccflags-y := -I$(src)/../../../tools/connectal -I$(src)/.. -I$(DRIVERDIR)/pcieportal -I$(DRIVERDIR)/portalmem -I$(src)/$(CPPDIR) -I$(src)/$(BOARDDIR) $(HARDWARE_FLAGS) -DBOARD_$(BOARD)
 
 default:
 	$(MAKE) -C $(KROOT) M=$(PWD) modules

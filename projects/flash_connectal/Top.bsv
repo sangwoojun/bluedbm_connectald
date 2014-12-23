@@ -73,8 +73,11 @@ endinterface
 module mkConnectalTop#(HostType host) (ConnectalTop#(PhysAddrWidth,DataBusWidth,Top_Pins,NumberOfMasters))
    provisos (Add#(0,128,DataBusWidth),Add#(1,0,NumberOfMasters));
 
-	Clock clk250 = host.doubleClock;
-	Reset rst250 = host.doubleReset;
+	//Clock clk250 = host.doubleClock;
+	//Reset rst250 = host.doubleReset;
+	Clock clk250 = host.derivedClock;
+	Reset rst250 = host.derivedReset;
+
 	
 	Clock curClk <- exposeCurrentClock;
 	Reset curRst <- exposeCurrentReset;

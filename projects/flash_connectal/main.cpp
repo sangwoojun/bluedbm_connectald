@@ -16,13 +16,13 @@
 #include "FlashIndication.h"
 #include "FlashRequest.h"
 
-#define BLOCKS_PER_CHIP 12
+#define BLOCKS_PER_CHIP 8
 #define CHIPS_PER_BUS 8
 #define NUM_BUSES 8
 
 #define PAGE_SIZE (8192*2)
 #define PAGE_SIZE_VALID (8224)
-#define NUM_TAGS 128
+#define NUM_TAGS 64
 
 typedef enum {
 	UNINIT,
@@ -393,6 +393,7 @@ int main(int argc, const char **argv)
 
 
 	//test erases
+	printf ("test erase begins...\n");
 	for (int blk = 0; blk < BLOCKS_PER_CHIP; blk++){
 		for (int chip = 0; chip < CHIPS_PER_BUS; chip++){
 			for (int bus = 0; bus < NUM_BUSES; bus++){
@@ -400,6 +401,7 @@ int main(int argc, const char **argv)
 			}
 		}
 	}
+	printf ("test erase end...\n");
 
 	while (true) {
 		usleep(100);

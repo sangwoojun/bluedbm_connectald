@@ -16,13 +16,13 @@
 #include "FlashIndication.h"
 #include "FlashRequest.h"
 
-#define BLOCKS_PER_CHIP 8
+#define BLOCKS_PER_CHIP 2
 #define CHIPS_PER_BUS 8
 #define NUM_BUSES 8
 
 #define PAGE_SIZE (8192*2)
 #define PAGE_SIZE_VALID (8224)
-#define NUM_TAGS 64
+#define NUM_TAGS 128
 
 typedef enum {
 	UNINIT,
@@ -181,10 +181,10 @@ class FlashIndication : public FlashIndicationWrapper
 			pthread_mutex_unlock(&flashReqMutex);
 		}
 
-		virtual void debugDumpResp (unsigned int debug0, unsigned int debug1,  unsigned int debug2, unsigned int debug3) {
+		virtual void debugDumpResp (unsigned int debug0, unsigned int debug1,  unsigned int debug2, unsigned int debug3, unsigned int debug4, unsigned int debug5) {
 			//uint64_t cntHi = debugRdCntHi;
 			//uint64_t rdCnt = (cntHi<<32) + debugRdCntLo;
-			fprintf(stderr, "LOG: DEBUG DUMP: gearSend = %d, gearRec = %d, aurSend = %d, aurRec = %d\n", debug0, debug1, debug2, debug3);
+			fprintf(stderr, "LOG: DEBUG DUMP: gearSend = %d, gearRec = %d, aurSend = %d, aurRec = %d, readSend=%d, writeSend=%d\n", debug0, debug1, debug2, debug3, debug4, debug5);
 		}
 
 
@@ -290,7 +290,7 @@ void eraseBlock(int bus, int chip, int block, int tag) {
 	flashStatus[bus][chip][block] = ERASED;
 	pthread_mutex_unlock(&flashReqMutex);
 
-	//if ( verbose ) fprintf(stderr, "LOG: sending erase block request with tag=%d @%d %d %d 0\n", tag, bus, chip, block );
+	if ( verbose ) fprintf(stderr, "LOG: sending erase block request with tag=%d @%d %d %d 0\n", tag, bus, chip, block );
 	device->eraseBlock(bus,chip,block,tag);
 }
 
@@ -302,7 +302,7 @@ void writePage(int bus, int chip, int block, int page, int tag) {
 	flashStatus[bus][chip][block] = WRITTEN;
 	pthread_mutex_unlock(&flashReqMutex);
 
-	//if ( verbose ) fprintf(stderr, "LOG: sending write page request with tag=%d @%d %d %d %d\n", tag, bus, chip, block, page );
+	if ( verbose ) fprintf(stderr, "LOG: sending write page request with tag=%d @%d %d %d %d\n", tag, bus, chip, block, page );
 	device->writePage(bus,chip,block,page,tag);
 }
 
@@ -314,7 +314,7 @@ void readPage(int bus, int chip, int block, int page, int tag) {
 	readTagTable[tag].block = block;
 	pthread_mutex_unlock(&flashReqMutex);
 
-	//if ( verbose ) fprintf(stderr, "LOG: sending read page request with tag=%d @%d %d %d %d\n", tag, bus, chip, block, page );
+	if ( verbose ) fprintf(stderr, "LOG: sending read page request with tag=%d @%d %d %d %d\n", tag, bus, chip, block, page );
 	device->readPage(bus,chip,block,page,tag);
 }
 
@@ -328,7 +328,7 @@ int main(int argc, const char **argv)
 	MemServerIndication *hostMemServerIndication = new MemServerIndication(hostMemServerRequest, IfcNames_HostMemServerIndication);
 	MMUIndication *hostMMUIndication = new MMUIndication(dma, IfcNames_HostMMUIndication);
 
-	fprintf(stderr, "Main::allocating memory (2) (%d)...\n", sizeof (uint32_t));
+	fprintf(stderr, "Main::allocating memory...\n");
 
 	device = new FlashRequestProxy(IfcNames_FlashRequest);
 	FlashIndication *deviceIndication = new FlashIndication(IfcNames_FlashIndication);
@@ -364,7 +364,6 @@ int main(int argc, const char **argv)
 		writeBuffers[t] = srcBuffer + byteOffset/sizeof(unsigned int);
 	}
 	
-
 	for (int blk=0; blk<BLOCKS_PER_CHIP; blk++) {
 		for (int c=0; c<CHIPS_PER_BUS; c++) {
 			for (int bus=0; bus< CHIPS_PER_BUS; bus++) {
@@ -393,7 +392,6 @@ int main(int argc, const char **argv)
 
 
 	//test erases
-	printf ("test erase begins...\n");
 	for (int blk = 0; blk < BLOCKS_PER_CHIP; blk++){
 		for (int chip = 0; chip < CHIPS_PER_BUS; chip++){
 			for (int bus = 0; bus < NUM_BUSES; bus++){
@@ -401,15 +399,13 @@ int main(int argc, const char **argv)
 			}
 		}
 	}
-	printf ("test erase end...\n");
 
 	while (true) {
 		usleep(100);
 		if ( getNumErasesInFlight() == 0 ) break;
 	}
 	
-	printf ("erase begins...\n");
-	fflush(stdout);
+	
 	//read back erased pages
 	for (int blk = 0; blk < BLOCKS_PER_CHIP; blk++){
 		for (int chip = 0; chip < CHIPS_PER_BUS; chip++){
@@ -419,24 +415,19 @@ int main(int argc, const char **argv)
 			}
 		}
 	}
-	printf ("erase waits...\n");
-	fflush(stdout);
 	while (true) {
 		usleep(100);
 		if ( getNumReadsInFlight() == 0 ) break;
 	}
-	printf ("erase finishes...\n");
-	fflush(stdout);
 
 
 	//write pages
 	//FIXME: in old xbsv, simulatneous DMA reads using multiple readers cause kernel panic
 	//Issue each bus separately for now
-	printf ("write begins...");
-	fflush(stdout);
-	for (int blk = 0; blk < BLOCKS_PER_CHIP; blk++){
-		for (int chip = 0; chip < CHIPS_PER_BUS; chip++){
-			for (int bus = 0; bus < NUM_BUSES; bus++){
+	for (int bus = 0; bus < NUM_BUSES; bus++){
+	
+		for (int blk = 0; blk < BLOCKS_PER_CHIP; blk++){
+			for (int chip = 0; chip < CHIPS_PER_BUS; chip++){
 				int page = 0;
 				//get free tag
 				int freeTag = waitIdleWriteBuffer();
@@ -446,27 +437,17 @@ int main(int argc, const char **argv)
 				}
 				//send request
 				writePage(bus, chip, blk, page, freeTag);
-				printf ("getNumWritesInFlight = %llu\n", getNumWritesInFlight());
 			}
-			/*
 			while (true) {
 				usleep(100);
 				if ( getNumWritesInFlight() == 0 ) break;
 			}
-			*/
 		}
 		
 		
 	} //each bus
-	printf ("write waits...\n");
-	fflush(stdout);
-	while (true) {
-		usleep(100);
-		if ( getNumWritesInFlight() == 0 ) break;
-	}
-	printf ("write finishes...\n");
-	fflush(stdout);
 	
+
 
 	timespec start, now;
 	clock_gettime(CLOCK_REALTIME, & start);
@@ -514,4 +495,6 @@ int main(int argc, const char **argv)
 	else {
 		fprintf(stderr, "LOG: **ERROR: TEST FAILED!\n");
 	}
+
+
 }

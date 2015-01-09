@@ -70,7 +70,7 @@ interface FlashIndication;
 	method Action readDone(Bit#(32) tag);
 	method Action writeDone(Bit#(32) tag);
 	method Action eraseDone(Bit#(32) tag, Bit#(32) status);
-	method Action debugDumpResp(Bit#(32) debug0, Bit#(32) debug1, Bit#(32) debug2, Bit#(32) debug3);
+	method Action debugDumpResp(Bit#(32) debug0, Bit#(32) debug1, Bit#(32) debug2, Bit#(32) debug3, Bit#(32) debug4, Bit#(32) debug5);
 endinterface
 
 // NumDmaChannels each for flash i/o and emualted i/o
@@ -143,6 +143,8 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 	Reg#(Bit#(32)) delayRegSet <- mkReg(0);
 	Reg#(Bit#(32)) delayReg <- mkReg(0);
 	Reg#(Bit#(32)) debugFlag <- mkReg(0);
+	Reg#(Bit#(32)) debugReadCnt <- mkReg(0);
+	Reg#(Bit#(32)) debugWriteCnt <- mkReg(0);
 
 
 	//--------------------------------------------
@@ -152,6 +154,7 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 	rule doEnqReadFromFlash;
 		if (delayReg==0) begin
 			let taggedRdata <- flashCtrl.user.readWord();
+			debugReadCnt <= debugReadCnt + 1;
 			if (debugFlag==0) begin
 				dataFlash2DmaQ.enq(taggedRdata);
 			end
@@ -377,6 +380,7 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 		rule forwardDmaRdData;
 			writeWordPipe.deq;
 			flashCtrl.user.writeWord(writeWordPipe.first);
+			debugWriteCnt <= debugWriteCnt + 1;
 		endrule
 			
 	end //for each bus
@@ -436,7 +440,7 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 		let gearboxRecCnt = tpl_2(debugCnts);   
 		let auroraSendCntCC = tpl_3(debugCnts);     
 		let auroraRecCntCC = tpl_4(debugCnts);  
-		indication.debugDumpResp(gearboxSendCnt, gearboxRecCnt, auroraSendCntCC, auroraRecCntCC);
+		indication.debugDumpResp(gearboxSendCnt, gearboxRecCnt, auroraSendCntCC, auroraRecCntCC, debugReadCnt, debugWriteCnt);
 	endrule
 
 

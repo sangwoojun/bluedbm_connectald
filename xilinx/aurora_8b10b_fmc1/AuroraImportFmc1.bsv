@@ -49,7 +49,7 @@ module mkAuroraIntra#(Clock gtx_clk_p, Clock gtx_clk_n, Clock clk250) (AuroraIfc
 	Reset rst50_2 = rst50ifc2.new_rst;
 	Reset rst50_2a <- mkAsyncReset(2, rst50_2, clk50);
 	Clock fmc1_gtx_clk_i <- mkClockIBUFDS_GTE2(True, gtx_clk_p, gtx_clk_n);
-	AuroraImportIfc#(4) auroraIntraImport <- mkAuroraImport_8b10b_fmc1(fmc1_gtx_clk_i, clk50, rst50, rst50);//rst50_2a);
+	AuroraImportIfc#(4) auroraIntraImport <- mkAuroraImport_8b10b_fmc1(fmc1_gtx_clk_i, clk50, rst50, /*rst50*/rst50_2a);
 `else
 	//Clock gtx_clk = cur_clk;
 	AuroraImportIfc#(4) auroraIntraImport <- mkAuroraImport_8b10b_bsim;

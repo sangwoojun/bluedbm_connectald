@@ -24,7 +24,7 @@ module mkAuroraGearbox#(Clock aclk, Reset arst) (AuroraGearboxIfc);
 
 	Integer recvQDepth = 128;
 	Integer windowSize = 64;
-	SyncFIFOIfc#(Tuple2#(DataIfc,PacketType)) recvQ <- mkSyncFIFOToCC(4, aclk, arst);
+	SyncFIFOIfc#(Tuple2#(DataIfc,PacketType)) recvQ <- mkSyncBRAMFIFOToCC(recvQDepth, aclk, arst);
 	FIFO#(Tuple2#(DataIfc,PacketType)) recvBufferQ <- mkSizedFIFO(recvQDepth, clocked_by aclk, reset_by arst);
 	Reg#(Bit#(16)) maxInFlightUp <- mkReg(0, clocked_by aclk, reset_by arst);
 	Reg#(Bit#(16)) maxInFlightDown <- mkReg(0, clocked_by aclk, reset_by arst);

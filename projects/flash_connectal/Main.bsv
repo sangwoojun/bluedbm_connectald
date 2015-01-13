@@ -114,7 +114,7 @@ module mkMain#(FlashIndication indication, Clock clk250, Reset rst250)(MainIfc);
 	`endif
 
 	//Create read/write engines with NUM_BUSES memservers
-	MemreadEngineV#(WordSz, 1, NUM_BUSES) re <- mkMemreadEngine;
+	MemreadEngineV#(WordSz, 4, NUM_BUSES) re <- mkMemreadEngine;
 	MemwriteEngineV#(WordSz, 1, NUM_BUSES) we <- mkMemwriteEngine;
 	//MemwriteEngineV#(WordSz, 2, NUM_BUSES) we <- mkMemwriteEngineBuff(1024);
 

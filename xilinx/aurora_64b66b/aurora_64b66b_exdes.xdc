@@ -70,23 +70,24 @@
 	set_property LOC K8 [get_ports aurora_quad117_gtx_clk_p_v]
 	set_property LOC K7 [get_ports aurora_quad117_gtx_clk_n_v]
 
-	#set_false_path -from [get_cells portalTop_hwmain_auroraExt/rst50/*]
-	#set_false_path -to [get_cells portalTop_hwmain_auroraExt/auroraExt_*_sendQ/*]
+	create_clock -name TS_init_clk_i -period 8.0 [get_pins host_ep7/CLK_epClock125]
 
-	set_false_path -from [get_cells portalTop_hwmain_auroraExt117/rst50/*]
-	set_false_path -to [get_cells portalTop_hwmain_auroraExt117/auroraExt_*_sendQ/*]
-	set_false_path -from [get_cells portalTop_hwmain_auroraExt119/rst50/*]
-	set_false_path -to [get_cells portalTop_hwmain_auroraExt119/auroraExt_*_sendQ/*]
+	set_false_path -from [get_cells -hier -filter {NAME =~ */*auroraExt*/rst50/*}]
 
-	#set_false_path -to [get_cells -hier -filter {NAME =~ portalTop_hwmain_auroraExt/auroraExt_0_sendQ/*/CLR}]
-	#set_false_path -to [get_cells -hier -filter {NAME =~ portalTop_hwmain_auroraExt/auroraExt_0_sendQ/*/PRE}]
+	set_false_path -to [get_pins -hier -filter {NAME =~ */auroraExt_*Q/*/CLR}]
+	set_false_path -to [get_pins -hier -filter {NAME =~ */auroraExt_*Q/*/PRE}]
 
-	create_clock -name init_clk_119_i -period 20.0 [get_pins portalTop_hwmain_auroraExtClockDiv5_slowbuf/O]
-	create_clock -name GTXQ0_left_119_i -period 1.600	 [get_pins portalTop_hwmain_auroraExt119/auroraExt_gtx_clk/O]
+	create_clock -name aurora_init_clk_i -period 20.0 [get_pins *auroraExtClockDiv5_slowbuf/O]
+	create_clock -name GTXQ0_left_119_i -period 1.600	 [get_pins *auroraExt119/auroraExt_gtx_clk/O]
 	
-	create_clock -name init_clk_117_i -period 20.0 [get_pins portalTop_hwmain_auroraExtClockDiv5_slowbuf/O]
-	create_clock -name GTXQ0_left_117_i -period 1.600	 [get_pins portalTop_hwmain_auroraExt117/auroraExt_gtx_clk/O]
+	#create_clock -name init_clk_117_i -period 20.0 [get_pins portalTop_hwmain_auroraExtClockDiv5_slowbuf/O]
+	create_clock -name GTXQ0_left_117_i -period 1.600	 [get_pins *auroraExt117/auroraExt_gtx_clk/O]
 
+	create_clock -name TS_user_clk_i_all -period 6.400	 [get_pins -hier -filter {NAME =~ *aurora_64b66b_block_i/clock_module_i/user_clk_net_i/O}]
+	create_clock -name TS_sync_clk_i_all -period 3.200	 [get_pins -hier -filter {NAME =~ *aurora_64b66b_block_i/clock_module_i/sync_clock_net_i/O}]
+	
+	set_max_delay -from [get_clocks TS_init_clk_i] -to [get_clocks TS_user_clk_i_all] -datapath_only 8.1
+	set_max_delay -from [get_clocks TS_user_clk_i_all] -to [get_clocks TS_init_clk_i] -datapath_only 8.1
 
 ######################################## Quad 119
 ################ 24

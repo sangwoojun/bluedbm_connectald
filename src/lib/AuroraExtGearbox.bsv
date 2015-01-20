@@ -3,12 +3,17 @@ import FIFOF::*;
 import Clocks :: *;
 import Vector:: *;
 
+import BRAM::*;
+import BRAMFIFO::*;
+
 import AuroraCommon::*;
 
 typedef 64 AuroraPhysWidth;
 typedef TSub#(AuroraPhysWidth, 2) BodySz;
 typedef TMul#(BodySz,2) AuroraIfcWidth;
 typedef Bit#(AuroraIfcWidth) AuroraIfcType;
+
+typedef TDiv#(AuroraIfcWidth, 2) AuroraIfcWidthH;
 
 interface AuroraExtFlowControlIfc;
 	method Action send(AuroraIfcType data);
@@ -24,6 +29,9 @@ module mkAuroraExtFlowControl#(AuroraControllerIfc#(AuroraPhysWidth) auroraExt, 
 	Integer recvQDepth = 128;
 	Integer windowSize = 64;
 	SyncFIFOIfc#(AuroraIfcType) recvQ <- mkSyncFIFOToCC(2, aclk, arst);
+	
+	//SyncFIFOIfc#(Bit#(AuroraIfcWidthH)) recvQt <- mkSyncFIFOToCC(2, aclk, arst);
+	//SyncFIFOIfc#(Bit#(AuroraIfcWidthH)) recvQb <- mkSyncFIFOToCC(2, aclk, arst);
 	FIFO#(AuroraIfcType) recvBufferQ <- mkSizedFIFO(recvQDepth, clocked_by aclk, reset_by arst);
 	FIFO#(AuroraIfcType) recvQ2 <- mkFIFO;
 
@@ -46,6 +54,8 @@ module mkAuroraExtFlowControl#(AuroraControllerIfc#(AuroraPhysWidth) auroraExt, 
 
 
 	SyncFIFOIfc#(AuroraIfcType) sendQ <- mkSyncFIFOFromCC(4, aclk);
+	//SyncFIFOIfc#(Bit#(AuroraIfcWidthH)) sendQt <- mkSyncFIFOFromCC(4, aclk);
+	//SyncFIFOIfc#(Bit#(AuroraIfcWidthH)) sendQb <- mkSyncFIFOFromCC(4, aclk);
 
 	FIFO#(Bit#(AuroraPhysWidth)) auroraOutQ <- mkFIFO(clocked_by aclk, reset_by arst);
 	rule flushAuroraOutQ;
@@ -69,6 +79,9 @@ module mkAuroraExtFlowControl#(AuroraControllerIfc#(AuroraPhysWidth) auroraExt, 
 				curSendBudgetDown <= curSendBudgetDown + 1;
 			end else begin
 				sendQ.deq;
+				//sendQt.deq;
+				//sendQb.deq;
+				//let data = {sendQb.first, sendQt.first};
 				let data = sendQ.first;
 				packetSendBuffer <= tagged Valid 
 					truncate(data>>valueOf(BodySz));
@@ -117,15 +130,24 @@ module mkAuroraExtFlowControl#(AuroraControllerIfc#(AuroraPhysWidth) auroraExt, 
 
 		recvBufferQ.deq;
 		recvQ.enq(recvBufferQ.first);
+		//recvQt.enq(truncate(recvBufferQ.first));
+		//recvQb.enq(truncate(recvBufferQ.first>>valueOf(AuroraIfcWidthH)));
 	endrule
 	rule flushReadBuffer2;
 		recvQ.deq;
+		//recvQt.deq;
+		//recvQb.deq;
+
+		//recvQ2.enq({recvQb.first,recvQt.first});
 		recvQ2.enq(recvQ.first);
 	endrule
 
 	
 	method Action send(AuroraIfcType data);
 		sendQ.enq(data);
+
+		//sendQt.enq(truncate(data));
+		//sendQb.enq(truncate(data>>valueOf(AuroraIfcWidthH)));
 	endmethod
 	method ActionValue#(AuroraIfcType) receive;
 		recvQ2.deq;

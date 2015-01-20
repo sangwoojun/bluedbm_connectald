@@ -337,6 +337,7 @@ module mkAuroraExtImport#(Clock gtx_clk_in, Clock init_clk, Reset init_rst_n, Re
 	schedule (user3_send) C (user3_send);
 	schedule (user3_receive) C (user3_receive);
 
+/*
 	schedule (
 		aurora0_rxn_in, aurora0_rxp_in, aurora0_txn_out, aurora0_txp_out,
 		aurora1_rxn_in, aurora1_rxp_in, aurora1_txn_out, aurora1_txp_out,
@@ -348,8 +349,14 @@ module mkAuroraExtImport#(Clock gtx_clk_in, Clock init_clk, Reset init_rst_n, Re
 		aurora2_rxn_in, aurora2_rxp_in, aurora2_txn_out, aurora2_txp_out,
 		aurora3_rxn_in, aurora3_rxp_in, aurora3_txn_out, aurora3_txp_out
 		);
+		*/
 	
 	schedule (
+		aurora0_rxn_in, aurora0_rxp_in, aurora0_txn_out, aurora0_txp_out,
+		aurora1_rxn_in, aurora1_rxp_in, aurora1_txn_out, aurora1_txp_out,
+		aurora2_rxn_in, aurora2_rxp_in, aurora2_txn_out, aurora2_txp_out,
+		aurora3_rxn_in, aurora3_rxp_in, aurora3_txn_out, aurora3_txp_out,
+
 		user0_channel_up,
 		user0_lane_up,
 		user0_hard_err,
@@ -371,6 +378,11 @@ module mkAuroraExtImport#(Clock gtx_clk_in, Clock init_clk, Reset init_rst_n, Re
 		user3_soft_err,
 		user3_data_err_count
 		) CF (
+		aurora0_rxn_in, aurora0_rxp_in, aurora0_txn_out, aurora0_txp_out,
+		aurora1_rxn_in, aurora1_rxp_in, aurora1_txn_out, aurora1_txp_out,
+		aurora2_rxn_in, aurora2_rxp_in, aurora2_txn_out, aurora2_txp_out,
+		aurora3_rxn_in, aurora3_rxp_in, aurora3_txn_out, aurora3_txp_out,
+
 		user0_channel_up,
 		user0_lane_up,
 		user0_hard_err,

@@ -134,15 +134,17 @@ module mkAuroraGearbox#(Clock aclk, Reset arst, Bool waitForStartReq) (AuroraGea
 	method Action auroraRecv(Bit#(AuroraWidth) word);
 		auroraInQ.enq(word);
 	endmethod
-	method ActionValue#(Bit#(AuroraWidth)) auroraSend if ( canSend );
+	method ActionValue#(Bit#(AuroraWidth)) auroraSend;// if ( canSend );
 		let sendData = auroraOutQ.first;
+		/*
 		if ( !sentStartReq ) begin
 			PacketType ptype = 0;
 			sendData = {2'b01, ptype, 1<<8}; // send start Packet
 			sentStartReq <= True;
 		end else begin
+		*/
 			auroraOutQ.deq;
-		end
-		return auroraOutQ.first;
+		//end
+		return sendData;
 	endmethod
 endmodule

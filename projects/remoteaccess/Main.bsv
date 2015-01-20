@@ -78,6 +78,7 @@ interface GeneralIndication;
 	method Action readPage(Bit#(64) addr, Bit#(32) dstnod, Bit#(32) datasource);
 	method Action recvSketch(Bit#(32) sketch, Bit#(32) latency);
 	method Action hexDump(Bit#(32) hex);
+	method Action timeDiffDump(Bit#(32) diff, Bit#(32) ttype);
 endinterface
 
 // NumDmaChannels each for flash i/o and emualted i/o
@@ -273,12 +274,13 @@ module mkMain#(GeneralIndication indication
 	rule flushDes;
 		desIdx <= desIdx + 1;
 		let d <- des[desIdx].deq;
+		$display( "data: %x", d );
 		if ( dataRecvCount+1 >= 512 ) begin
 			dataRecvCount <= 0;
 			readReqTimestampQ.deq;
 			Bit#(32) elapsed = latencyCounter - readReqTimestampQ.first;
 
-			indication.hexDump(elapsed);
+			indication.timeDiffDump(elapsed, 3);
 		end
 		else begin
 			dataRecvCount <= dataRecvCount + 1;
@@ -286,6 +288,7 @@ module mkMain#(GeneralIndication indication
 	endrule
 
 	FIFO#(Bit#(32)) hostReqTimestampQ <- mkSizedFIFO(8);
+	FIFO#(Bit#(32)) hostDmaTimestampQ <- mkSizedFIFO(8);
 	rule recvTestData2;
 		let rst <- aend2.user.receive;
 		let data = tpl_1(rst);
@@ -300,7 +303,7 @@ module mkMain#(GeneralIndication indication
 		let bus = (addr>>13);
 		
 		curDataDst <= src;
-		indication.hexDump({8'hbb, 0, src});
+		//indication.hexDump({8'hbb, 0, src});
 
 		if ( datasource == 0 ) begin
 			readReqSrcQ.enq(src);
@@ -317,7 +320,8 @@ module mkMain#(GeneralIndication indication
 			flashCmdQ.enq(fcmd);
 		end else begin
 			indication.readPage(addr, zeroExtend(src), zeroExtend(datasource));
-			//hostReqTimestampQ.enq(latencyCounter);
+			hostReqTimestampQ.enq(latencyCounter);
+			if ( datasource < 3 ) hostDmaTimestampQ.enq(latencyCounter);
 		end
 	endrule
 	
@@ -326,7 +330,8 @@ module mkMain#(GeneralIndication indication
 		let sketch = tpl_1(rst);
 		readReqTimestampQ.deq;
 		Bit#(32) elapsed = latencyCounter - readReqTimestampQ.first;
-		indication.hexDump(elapsed);
+		//indication.hexDump(elapsed);
+		indication.timeDiffDump(elapsed, 3);
 		//let data <- auroraExt.user[2].receive;
 
 		//dataQ.enq(truncate(data));
@@ -358,22 +363,34 @@ module mkMain#(GeneralIndication indication
 		Reg#(Bit#(16)) dataInC <- mkReg(0);
 		Reg#(Bit#(16)) dataOutC <- mkReg(0);
 
+		FIFO#(Bool) readReqLastPage <- mkSizedFIFO(32);
 
 		rule initDmaRead (dmaReadCnt[ridx] > 0 && 
-			dataOutC-dataInC < 16);
+			dataInC-dataOutC < 128);
 			let dmaCmd = MemengineCmd {
 				sglId: dmaReadRef,
-				base: (fromInteger(ridx)*(8192/4)),
+				base: zeroExtend(dmaReadCnt[ridx])+(fromInteger(ridx)*(8192/4)),
 				len: 128,
 				burstLen:128
 			};
 			re.readServers[ridx].request.put(dmaCmd);
 			dmaReadCnt[ridx] <= dmaReadCnt[ridx] - 128;
 			dataInC <= dataInC + 128;
+			if ( dmaReadCnt[ridx] -128 == 0 ) begin
+				readReqLastPage.enq(True);
+			end else begin
+				readReqLastPage.enq(False);
+			end
 		endrule
 		Reg#(Maybe#(Bit#(64))) rDataBuff <- mkReg(tagged Invalid);
 		rule readDmaWord;
 			let d <- toGet(re.dataPipes[ridx]).get;
+			dataRQ.enq(d);
+		endrule
+		rule relaySerDma;
+			dataRQ.deq;
+			let d = dataRQ.first;
+
 			dataOutC <= dataOutC + 8;
 			if ( isValid(rDataBuff) ) begin
 				
@@ -385,8 +402,11 @@ module mkMain#(GeneralIndication indication
 		endrule
 		rule flushReadResp;
 			let dummy <- re.readServers[ridx].response.get;
-			//hostReqTimestampQ.deq;
-			//indication.hexDump(latencyCounter - hostReqTimestampQ.first);
+			readReqLastPage.deq;
+			if ( readReqLastPage.first == True ) begin
+				hostDmaTimestampQ.deq;
+				indication.timeDiffDump(latencyCounter - hostDmaTimestampQ.first, 2);
+			end
 		endrule
 	end
 
@@ -401,12 +421,18 @@ module mkMain#(GeneralIndication indication
 		//Bit#(32) elapsed = latencyCounter - readReqTimestampQ.first;
 		//readReqSrcQ.deq;
 		aend3.user.send(sketch, curDataDst);
+		hostReqTimestampQ.deq;
+		
+		// ttype == 1 : round trip to host
+		indication.timeDiffDump(latencyCounter - hostReqTimestampQ.first, 1);
 	endmethod
 	method Action sendDMAPage(Bit#(32) rdref, Bit#(32) dst);
 		curDataDst <= truncate(dst);
 		for ( Integer i = 0; i < 4; i = i + 1) begin
 			dmaReadCnt[i] <= 8192/4;
 		end
+		// ttype == 1 : round trip to host
+		indication.timeDiffDump(latencyCounter - hostReqTimestampQ.first, 1);
 	endmethod
 	method Action setDebugVals (Bit#(32) flag, Bit#(32) debugDelay); 
 		delayRegSet <= debugDelay;

@@ -99,10 +99,11 @@ int main(int argc, const char **argv)
 	generalifc_start(/*datasource*/1);
 	//auroraifc_sendTest();
 
-	if ( myid == 1 ) { 
-		generalifc_readRemotePage();
-	}
+	generalifc_readRemotePage(myid);
 	
+	sleep(2);
+	generalifc_latencyReport();
+
 	printf( "Entering idle loop\n" );
 	while(1) sleep(10);
 	exit(0);

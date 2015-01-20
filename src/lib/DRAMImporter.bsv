@@ -24,7 +24,7 @@ interface DRAM_Import;
 `endif
 endinterface
 
-//(* synthesize *)
+(* synthesize *)
 module mkDRAMImport#(Clock clk200, Reset rst200) (DRAM_Import);
 
 

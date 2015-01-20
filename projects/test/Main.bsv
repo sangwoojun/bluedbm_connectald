@@ -691,7 +691,7 @@ module mkMain#(FlashIndication indication, StorageBridgeIndication bridge_indica
 		memuser3.user.request(addr, ?, False);
 	endmethod
 	method Action readRemotePage(Bit#(64) addr, Bit#(32) node);
-		if ( node == myNetIdx ) begin
+		if ( truncate(node) == myNetIdx ) begin
 		end else begin
 			aend2.user.send(addr,truncate(node));
 		end

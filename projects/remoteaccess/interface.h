@@ -44,7 +44,14 @@ class GeneralIndication : public GeneralIndicationWrapper
 {
 
 public:
-  GeneralIndication(unsigned int id) : GeneralIndicationWrapper(id){}
+	uint32_t timediff[16];
+	uint32_t timediffcnt[16];
+  GeneralIndication(unsigned int id) : GeneralIndicationWrapper(id){
+  	for ( int i = 0; i < 16; i++ ) {
+		timediff[i] = 0;
+		timediffcnt[i] = 0;
+	}
+  }
 
   virtual void readPage(uint64_t addr,uint32_t dstnode, uint32_t datasource);
   virtual void recvSketch(uint32_t sketch, uint32_t latency) {
@@ -58,7 +65,13 @@ public:
 	timespec now;
 	clock_gettime(CLOCK_REALTIME, & now);
 	printf( "aurora data! %f\n", timespec_diff_sec(aurorastart, now) );
-	fflush(stdout);
+	//fflush(stdout);
+  }
+  virtual void timeDiffDump(uint32_t diff, uint32_t ttype) {
+  	if ( ttype < 16 ) {
+		timediff[ttype] += diff;
+		timediffcnt[ttype] ++;
+	}
   }
 };
 
@@ -68,7 +81,8 @@ public:
 void interface_init();
 void interface_alloc(DmaManager* dma);
 void generalifc_start(int datasource);
-void generalifc_readRemotePage();
+void generalifc_readRemotePage(int myid);
+void generalifc_latencyReport();
 
 void auroraifc_start(int myid);
 

@@ -112,7 +112,7 @@ void auroraifc_start(int myid) {
 
 	// This is set up such that all nodes can one day 
 	// read the same routing file and apply it
-	//setAuroraRouting2(myid, 0,1, 0,1);
+	setAuroraRouting2(myid, 0,1, 0,1);
 	setAuroraRouting2(myid, 0,1, 0,0);
 	setAuroraRouting2(myid, 0,2, 2,3);
 	//setAuroraRouting2(myid, 0,3, 2,3);
@@ -129,7 +129,8 @@ void auroraifc_start(int myid) {
 
 	setAuroraRouting2(myid, 3,0, 1,2);
 	setAuroraRouting2(myid, 3,1, 1,2);
-	setAuroraRouting2(myid, 3,2, 0,3);
+	setAuroraRouting2(myid, 3,2, 0,0);
+	//setAuroraRouting2(myid, 3,2, 0,3);
 
 	usleep(100);
 }
@@ -145,12 +146,23 @@ void generalifc_start(int datasource) {
 	data64 = (uint64_t*) data;
 }
 
-void generalifc_readRemotePage() {
+void generalifc_readRemotePage(int myid) {
+	int src = 0;
+	int dst = 1;
+	if ( myid != src ) return;
+
 	for ( int i = 0; i < 128; i++ ) {
 		clock_gettime(CLOCK_REALTIME, & deviceIndication->aurorastart);
 		// addr, targetnode, datasource, tag
-		device->readRemotePage(i, 0, 4, 0);
+		device->readRemotePage(i, dst, 4, 0);
 		usleep(10000);
+	}
+}
+void generalifc_latencyReport() {
+	for ( int i = 0; i < 16; i++ ) {
+		float tot = deviceIndication->timediff[i];
+		float avg = tot/deviceIndication->timediffcnt[i];
+		printf( "%d: %f\n",i,avg );
 	}
 }
 

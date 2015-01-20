@@ -40,6 +40,7 @@ prebuild:: $(AURORA_INTRA) $(AURORA_EXTRA)
 
 $(AURORA_INTRA): ../../core-scripts/synth-aurora-intra.tcl
 	(cd $(BOARD); vivado -mode batch -source ../../../core-scripts/synth-aurora-intra.tcl)
+	find $(CONNECTALDIR)/out/$(BOARD)/ -name "aurora_8b10b_*transceiver_wrapper.v" -exec sed -i "s/_txdiffctrl_in[ \t]\+([4'b10]\+),/_txdiffctrl_in (4'b1011),/g" '{}' \;
 $(AURORA_EXTRA): ../../core-scripts/synth-aurora-ext.tcl
 	(cd $(BOARD); vivado -mode batch -source ../../../core-scripts/synth-aurora-ext.tcl)
 	find $(CONNECTALDIR)/out/$(BOARD)/ -name "aurora_64b66b_X1Y??_wrapper.v" -exec sed -i "s/GT0_txdiffctrl_in[ \t]\+([4'b10]\+),/GT0_txdiffctrl_in (4'b1100),/g" '{}' \;

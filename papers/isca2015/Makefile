@@ -9,6 +9,7 @@ $(PAPER).pdf: $(TEX) $(BIB) $(FIGS) jpaper.cls
 	#echo $(FIGS)
 	mkdir -p obj
 	pdflatex -output-directory obj $(PAPER)
+	cp references.bib obj
 	cd obj; bibtex $(PAPER); cd ..;
 	pdflatex -output-directory obj $(PAPER)
 	pdflatex -output-directory obj $(PAPER)

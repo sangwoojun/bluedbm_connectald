@@ -1,60 +1,280 @@
 \section{System Architecture}
-
-The FlashBoost architecture is composed of multiple identical nodes. Each node
-consists of a host server and a FlashBoost storage device. The host servers are
-networked together using Ethernet or other general-purpose networking fabric.
-The FlashBoost storage device consists of a in-store processing engine, flash
-storage and flash controller, host interface, and a high-speed network controller.
-The in-store processing engine can implement a raw
-access to flash and network resources, an application-specific hardware
-accelerator, or both. The host software can send high-level requests over the
-PCIe link to the in-storage processing engine to access flash network and computation resources.
-In our implementation of FlashBoost, we have used a Field Programmable Gate
-Array (FPGA) to implement The in-store processor and also the flash, host and
-network controllers. However, the FlashBoost Architecture should not be limited
-to an FPGA-based implementation.
+\label{sec:architecture}
 
 
-\begin{figure*}[ht]
-	\begin{center}
-	\includegraphics[width=0.8\paperwidth]{figures/architecture.pdf}
-	\caption{FlashBoost Architecture}
-	\label{fig:architecture}
-	\end{center}
-\end{figure*}
+The FlashBoost architecture is a homogeneous cluster of host servers coupled
+with a FlashBoost storage device (See Figure~\ref{fig:architecture}). Each FlashBoost storage device is plugged into
+the host server via a PCIe link, and it consists of flash storage, an in-store
+processing engine, multiple high-speed network interfaces and on-board DRAM. The host
+servers are networked together using Ethernet or other general-purpose
+networking fabric. The host server can access the FlashBoost storage device via
+a host interface implemented over PCIe. It can either directly communicate with
+the flash interface, to treat is as a raw storage device, or with the in-store
+processor to perform computation on the data.
 
+The in-store processing engine has access to four major services: The flash
+interface, network interface, host interface and the on-storage DRAM buffer.
+Figure~\ref{fig:architecture} and Figure~\ref{fig:architecture_node} shows the four services available to the
+in-store processor. In the following sections we describe the flash interface,
+network interface and host interface in order. We omit the DRAM buffer because there is nothing special about its design.
 
-The in-store processing engine has access to four major services, The flash
-controller, network controller, host interface and the DRAM Buffer.
-Figure~\ref{fig:ispservice} shows the four services. Development of FlashBoost was
-done in the high-level hardware description language Bluespec. As a result, all
-services expose a high-level language interface using latency-insensitive FIFOs
-for communication. This makes the services intuitive to use, and flexible to be
-used easily with many in-storage processing engines.
+\subsection{Flash Interface}
+\label{sec:flashInterface}
+
+Flash devices or SSDs achieve high bandwidth by grouping multiple flash chips
+into several channels, all of which can operate in parallel. Because NAND flash
+has limited program/erase cycles and frequent errors, complex flash management
+algorithms are required to guarantee reliability. These include wear leveling,
+garbage collection, bit error correction and bad block management. These
+functions are typically handled by multiple ARM-based cores in the SSD
+controller. The host side interface of an SSD is typically SATA or PCIe, using
+AHCI or NVMe protocols to communicate with host. SSDs are viewed
+as a typical block device to the host operating system, and its internal
+architecture and management algorithms are completely hidden. 
+
+However, this additional layer of management duplicates some file system functions and adds significant latency~\cite{rfs}.
+Furthermore, in a distributed storage environment, such as FlashBoost,
+independent flash devices do not have a holistic view of the system and thus
+cannot efficiently manage flash. Finally, in-store processors that we have
+introduced in FlashBoost would also incur performance penalties if passing
+through this extra layer. Thus in FlashBoost, we chose to shift flash management
+away from the device and into file system/block device driver (discussed in
+Section~\ref{sec:software}).
+
+\subsubsection{An Interface for High Performance Flash Access}
+ Our flash controller exposes a low-level, thin,
+fast and bit-error corrected hardware interface to raw NAND flash chips, buses,
+blocks and pages. This has the benefit of (i) cutting down on access latency
+from the network and in-store processors; (ii) exposing all degrees of
+parallelism of the device and (iii) allowing higher level system stacks (file
+system, database storage engine) to more intelligently manage data. 
+
+To access the flash, the user first issues a flash command
+with the operation, the address and a tag to identify the request.
+For writes, the user then awaits for a write data request from
+the controller scheduler, which tells the user that the flash controller is
+ready to receive the data for that write. The user will send the write data
+corresponding to that request in 128-bit bursts. The controller returns an
+acknowledgement once write is finished. 
+For read operations, the data is returned in 128-bit bursts along with the request tag.
+We emphasize that for maximum performance, the
+controller may send these data bursts \emph{out of order} with respect to
+the issued request and \emph{interleaved} with other read requests.
+Thus completion buffers may be required on the user side to maintain FIFO
+characteristics. Furthermore,
+we note that to saturate the bandwidth of the flash device, multiple
+commands must be in-flight at the same time, since flash operations
+can have latencies of 50 $\mu s$ or more. 
+
+%Access to flash storage is provided by the flash controller via a fast,
+%low-level and error-free interface with minimal overhead. This interface exposes
+%the internal memory organization of the flash device, namely the buses/channels,
+%chips, blocks and pages.  The interface is designed to stream data in and out of
+%the flash chips as fast as possible without concern for flash management. Flash
+%management functionalities such as garbage collection, bad block management and
+%wear-leveling are handled by the flash-aware file system described int
+%Section~\ref{sec:software}, or implemented inside the in-store processor itself.
+%The key advantage of such a low-level interface is that the in-store processors
+%have direct access to data with minimal overhead.
 
 \begin{figure}[h]
 	\begin{center}
-	\includegraphics[width=0.3\paperwidth]{figures/isp-service-crop.pdf}
-	\caption{Services Provided to In-Store Processor}
-	\label{fig:ispcore}
+	\includegraphics[scale=0.4]{figures/architecture_flash-crop.pdf}
+	\caption{Flash Interface}
+	\label{fig:flashinterface}
 	\end{center}
 \end{figure}
 
-\subsection{Flash Interface}
+\subsubsection{Multiple Access Agents}
 
-Access to flash storage is provided by the flash controller via a
-fast, low-level and error-free interface with minimal bandwidth and
-latency overhead. This interface exposes the internal memory organization of
-the flash device, namely the buses/channels, chips, blocks and pages.
-The interface is designed to stream data in
-and out of the flash chips as fast as possible without concern for
-flash management. Garbage collection, bad block management and
-wear-leveling functionalities are handled by the flash-aware file system
-in the host kernel (discussed in Section~\ref{?}). The key advantage of such
-a low-level interface is that in-store processors have direct access to
-the data in a streaming fashion with minimal buffering and insignificant
-latency overhead. 
+Multiple hardware endpoints in FlashBoost may need shared access to this
+flash controller interface. For example, a particular controller may
+be accessed by local in-store processors, local host software over PCIe
+DMA, or remote in-store processors over the network. Thus we implemented a
+Flash Interface Splitter with tag renaming to manage multiple users
+(Figure~\ref{fig:flashinterface}). In addition, 
+to ease development of hardware in-store processors,
+we also provide an optional Flash Server module as part of FlashBoost. This server
+converts the out-of-order and interleaved flash interface into
+multiple simple in-order request/response interfaces
+using page buffers. It also contains an Address Translation Unit that 
+maps file handles to incoming streams of physical addresses from the host. The in-store processor
+simply makes a request with the file handle, offset and length, and the Flash Server will perform
+the flash operation at the corresponding physical location. The software
+support for this function is discussed in Section~\ref{sec:software}). The Flash
+Server's width, command queue depth and number of interfaces is adjustable 
+based on the application.
 
+\subsection{Integrated Storage Network}
+
+\begin{figure}[t]
+	\begin{center}
+	\includegraphics[width=0.5\textwidth]{figures/network-architecture-crop.pdf}
+	\caption{Network Architecture}
+	\label{fig:networkinterface}
+	\end{center}
+\end{figure}
+
+
+FlashBoost provides a low-latency high-bandwidth network infrastructure across
+all FlashBoost storage devices in the cluster, using a simple design with low buffer requirements. FlashBoost storage devices form a separate network
+among themselves via high-performance serial links.  The FlashBoost network is a
+packet-switched mesh network, in which each storage device has multiple network
+ports and is capable of routing packets across the network without requiring a
+separate switch or router.  In addition to routing, the storage network supports functionality such as
+flow control and virtual channels while maintaining high performance and
+extremely low latency.  For data traffic between the storage devices, the
+integrated network ports removes the overhead of going to the host software to
+access a separate network interface.
+
+Figure~\ref{fig:networkinterface} shows the network architecture. Switching is
+done at two levels, the internal switch and the external switch.  The internal
+switch routes packets between local components.  The external switch accesses
+multiple physical network ports, and is responsible for forwarding data from one
+port to another in order to relay a packet to its next hop. It is also
+responsible for relaying inbound packets to the internal
+switch, and relaying outbound packets from the internal switch to a correct
+physical port. 
+
+Due to the multiple ports on the storage nodes, the FlashBoost network is very
+flexible and can be configured to implement various topologies, as long as there
+is sufficient number of ports on each node.
+Figure~\ref{fig:topologies} shows some example topologies. To implement a
+different topology the physical cables between each node has to be re-wired, but
+the routing across a topology can be configured dynamically by the software.
+
+%Components that want to use the network choose one or more \emph{Logical
+%Endpoints}, which provide virtual channel semantics, to access the network in a
+%virtualized manner.
+
+\begin{figure}[t!]
+	\centering
+	\subfloat[Distributed Star]
+		{\includegraphics[scale=0.35]{figures/topology_dist_star-crop.pdf}}
+		\hfill
+	\subfloat[Mesh]
+		{\includegraphics[scale=0.35]{figures/topology_mesh-crop.pdf}}
+		\hfill
+	\subfloat[Fat Tree]
+		{\includegraphics[scale=0.35]{figures/topology_fat_tree-crop.pdf}}
+	\caption{Any Network Topology Is Possible As Long As It Requires Less Than 8
+	Network Ports Per Node}
+	\label{fig:topologies}
+\end{figure}
+
+
+\subsubsection{Logical Endpoint}
+
+The FlashBoost network infrastructure exposes virtual channel semantics to the
+users of the network by providing it with multiple \emph{logical endpoints}.  The
+number of endpoints are determined at design time by setting a parameter, and
+all endpoints share the physical network.  Each endpoint is parameterized with a
+unique index that does not need to be contiguous.  Each endpoint exposes two
+interfaces, \texttt{send} and \texttt{receive}. An in-store processor can send
+data to a remote node by calling \texttt{send} with a pair of data and
+destination node index, or receive data from remote nodes by calling
+\texttt{receive}, which returns a pair of data and source node index. These
+interfaces provide back pressure, so that each endpoint can be treated like a
+FIFO interface across the whole cluster. Such intuitive characteristics of the
+network ease development of in-store processors.
+
+\subsubsection{Link Layer}
+
+The link layer manages physical connections between network ports in the storage
+nodes. The most important aspect of the link layer is the simple token-based
+flow control implementation. This provides back pressure across the link and
+ensures that packets will not drop if the data rate is higher than what the
+network can manage, or if the data cannot be received by the destination node which is running slowly.
+
+\subsubsection{Routing Layer}
+
+%The goals of the FlashBoost network infrastructure is to
+%maintain high bandwidth and low latency, while maintaining a simple design for
+%embedded implementation. This requirement
+%prompted many design choices.
+
+\begin{figure}[h]
+	\begin{center}
+	\includegraphics[width=0.30\textwidth]{figures/routing-crop.pdf}
+	\caption{Routing Packets Across the Network}
+	\label{fig:networkrouting}
+	\end{center}
+\end{figure}
+
+In order to make maximum use of the bandwidth of the network infrastructure
+while keeping resource usage to a minimal, the FlashBoost network implements
+deterministic routing for each logical endpoint. This means that all packets
+originating from the same logical endpoint that are directed to the same
+destination node follow the same route across the network, while packets from a
+different endpoint directed to the same destination node may follow a different
+path. Figure~\ref{fig:networkrouting} shows packet routing in an example
+network. The benefits of this approach is that packet traffic can be distributed
+across multiple links, while maintaining the order of all packets from the same
+endpoint. If packets from the same endpoint are allowed to take different paths,
+it would require a completion buffer which may be expensive in an embedded
+system.
+For simplicity, the FlashBoost network does not implement a discovery protocol, and relies on a
+network configuration file to populate the routing tables. 
+
+In order to maintain extremely low network latency, each endpoint is given a
+choice whether to use end-to-end flow control. If the developer is sure
+that a particular virtual link will always drain on the receiving end, flow
+end-to-end flow control can be omitted for that endpoint. However, if the
+receiver fails to drain data for a long time, the link-level back pressure may
+cause related parts of the network to block. On the other hand, an endpoint can
+be configured to only send data when there is space on the destination endpoint,
+which will assure safety but result in higher latency due to flow control
+packets, and more memory usage for buffers.
+
+\subsection{Host Interface}
+
+The in-store processing core can be accessed from the host server over either
+a direct interface that supports RPC and DMA operations, or a file system
+abstraction built on top of the direct interface. The file system interface is
+described in detail in Section~\ref{sec:software}.
+
+In order to parallelize requests and maintain high performance, the host
+interface provides the software with 128 page buffers, each for reads and
+writes. When writing a page, the software will request a free write buffer, copy
+data to the write buffer, and send a write request over RPC with the
+physical address of the destination flash page.
+The buffer will be returned to the free queue when the
+hardware has finished reading the data from the buffer. When reading a page, the
+software will request a free read buffer, and send a read request over RPC with
+the physical address of the source flash page. The software will receive an
+interrupt with the buffer index when the hardware has finished writing to
+software memory.
+
+Using DMA to write data to the storage device is straightforward to parallelize,
+but parallelizing reads is a bit more tricky due to the characteristics of flash
+storage. When writing to storage, the DMA engine on the hardware will read data
+from each buffer in order in a contiguous stream. So having enough requests in
+the request queue is enough to make maximum use of the host-side link bandwidth.
+However, data reads from flash chips on multiple buses in parallel can arrive
+interleaved at the DMA engine. Because the DMA engine needs to have enough
+contiguous data for a DMA burst before issuing a DMA burst, some reordering may
+be required at the DMA engine. This becomes even trickier when the device is
+using the integrated network to receive data from remote nodes, where they might
+all be coming from different buses. To fix this issue, we provide dual-ported
+buffer in hardware providing the semantics of a vector of FIFOs, so that data
+for each request can be enqueued into its own FIFO until there is enough data
+for a burst.
+Figure~\ref{fig:hostinterface} describes the structure of the host interface for
+flash reads.
+
+\begin{figure}[t!]
+	\centering
+	\includegraphics[width=0.25\textwidth]{figures/dmawrite-crop.pdf}
+	\caption{Host-FPGA Interface Over PCIe}
+	\label{fig:hostinterface}
+\end{figure}
+
+%TODO: \subsubsection{Storage Bridge to Host}
+
+
+%%%% Comments!
+
+\begin{comment}
 The raw flash interface, in hardware, is defined below:
 
 %[captionpos=b, caption={Flash Controller Interface}, label={lst:hwifc}]
@@ -69,238 +289,6 @@ interface FlashIfc;
   method Tuple2#(Bit#(8), StatusT) ackStatus ();
 endinterface 
 \end{lstlisting}
-
-To access the flash, the user issues a flash command
-(\textit{sendCmd} method) with the operation, the address and
-a free tag. For writes, the user awaits for a write data request from
-the controller scheduler (\textit{writeDataReq} method), and then sends
-the write data corresponding to that request in 128-bit bursts
-(\textit{writeWord} method). An acknowledgement is received when the
-operation completes (\textit{ackStatus} method). For read operations,
-data will return in 128-bit bursts along with the command tag that the
-burst corresponds to. We emphasize that for maximum performance, the
-controller sends these data bursts \textbf{out of order} with respect to
-the issued request and \textbf{interleaved} with other read requests.
-Thus completion buffers may be required on the user side. Furthermore,
-we note that to saturate the bandwidth of the flash device, multiple
-commands must be in-flight at the same time, since flash operations
-have latencies of tens to thousands of microseconds. 
-
-In our architecture, multiple users may need shared access to the
-flash controller interface. For example, a particular flash controller may
-be accessed by local in-store processors, local host software over PCIe
-DMA, or remote in-store processors. Thus, we include as part of the
-platform, an interface multiplexer that converts one flash interface
-into a parametrizable number of additional interfaces. 
-
-%TODO: give a name to this module?
-To ease development of hardware accelerators (i.e. in-store processors),
-we also provide a parametrizable module that converts a flash interface
-into multiple simple in-order request/response interfaces
-(Figure~\ref{?}). We allow the user to adjust the interface width, the
-command queue depth and number of interfaces of the converter.
-Internally, the converter renames tags and uses completion buffers to
-order data. This design easily permits multiple accelerators to be
-attached to the flash device, taking advantage of flash parallelism. 
+\end{comment}
 
 
-\begin{figure}[h]
-	\begin{center}
-	\includegraphics[scale=0.4]{figures/top-arch-crop.pdf}
-	\caption{Flash Interface}
-	\label{fig:flashinterface}
-	\end{center}
-\end{figure}
-
-\subsection{Inter-Storage Network}
-
-Conventional general-purpose networking infrastructures such as TCP are designed to serve
-all kinds of network traffic over any distance, ranging from intra-rack to over
-continents. This makes the protocol incredibly complex and results in a large
-protocol overhead.
-
-The near-data processors in FlashBoost are linked together using a separate
-high-performance network among themselves in which all nodes have multiple
-network ports and act both as a network switch as well as an endpoint. This network provides low-level
-routing, some flow control and use of virtual channels, but omits various high level
-features that modern network protocols provide. From the in-storage processing
-engine's point of view, the network looks like a variable number of FIFOs, all
-of which can be declared to be of different bit-width according to the use. The
-network FIFOs have features that are expected of normal FIFOs, such as back
-pressure. The network FIFOs also act as virtual link endpoints. Such intuitive characteristics of the network should aid in the ease
-of in-storage processor development. The use of the network looks like the following, in pseudocode:
-
-\begin{verbatim}
-NetworkEndpoint#(type Bit#(64)) endpoint1 
-     <- mkNetworkEndpoint(1); // endpoint id: 1
-NetworkEndpoint#(type Bit#(32)) endpoint2 
-     <- mkNetworkEndpoint(8); // endpoint id: 8
-List endpoints = 
-     cons(endpoint1, cons(endpoint2, nil));
-NetworkArbiter arbiter 
-     <- mkNetworkArbiter(endpoints);
-
-...
-endpoint1.send(data,dest);
-
-...
-tuple(data,src) <- endpoint1.receive;
-\end{verbatim}
-
-In our FlashBoost implementation, this network is implemented using the
-low-latency serial links that are already included in the FPGA. By implementing
-routing in the hardware and using a very low-latency network fabric, we were
-able to achieve very high performance, with 0.5$\mu s$ of latency per network
-hop, and near 10Gbps of bandwidth per link. Our implementation has a network
-fan-out of 8 ports per storage node, so the aggregate network bandwidth
-available to a node is up to 10Gbps.
-
-\subsubsection{Link Layer}
-
-The link layer managed physical connections between network ports in the storage
-nodes. The most important aspect of the link layer is the simple token-based
-flow control implementation. This assures that no packet will drop if the data
-rate is higher than what the network can manage, or if the data is not received
-from the destination node quick enough.
-
-\subsubsection{Routing Layer}
-
-Figure~\ref{fig:networkinterface} shows the implementation of the router in each
-storage node. Each packet can either come from the network port's link layer
-interface, or from the user's network endpoint. Each incoming packet's
-destination field is compared to the routing table in the router to determine
-whether to be forwarded to a remote node via a network port, or to be delivered
-to a local endpoint if its destination is the current node. It then goes through
-one of the four crossbar switches to be delivered to the correct destination. 
-Fairness is implemented using a round-robin priority ordering to ensure maximum
-throughput while ensuring no port starves.
-
-It is important to note that the routing table can have more than one network
-port entry per destination node index. This is because each pair of nodes can
-have more than one immediate link connecting between them, and there may be
-multiple viable paths between a pair of two remote nodes. In order to make
-maximum use of the available bandwidth in such cases, the routing table can have
-entries for multiple valid ports for the next hop. In order to ensure in-order
-arrival, the endpoint id of the origin endpoint is hashed to deterministically
-decide which entry to use in the routing table. In-order arrival is desirable in
-a hardware implementation because completion buffers may be expensive.
-Because of this characteristic, if the in-storage processing engine want to
-ensure more bandwidth, it can break a wide data bus into multiple endpoints and
-send data over them in parallel. Figure~\ref{fig:networkrouting} shows packet
-routing in an example network.
-
-\begin{figure}[h]
-	\begin{center}
-	\includegraphics[width=0.4\textwidth]{figures/routing-crop.pdf}
-	\caption{Routing Packets Across the Network}
-	\label{fig:networkrouting}
-	\end{center}
-\end{figure}
-
-It should be pointed out that because end-to-end flow control doesn't exist, a
-large part of the network might actually block if a destination endpoint doesn't
-receive the data quick enough. This was an intentional design choice to build an
-extremely low-latency network while maintaining low resource usage. If the designer is sure that the packets will
-always be consumed, end-to-end flow control can be omitted. Otherwise, the
-designer can choose to implement a flow control protocol using the network
-endpoints. We plan to provide pre-implemented flow control modules that can be
-plugged in.
-
-\begin{figure}[h]
-	\begin{center}
-	\includegraphics[scale=0.4]{figures/network-routing-crop.pdf}
-	\caption{Network Interface}
-	\label{fig:networkinterface}
-	\end{center}
-\end{figure}
-
-
-\subsection{Host Interface}
-
-The near-data processing core can be accessed from the host server over either a
-low-level RPC-like interface or a file system abstraction. Our host interface
-was implemented using Connectal~\ref{connectal}, a hardware-software codesign
-framework built by Quanta Research Cambridge. Connectal reads the interface
-definition file written by the programmer and generates glue logic between
-hardware and software. Connectal provides an RPC-like interface, as well as a
-memory-mapped DMA interface for high bandwidth data transfer.
-
-The software maintains two 128-page page buffers, each for reads and writes. When
-issuing a read or write request, the software sends the target or source page
-buffer index along with the request to let the hardware side host interface know
-where to read or write data from. Since this buffer is returned to the free list
-when each operation is finished the buffer index effectively acts as the locally
-unique tag for each flash operation. Writing data is straightforward, as data is
-read in-order from the host page buffer and written in-order to each flash
-controller bus. However, reading from flash is slightly more complex because the
-data from each flash chip can come interleaved, even within the same bus. 
-We include an implementation of a multiple-in-single-out completion buffer using
-on-chip BRAM with burst support, in order to save hardware resources by not
-having 128 separate FIFOs.
-
-Reading or writing data from the host buffers were done by DMA read/write
-engines implemented in the Connectal framework. In our FlashBoost
-implementation, there are four read engines and four write engines each, in
-order to more easily make maximum use of the PCIe bandwidth. Since there are 16
-busses in total per storage node, each read/write engines manage data from four
-busses each.
-Figure~\ref{fig:hostinterface} describes the
-structure of the host interface.
-
-\begin{figure}[ht!]
-	\centering
-%	\subfloat[Writing Data to Storage]
-%		{\includegraphics[width=0.23\textwidth]{figures/readinterface-crop.pdf}}
-%	\subfloat[Reading Data from Storage]
-%		{\includegraphics[width=0.23\textwidth]{figures/writeinterface-crop.pdf}}
-	\includegraphics[width=0.4	\textwidth]{figures/hostinterface-crop.pdf}
-	\caption{Host-FPGA Interface Over PCIe}
-	\label{fig:hostinterface}
-\end{figure}
-
-%TODO: \subsubsection{Storage Bridge to Host}
-
-\subsection{File System Interface}
-
-NAND flash has very different characteristics from traditional hard disk drives,
-so it is required to run a flash-aware management layer like a flash translation
-layer (FTL)~\cite{}.  We develop a refactored I/O architecture that offloads
-almost all of the FTL functions into a log-structured file system, called
-RFS~\cite{}. Unlike the conventional FTL design, RFS performs logical-to-
-physical mapping and garbage collection, achieving better garbage collection
-efficiency at much lower memory requirement. For the sake of compatibility with
-existing software, FlashBoost also offers a full-fledged page-level FTL for
-end-users, which is implemented in the device driver like Fusion IO’s driver. It
-allows us to use well-known Linux file systems (e.g., ext2/4/3) as well as
-database systems (directly running on top of a block device) with FlashBoost.
-
-The most important feature of the FlashBoost software is that it provides
-easy-to-use interfaces for application-specific hardware accelerators, allowing
-end-users to easily make use of fast near-data processing without any efforts to
-write their own custom interfaces manually. By leveraging the HW/SW interfaces
-generation of Connectal~\cite{}, FlashBoost automatically creates SW proxies
-(i.e., C functions and C++ classes) and HW wrappers according to the HW/SW
-specifications of end-users. In FlashBoost, user-level applications send
-application- specific queries to the storage device using SW proxies, together
-with physical locations of data in NAND flash to analyze using hardware
-accelerators. Those physical locations can be easily obtained from the file
-system (i.e., RFS) or the device driver because they maintain mapping
-information between user files and NAND flash. After near-data processing is
-done, hardware accelerators inform user applications of analysis results via HW
-wrappers. Thus, a large amount of data transfer between the host and the storage
-device can be avoided. User queries are sent to the hardware directly, bypassing
-the OS kernel, except for essential driver modules. This helps us to avoid deep
-kernel stacks that often cause long I/O latencies. It is common that multiple
-user-applications compete for the limited and precious hardware acceleration
-units. For efficient sharing of hardware resources, FlashBoost runs a scheduling
-daemon that assigns available hardware-acceleration units to competing
-user-applications. In our implementation, a simple FIFO-based policy is used for
-request scheduling.
-
-\begin{figure}[h]
-	\begin{center}
-	\includegraphics[width=0.4\paperwidth]{figures/software.pdf}
-	\caption{File System Interface}
-	\label{fig:filesystem}
-	\end{center}
-\end{figure}

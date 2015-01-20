@@ -3,6 +3,7 @@
 %replace XXX with the submission number you are given from the ISCA submission site.
 \newcommand{\iscasubmissionnumber}{XXX}
 
+\usepackage{multirow}
 \usepackage{listings}
 \usepackage[normalem]{ulem}
 
@@ -18,20 +19,7 @@ FlashBoost: An Appliance for Big Data Analytics
 %\thispagestyle{empty}
 
 \begin{abstract}
-Big Data analytics have been shown to provide deep insights which are both
-commercially valuable and socially impactful. Complex data queries, because of
-their need for random accesses, have proven to be slow unless all the data can
-be accommodated in DRAM. There are many domains, such as genomics, geological
-data and daily twitter feeds where the datasets are 5 to 20 TB. A cluster with a
-total DRAM capacity of 10 TB may easily cost (dollar) 300K and consume 30
-Kilowatts of power. In this paper we present FlashBoost, a rack-level
-flash-based system which is significantly cheaper, and has an order of magnitude
-smaller power and area footprint. A node in a FlashBoost appliance consists of a
-server, a flash storage device capable of in-store processing, and an integrated
-network between the storage devices. We present the rationale underlying
-FlashBoost and show that it outperforms a rack-level cluster with SSDs. For many
-applications, FlashBoost provides an attractive alternative to large clusters in
-terms of price-performance tradeoff.
+Complex data queries, because of their need for random accesses, have proven to be slow unless all the data can be accommodated in DRAM. There are many domains, such as genomics, geological data and daily twitter feeds where the datasets of interest are 5TB to 20 TB. For such a dataset, one would need a cluster with 100 servers, each with 128GB to 256GBs of DRAM, to accommodate all the data in DRAM. On the other hand, such datasets could be stored easily in the flash memory of a rack-sized cluster. Flash storage has much better random access performance than hard disks, which makes it desirable for analytics workloads. In this paper we present FlashBoost, a new system architecture which has flash-based storage with in-store processing capability and a low-latency high-throughput inter-controller network.  We show that FlashBoost outperforms a flash-based system without these features by a factor of 10 for some important applications. While the performance of a ram-cloud system falls sharply even if only 5\%\textasciitilde10\% of the references are to the secondary storage, this sharp performance degradation is not an issue in FlashBoost. FlashBoost presents an attractive point in the cost-performance trade-off for Big Data analytics. 
 \end{abstract}
 
 
@@ -40,15 +28,57 @@ terms of price-performance tradeoff.
 
 \input{related}
 \input{architecture}
+\input{software}
 \input{implementation}
 \input{results}
 \input{acceleration}
+%\input{results_acceleration}
 
-\section{Conclusion}
+\section{Conclusion and Future Work}
+\label{sec:conclusion}
+
+We have presented FlashBoost, an appliance for Big Data analytics that uses
+flash storage, in-store processing and integrated networks for cost-effective
+analytics of large datasets. A rack-size FlashBoost system is likely to be an
+order of magnitude cheaper and less power hungry than a cloud based system with
+enough DRAM to accommodate 10TB to 20TB of data. We have demonstrated the
+performance benefits of Flashboost using simple examples on large amounts of
+data in comparison to a generic flash-based system without such architectural
+improvements. We have also shown that the performance of a system which relies
+on data being resident in DRAM, falls rapidly if even a small fraction of data
+has to reside in secondary storage. Flashboost like architecture does not suffer
+from this problem because flash based systems with 10TB to 20TB of storage are
+very affordable.
+
+
+
+Our current implementation uses an FPGA to implement most of the new
+architectural features, that is, in-store processors, integrated network
+routers, flash controllers. It is straightforward to implement most of these
+features using ASICs or provide some in-store computing capability via
+general-purpose processors. This will simultaneously improve the performance
+and lower the power consumption even further. Notwithstanding such developments
+we are developing tools to make it easy to develop in-store processors for the
+reconfigurable logic inside Flashboost.  
+
+
+
+We are currently developing or planning to develop several new applications
+including:  
+\emph{SQL Database Acceleration} by offloading query processing and
+filtering to in-store processors,
+\emph{Sparse-Matrix Based Linear Algebra Acceleration} and
+\emph{FlashBoost-Optimized MapReduce}, which attempts to optimize data
+flow of MapReduce to best fit an SSD-based cluster with in-store processors.
+We plan to collaborate with other research groups to explore more applications.
+
+\vfill
+\pagebreak
 
 \bstctlcite{bstctl:etal, bstctl:nodash, bstctl:simpurl}
 \bibliographystyle{IEEEtranS}
 \bibliography{references}
 
 \end{document}
+
 

@@ -71,6 +71,9 @@ create_clock -name drp_clk_i -period 20.0 [get_pins */auroraIntraClockDiv2_slowb
 ###### CDC in RESET_LOGIC from INIT_CLK to USER_CLK ##############
 set_max_delay -from [get_clocks init_clk_i] -to [get_clocks user_clk_i] -datapath_only 9.091	
 
+#CDC clkout0 to/from user_clk_i 
+set_max_delay -from [get_clocks clkout0] -to [get_clocks user_clk_i] -datapath_only 9.091	
+set_max_delay -from [get_clocks user_clk_i] -to [get_clocks clkout0] -datapath_only 9.091	
 
 
 

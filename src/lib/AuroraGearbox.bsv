@@ -1,6 +1,7 @@
 import FIFO::*;
 import FIFOF::*;
 import Clocks :: *;
+import BRAMFIFO::*;
 
 typedef 8 HeaderSz;
 typedef TSub#(128,8) BodySz;
@@ -18,18 +19,12 @@ interface AuroraGearboxIfc;
 	method ActionValue#(Bit#(AuroraWidth)) auroraSend;
 endinterface
 
-module mkAuroraGearbox#(Clock aclk, Reset arst, Bool waitForStartReq) (AuroraGearboxIfc);
+module mkAuroraGearbox#(Clock aclk, Reset arst) (AuroraGearboxIfc);
 	SyncFIFOIfc#(Tuple2#(DataIfc,PacketType)) sendQ <- mkSyncFIFOFromCC(4, aclk);
 
 	Integer recvQDepth = 128;
 	Integer windowSize = 64;
-
-	Reg#(Bool) canSend <- mkReg(!waitForStartReq, clocked_by aclk, reset_by arst);
-	Reg#(Bool) sentStartReq <- mkReg(waitForStartReq, clocked_by aclk, reset_by arst);
-
-
-
-	SyncFIFOIfc#(Tuple2#(DataIfc,PacketType)) recvQ <- mkSyncFIFOToCC(4, aclk, arst);
+	SyncFIFOIfc#(Tuple2#(DataIfc,PacketType)) recvQ <- mkSyncBRAMFIFOToCC(recvQDepth, aclk, arst);
 	FIFO#(Tuple2#(DataIfc,PacketType)) recvBufferQ <- mkSizedFIFO(recvQDepth, clocked_by aclk, reset_by arst);
 	Reg#(Bit#(16)) maxInFlightUp <- mkReg(0, clocked_by aclk, reset_by arst);
 	Reg#(Bit#(16)) maxInFlightDown <- mkReg(0, clocked_by aclk, reset_by arst);
@@ -56,6 +51,8 @@ module mkAuroraGearbox#(Clock aclk, Reset arst, Bool waitForStartReq) (AuroraGea
 			flowControlQ.deq;
 			PacketType ptype = 0;
 			auroraOutQ.enq({2'b01, ptype, zeroExtend(flowControlQ.first)});
+			$display("AuroraOutQ: flowControl packet: %d", flowControlQ.first);
+			$display("send budget = %d", curSendBudget);
 		end else
 		if ( curSendBudget > 0 ) begin
 			if ( isValid(packetSendBuffer) ) begin
@@ -66,6 +63,7 @@ module mkAuroraGearbox#(Clock aclk, Reset arst, Bool waitForStartReq) (AuroraGea
 					});
 				packetSendBuffer <= tagged Invalid;
 				curSendBudgetDown <= curSendBudgetDown + 1;
+				$display("AuroraOutQ: data packet VALID: data=%x, type=%x", tpl_1(btpl), tpl_2(btpl));
 			end else begin
 				sendQ.deq;
 				let data = sendQ.first;
@@ -75,7 +73,9 @@ module mkAuroraGearbox#(Clock aclk, Reset arst, Bool waitForStartReq) (AuroraGea
 						tpl_2(data)
 					);
 				auroraOutQ.enq({2'b00, tpl_2(data),truncate(tpl_1(data))});
+				$display("AuroraOutQ: data packet INVALID: data=%x, type=%x", tpl_1(data), tpl_2(data));
 			end
+			$display("send budget = %d", curSendBudget);
 		end
 	endrule
 
@@ -92,12 +92,9 @@ module mkAuroraGearbox#(Clock aclk, Reset arst, Bool waitForStartReq) (AuroraGea
 		PacketType ptype = truncate(header);
 
 		if ( control == 1 ) begin
-			Bit#(8) sendBudget = truncate(cdata);
-			Bit#(1) startPacket = cdata[8];
 			curSendBudgetUp <= curSendBudgetUp + truncate(cdata);
-			if ( startPacket == 1 ) canSend <= True;
-		end else
-		if ( isValid(packetRecvBuffer) ) begin
+		end 
+		else if ( isValid(packetRecvBuffer) ) begin
 			let pdata = fromMaybe(0, packetRecvBuffer);
 			if ( idx == 1 ) begin
 				packetRecvBuffer <= tagged Invalid;
@@ -147,4 +144,5 @@ module mkAuroraGearbox#(Clock aclk, Reset arst, Bool waitForStartReq) (AuroraGea
 		//end
 		return sendData;
 	endmethod
+	
 endmodule

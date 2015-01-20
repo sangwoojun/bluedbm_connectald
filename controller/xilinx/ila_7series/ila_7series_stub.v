@@ -1,10 +1,10 @@
 // Copyright 1986-2014 Xilinx, Inc. All Rights Reserved.
 // --------------------------------------------------------------------------------
 // Tool Version: Vivado v.2014.1 (lin64) Build 881834 Fri Apr  4 14:00:25 MDT 2014
-// Date        : Thu Jul 17 11:00:19 2014
-// Host        : wjun-quanta running 64-bit Ubuntu 12.04.4 LTS
+// Date        : Mon Nov 10 20:20:31 2014
+// Host        : appa running 64-bit Ubuntu 12.04.4 LTS
 // Command     : write_verilog -force -mode synth_stub
-//               /home/wjun/work/ila/project_1/project_1.srcs/sources_1/ip/ila_7series/ila_7series_stub.v
+//               /home/mingliu/bluedbm_orig/bluedbm/controller/xilinx/ila_7series/ila_7series_stub.v
 // Design      : ila_7series
 // Purpose     : Stub declaration of top-level module interface
 // Device      : xc7a200tfbg676-2

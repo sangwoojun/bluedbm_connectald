@@ -3,18 +3,19 @@ import FIFO::*;
 import FIFOF::*;
 import GetPut::*;
 import Vector::*;
-import PortalMemory::*;
+import ConnectalMemory::*;
 import MemTypes::*;
 import MemreadEngine::*;
 import MemwriteEngine::*;
 import Pipe::*;
 
 import BRAMFIFOVector::*;
+import ControllerTypes::*;
 
 typedef 4 NumDmaChannels;
 
 //typedef TAdd#(8192,64) PageBytes;
-typedef TAdd#(8192,128) PageBytes;
+typedef 8192 PageBytes;
 typedef 16 WordBytes;
 //typedef TMul#(8,WordBytes) WordSz;
 typedef 32 WriteBufferCount;
@@ -28,10 +29,10 @@ typedef TLog#(WriteBufferCount) WriteBufferCountLog;
 //typedef TLog#(WriteTagCount) WriteTagCountLog;
 
 interface DMAReadEngineIfc#(numeric type wordSz);
-	method ActionValue#(Tuple2#(Bit#(wordSz), Bit#(8))) read;
-	method Action startRead(Bit#(8) bufidx, Bit#(32) wordCount);
-	method ActionValue#(Bit#(8)) done;
-	method Action addBuffer(Bit#(8) idx, Bit#(32) offset, Bit#(32) bref);
+	method ActionValue#(Tuple2#(Bit#(wordSz), TagT)) read;
+	method Action startRead(TagT tag, Bit#(32) wordCount);
+	method ActionValue#(TagT) done;
+	method Action addBuffer(TagT tag, Bit#(32) offset, Bit#(32) bref);
 endinterface
 module mkDmaReadEngine#(
 	Server#(MemengineCmd,Bool) rServer,
@@ -44,25 +45,40 @@ module mkDmaReadEngine#(
 	Integer burstBytes = 16*8;
 	Integer burstWords = burstBytes/wordBytes;
 	
-	Vector#(ReadBufferCount, Reg#(Tuple2#(Bit#(32),Bit#(32)))) dmaReadRefs <- replicateM(mkReg(?));
+	Vector#(NumTags, Reg#(Tuple2#(Bit#(32),Bit#(32)))) dmaReadRefs <- replicateM(mkReg(?));
 	
 	Reg#(Bit#(32)) dmaReadCount <- mkReg(0);
 
-	FIFO#(Tuple2#(Bit#(8),Bit#(8))) readBurstIdxQ <- mkSizedFIFO(8);
-	FIFO#(Bit#(8)) readIdxQ <- mkFIFO;
+	FIFO#(Tuple2#(TagT,Bit#(32))) readBurstIdxQ <- mkSizedFIFO(8);
+	FIFO#(TagT) readIdxQ <- mkFIFO;
 	
-	FIFO#(Bit#(8)) readDoneIdxQ <- mkFIFO;
+	FIFO#(TagT) readDoneIdxQ <- mkFIFO;
 
-	FIFO#(Maybe#(Bit#(8))) readDoneQ <- mkSizedFIFO(1);
+	FIFO#(Maybe#(TagT)) readDoneQ <- mkSizedFIFO(1);
 
 	Integer readQSize = 64;
-	Reg#(Bit#(8)) readQInTotal <- mkReg(0);
-	Reg#(Bit#(8)) readQOutTotal <- mkReg(0);
+	Reg#(Bit#(32)) readQInTotal <- mkReg(0);
+	Reg#(Bit#(32)) readQOutTotal <- mkReg(0);
+
+
+	FIFO#(Tuple2#(TagT, Bit#(32))) startReadReqQ <- mkSizedFIFO(valueOf(NumTags)); //ML
+	//ML: Use a startReadReqQ FIFO so that req don't block the rule when distributing
+	//to the dma readers
+	//TODO maybe optimize this using a value and action methods
+	rule handleStartReadReq if (dmaReadCount==0);
+		let startReq = startReadReqQ.first;
+		startReadReqQ.deq;
+		let tag = tpl_1(startReq);
+		let wordCount = tpl_2(startReq);
+		dmaReadCount <= wordCount*fromInteger(wordBytes);
+		readIdxQ.enq(tag);
+	endrule
+
 
 	rule driveHostDmaReq (dmaReadCount > 0 && 
 		(readQInTotal - readQOutTotal + fromInteger(burstWords) < fromInteger(readQSize)) );
-		let bufIdx = readIdxQ.first;
-		let rd = dmaReadRefs[bufIdx];
+		let tag = readIdxQ.first;
+		let rd = dmaReadRefs[tag];
 		let rdRef = tpl_1(rd);
 		let rdOff = tpl_2(rd);
 		let dmaReadOffset = rdOff+fromInteger(pageBytes)-dmaReadCount;
@@ -71,33 +87,29 @@ module mkDmaReadEngine#(
 
 		readQInTotal <= readQInTotal + fromInteger(burstWords);
 
-
-
 		if ( dmaReadCount > fromInteger(burstBytes) ) begin
 			dmaReadCount <= dmaReadCount - fromInteger(burstBytes);
 			readBurstIdxQ.enq(tuple2(readIdxQ.first, 
 				fromInteger(burstWords)));
-
 			readDoneQ.enq(tagged Invalid);
-		end else begin
+		end else begin //last burst
 			dmaReadCount <= 0;
 			readIdxQ.deq;
-
 			readBurstIdxQ.enq(tuple2(readIdxQ.first, 
 				truncate(dmaReadCount/fromInteger(wordBytes))));
 			
-			readDoneQ.enq(tagged Valid bufIdx);
+			readDoneQ.enq(tagged Valid tag);
 		end
 
 	endrule
 
-	FIFO#(Tuple2#(Bit#(wordSz), Bit#(8))) readQ <- mkSizedFIFO(readQSize);
+	FIFO#(Tuple2#(Bit#(wordSz), TagT)) readQ <- mkSizedFIFO(readQSize);
 	
-	Reg#(Bit#(8)) dmaReadBurstCount <- mkReg(0);
+	Reg#(Bit#(32)) dmaReadBurstCount <- mkReg(0);
 	//Reg#(Bit#(32)) pageWriteCount <- mkReg(0);
 	rule flushHostRead;
 		let ri = readBurstIdxQ.first;
-		let bufidx = tpl_1(ri);
+		let tag = tpl_1(ri);
 		let burstr = tpl_2(ri);
 		if ( dmaReadBurstCount >= fromInteger(burstWords)-1 ) begin
 			dmaReadBurstCount <= 0;
@@ -109,7 +121,7 @@ module mkDmaReadEngine#(
 
       let v <- toGet(rPipe).get;
 
-	  if ( dmaReadBurstCount < burstr ) readQ.enq(tuple2(v, bufidx));
+	  if ( dmaReadBurstCount < burstr ) readQ.enq(tuple2(v, tag));
 	endrule
 	
 	rule read_finish;
@@ -118,29 +130,39 @@ module mkDmaReadEngine#(
 		readDoneQ.deq;
 
 		if ( isValid(isdone) ) begin
-			let bufidx = fromMaybe(0,isdone);
-			readDoneIdxQ.enq(bufidx);
+			let tag = fromMaybe(0,isdone);
+			readDoneIdxQ.enq(tag);
 		end
 	endrule
 	
-	method ActionValue#(Tuple2#(Bit#(wordSz), Bit#(8))) read;
+	method ActionValue#(Tuple2#(Bit#(wordSz), TagT)) read;
 		readQ.deq;
 		readQOutTotal <= readQOutTotal + 1;
 		return readQ.first;
 	endmethod
-	method Action startRead(Bit#(8) bufidx, Bit#(32) wordCount) if ( dmaReadCount == 0 );
-			dmaReadCount <= wordCount*fromInteger(wordBytes);
-			readIdxQ.enq(bufidx);
+
+
+
+	method Action startRead(TagT tag, Bit#(32) wordCount); // if ( dmaReadCount == 0 );
+			startReadReqQ.enq(tuple2(tag, wordCount));
 	endmethod
-	method ActionValue#(Bit#(8)) done;
+	method ActionValue#(TagT) done;
 		readDoneIdxQ.deq;
 		return readDoneIdxQ.first;
 	endmethod
-	method Action addBuffer(Bit#(8) idx, Bit#(32) offset, Bit#(32) bref);
-		dmaReadRefs[idx] <= tuple2(bref, offset);
+	method Action addBuffer(TagT tag, Bit#(32) offset, Bit#(32) bref);
+		dmaReadRefs[tag] <= tuple2(bref, offset);
 	endmethod
 endmodule
 	
+
+
+
+
+
+
+
+
 
 
 interface FreeBufferClientIfc;
@@ -155,7 +177,7 @@ endinterface
 
 interface DMAWriteEngineIfc#(numeric type wordSz);
 	method Action write(Bit#(wordSz) word, Bit#(8) tag); 
-	method Action startWrite(Bit#(8) freeidx, Bit#(16) wordCount);
+	method Action startWrite(Bit#(8) freeidx, Bit#(32) wordCount);
 	interface FreeBufferClientIfc bufClient;
 endinterface
 module mkDmaWriteEngine# (
@@ -202,29 +224,8 @@ module mkDmaWriteEngine# (
 		//$display ( "starting write burst at tag %d >> rbuf %d", tag, rbuf );
 	endrule
 
-	/*
-	FIFO#(Bit#(8)) startWriteTestQ <- mkSizedFIFO(8);
-	Reg#(Bit#(16)) curTestWriteOff <- mkReg(0);
-	rule startFlushDma;
-		let tag = startWriteTestQ.first;
-		let wcount = tpl_2(dmaWriteBuf[tag]);
-		if ( curTestWriteOff < wcount/fromInteger(burstWords) ) begin
-			curTestWriteOff <= curTestWriteOff + 1;
-		end else begin
-			startWriteTestQ.deq;
-			curTestWriteOff <= 0;
 
-		end
-
-		startDmaFlushQ.enq(zeroExtend(tag));
-		let rbuf = tpl_1(dmaWriteBuf[tag]);
-		dmaRefReqQ.enq(rbuf);
-	endrule
-	*/
-
-	//Reg#(Bit#(16)) dummyOffset <- mkReg(0);
-
-	FIFO#(MemengineCmd) engineCmdQ <- mkSizedFIFO(4);
+	FIFO#(Tuple3#(Bit#(32), Bit#(8), Bit#(8))) dmaTwo2ThreePipeQ <- mkFIFO;
 	rule startFlushDma2;
 		let tag = startDmaFlushQ.first;
 		startDmaFlushQ.deq;
@@ -242,6 +243,21 @@ module mkDmaWriteEngine# (
 		let rbuf = tpl_1(dmaWriteBuf[tag]);
 		dmaWriteOffset[tag] <= tuple2(offset+fromInteger(burstBytes), phase);
 
+		dmaTwo2ThreePipeQ.enq(tuple3(offset, rbuf, tag));
+
+	endrule
+
+
+
+
+	FIFO#(MemengineCmd) engineCmdQ <- mkSizedFIFO(4);
+	rule startFlushDma3;
+		dmaTwo2ThreePipeQ.deq;
+		let pipeData = dmaTwo2ThreePipeQ.first;
+		let offset = tpl_1(pipeData);
+		let rbuf = tpl_2(pipeData);
+		let tag = tpl_3(pipeData);
+
 		//let wr = dmaWriteRefs[rbuf];
 		let wr = dmaRefRespQ.first;
 		dmaRefRespQ.deq;
@@ -251,6 +267,7 @@ module mkDmaWriteEngine# (
 	  
 		if ( offset < fromInteger(pageBytes) ) begin
 			engineCmdQ.enq(MemengineCmd{sglId:wrRef, base:zeroExtend(burstOff), len:fromInteger(burstBytes), burstLen:fromInteger(burstBytes)});
+			$display("writeEngine enq: wrRef=%x, base=%x, len=%d", wrRef, burstOff, burstBytes);
 
 			dmaWriteLocQ.enq(tuple2(rbuf, tag));
 			dmaBurstOffsetQ.enq(offset);
@@ -351,7 +368,7 @@ module mkDmaWriteEngine# (
 		//writeBuffer.enq(word,truncate(tag));
 		//$display ( "writing word to bufidx %d", bufidx );
 	endmethod
-	method Action startWrite(Bit#(8) freeidx, Bit#(16) wordCount);
+	method Action startWrite(Bit#(8) freeidx, Bit#(32) wordCount);
 		
 		freeInternalTagQ.deq;
 		let tag = freeInternalTagQ.first;

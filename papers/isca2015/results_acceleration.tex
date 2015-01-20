@@ -1,0 +1,142 @@
+\section{Acceleration Performance Evaluation}
+\label{sec:results_acceleration}
+
+\begin{figure*}[ht]
+\centering
+\vspace{0pt}
+\begin{minipage}[c]{.3\textwidth}
+	\includegraphics[width=0.27\paperwidth]{graphs/obj/hammingfull-crop.pdf}
+	\caption{Nearest Neighbor with FlashBoost up to Two Nodes}
+	\label{fig:result_hammingfull}
+\end{minipage}\hfill
+\vspace{0pt}
+\begin{minipage}[c]{.3\textwidth}
+	\includegraphics[width=0.27\paperwidth]{graphs/obj/hamming-crop.pdf}
+	\caption{Nearest Neighbor with Single-Node Throttled FlashBoost}
+	\label{fig:result_hamming}
+\end{minipage}\hfill
+\vspace{0pt}
+\begin{minipage}[c]{.3\textwidth}
+	\includegraphics[width=0.27\paperwidth]{graphs/obj/graph-crop.pdf}
+	\caption{Graph Traversal Performance}
+	\label{fig:result_graph}
+\end{minipage}
+\end{figure*}
+
+\subsection{Nearest Neighbor Search}
+
+Figure~\ref{fig:result_hammingfull} shows the performance of a FlashBoost node
+with an in-store processor against a DRAM-based machine running the same
+workload. Compared to a DRAM implementation. FlashBoost has enough internal
+bandwidth in the storage device that a single node of FlashBoost
+outperforms DRAM up to 4 threads. It would require two FlashBoost nodes to match
+the prformance of one 16-core RAM-based machine.
+
+In order to demonstrate the benefits of the architecture, we show another
+experiment where a FlashBoost node was bandwidth-throttled to the level of
+commodity flash storage devices. FlashBoost was throttled to 600MB/s, which is
+the bandwidth of the SATA 3.0 specification.
+Figure~\ref{fig:result_hamming} shows the performance of nearest-neighbor search
+with various data sources, normalized to the in-storage processing performance.
+We compared FlashBoost against a high-cost fully DRAM configuration, as well as
+realistic systems where some data cannot fit in DRAM.
+Table~\ref{tab:nearest_neighbor} describes the benchmarks depicted in
+Figure~\ref{fig:result_hamming}.
+
+\begin{tabular}{l | p{0.25\paperwidth}}
+\label{tab:nearest_neighbor}
+Name & Description \\
+\hline \hline
+DRAM & Store all data in DRAM \\
+ISP & Process data in in-storage accelerator \\
+FlashBoost+SW & Use FlashBoost as raw storage \\
+Seq Flash & All requests are sequential flash accesses \\
+10\% Flash & Store most data in DRAM. 10\% chance of hitting flash \\
+5\% Disk & Store most data in DRAM. 5\% chance of hitting disk \\
+Full Flash & All requests go to flash \\
+\hline
+\end{tabular}
+
+It can be seen that streaming data directly from DRAM is obviously the fastest,
+and scales linearly with thread count because with DRAM bandwidth, it becomes a
+computation-bound workload. The configuration that uses an in-storage processor
+to offload computation is consistently faster than the software implementation,
+because there is no software overhead involved, and the in-storage processor can
+process the data at wire speed. Since sequential flash access with two threads
+outperforms FlashBoost, it can be seen that this performance difference is not
+because of the flash device performance but because of architectural differences
+and better optimized software. The reason random access into commodity flash
+compared to sequential access show such performance is mosty likely because it
+was optimized for a non-random access pattern. FlashBoost does not have this
+problem.
+
+Using the full bandwidth of the storage system would
+have made this gap even more pronounced, as the software's bandwidth would be
+limited by the PCIe running at 1.6GB/s. It can be seen that when even most of
+the data can fit in DRAM, even rare access into storage can have a significant
+impact on performance. These results further reinforces our claim that better
+storage systems are required for effective analytics of very large datasets.
+
+
+\subsection{Graph Traversal}
+
+Figure~\ref{fig:result_graph} shows the performance of distributed graph traversal in
+different configurations, normalized against the graph traversal
+accelerator. Table~\ref{tab:graph} describes the benchmarks depitcted in
+Figure~\ref{fig:result_graph}. Data was either read from distributed flash,
+distributed DRAM, or a mixture of both. All experiments were made using the same
+inter-controller network either as the integrated storage network or as a
+separate network interface. This is for the sake of fair comparison because  the
+inter-controller network has much better performance than Ethernet.
+
+\begin{tabular}{l | p{0.25\paperwidth}}
+\label{tab:graph}
+Name & Description \\
+\hline \hline
+ISP & In-store processor requests data from remote storage over integrated network \\
+SW & Software requests data from remote storage over integrated network \\
+Flash & Software requests data from remote software to read from flash \\
+50\% & Store requests data from remote software. 50\% chance of hitting flash \\
+70\% & Store requests data from remote software. 30\% chance of hitting flash \\
+DRAM & Software requests data from remote software. Data read from DRAM \\
+\hline
+\end{tabular}
+
+The performance difference between \emph{SW} and \emph{Flash} illustrates the
+benefits of using the integrated network to reduce a layer of software access.
+Performance of \emph{ISP} shows the benefits of reducing more software overhead
+by having the ISP manage the graph traversal logic. Thanks to the reduced
+latency, the graph traversal accelerator accessing distributed flash performs on
+par with a more expensive system where only 30\% of the requests are serviced by
+the flash.
+
+
+
+\subsection{Hardware-Accelerate String Search}
+
+We compared our implementation of hardware-accelerated string search running on
+FlashBoost to the Linux Grep utility querying for exact string matches running
+on both SSD and hard disk. Processing bandwidth and server CPU utilizations are
+shown in Figure~\ref{fig:result_strstr}. We observe that the parallel MP
+engines in FlashBoost are able to process a search at 1.1GB/s, which is 92\% of
+the maximum sequential bandwidth a single flash board. Using FlashBoost, the
+query consumes almost no CPU cycles on the host server since the query is
+entirely offloaded and only the location of matched strings are returned, which
+we assume is a tiny fraction of the file (0.01\% is used in our experiments).
+This is 7.5x faster than software string search (Grep) on hard disks, which is
+I/O bound by disk bandwidth and consumes 13\% CPU. On SSD, software string
+search remains I/O bound by the storage device, but CPU utilization increases
+significantly to 65\% even for this type of simple streaming compare operation.
+This high utilization is problematic because string search is often only a small portion 
+of more complex analytic queries that can quickly become compute bound.  As we
+have shown in the results, FlashBoost can effectively alleviate this by
+offloading search to the in-store processor thereby freeing up the server CPU
+for other tasks. 
+
+\begin{figure}[b]
+	\centering
+	\includegraphics[width=0.35\paperwidth]{graphs/obj/strstr-crop.pdf}
+	\caption{String Search Bandwidth and CPU Utilization}
+	\label{fig:result_strstr}
+\end{figure}
+ 

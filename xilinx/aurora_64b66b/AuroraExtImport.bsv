@@ -319,21 +319,21 @@ module mkAuroraExtImport#(Clock gtx_clk_in, Clock init_clk, Reset init_rst_n, Re
 		method RX_DATA_3 receive() enable((*inhigh*) rx_en_3) ready(rx_rdy_3) clocked_by(aurora_clk3) reset_by(aurora_rst3);
 	endinterface
 
+	schedule (
+		user0_receive, user1_receive, user2_receive, user3_receive
+	) CF (
+		user0_send, user1_send, user2_send, user3_send
+	);
 	
-	schedule (user0_receive) SB (user0_send);
 	schedule (user0_send) C (user0_send);
 	schedule (user0_receive) C (user0_receive);
 
-
-	schedule (user1_receive) SB (user1_send);
 	schedule (user1_send) C (user1_send);
 	schedule (user1_receive) C (user1_receive);
 	
-	schedule (user2_receive) SB (user2_send);
 	schedule (user2_send) C (user2_send);
 	schedule (user2_receive) C (user2_receive);
 
-	schedule (user3_receive) SB (user3_send);
 	schedule (user3_send) C (user3_send);
 	schedule (user3_receive) C (user3_receive);
 

@@ -105,6 +105,7 @@ void setAuroraRouting2(int myid, int src, int dst, int port1, int port2) {
 
 void auroraifc_start(int myid) {
 	device->setNetId(myid);
+	device->auroraStatus(0);
 
 	//This is not strictly required
 	for ( int i = 0; i < 8; i++ ) 
@@ -112,14 +113,11 @@ void auroraifc_start(int myid) {
 
 	// This is set up such that all nodes can one day 
 	// read the same routing file and apply it
-	setAuroraRouting2(myid, 0,1, 0,1);
-	setAuroraRouting2(myid, 0,1, 0,0);
-	setAuroraRouting2(myid, 0,2, 2,3);
-	//setAuroraRouting2(myid, 0,3, 2,3);
-	setAuroraRouting2(myid, 0,3, 3,3);
+	setAuroraRouting2(myid, 0,1, 0,2);
+	setAuroraRouting2(myid, 0,2, 1,3);
+	setAuroraRouting2(myid, 0,3, 1,3);
 
-	setAuroraRouting2(myid, 1,0, 0,0);
-	//setAuroraRouting2(myid, 1,0, 0,1);
+	setAuroraRouting2(myid, 1,0, 0,1);
 	setAuroraRouting2(myid, 1,2, 0,1);
 	setAuroraRouting2(myid, 1,3, 0,1);
 	
@@ -129,8 +127,7 @@ void auroraifc_start(int myid) {
 
 	setAuroraRouting2(myid, 3,0, 1,2);
 	setAuroraRouting2(myid, 3,1, 1,2);
-	setAuroraRouting2(myid, 3,2, 0,0);
-	//setAuroraRouting2(myid, 3,2, 0,3);
+	setAuroraRouting2(myid, 3,2, 0,3);
 
 	usleep(100);
 }
@@ -147,14 +144,21 @@ void generalifc_start(int datasource) {
 }
 
 void generalifc_readRemotePage(int myid) {
+/*
 	int src = 0;
 	int dst = 1;
 	if ( myid != src ) return;
+*/
+	if ( myid == 0 ) { 
+		device->sendData(1024*32, 1, 0);
+	} else {
+		device->sendData(1024*32, 0, 0);
+	}
 
-	for ( int i = 0; i < 128; i++ ) {
+	for ( int i = 0; i < 2; i++ ) {
 		clock_gettime(CLOCK_REALTIME, & deviceIndication->aurorastart);
 		// addr, targetnode, datasource, tag
-		device->readRemotePage(i, dst, 4, 0);
+		//device->readRemotePage(i, dst, 1, 0);
 		usleep(10000);
 	}
 }
@@ -174,9 +178,9 @@ void GeneralIndication::readPage(uint64_t addr, uint32_t dstnode, uint32_t datas
 	}
 
 	if ( datasource < 3 ) {
-		device->sendDMAPage(ref_srcAllocs[0], dstnode);
+		//device->sendDMAPage(ref_srcAllocs[0], dstnode);
 	} else {
-		device->readPageDone(0);
+		//device->readPageDone(0);
 	}
 }
 

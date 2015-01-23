@@ -170,20 +170,21 @@ module mkAuroraExtImport117#(Clock gtx_clk_in, Clock init_clk, Reset init_rst_n,
 	endinterface
 
 	
-	schedule (user0_receive) SB (user0_send);
+	schedule (
+		user0_receive, user1_receive, user2_receive, user3_receive
+	) CF (
+		user0_send, user1_send, user2_send, user3_send
+	);
+
 	schedule (user0_send) C (user0_send);
 	schedule (user0_receive) C (user0_receive);
 
-
-	schedule (user1_receive) SB (user1_send);
 	schedule (user1_send) C (user1_send);
 	schedule (user1_receive) C (user1_receive);
 	
-	schedule (user2_receive) SB (user2_send);
 	schedule (user2_send) C (user2_send);
 	schedule (user2_receive) C (user2_receive);
 
-	schedule (user3_receive) SB (user3_send);
 	schedule (user3_send) C (user3_send);
 	schedule (user3_receive) C (user3_receive);
 
@@ -191,15 +192,8 @@ module mkAuroraExtImport117#(Clock gtx_clk_in, Clock init_clk, Reset init_rst_n,
 		aurora0_rxn_in, aurora0_rxp_in, aurora0_txn_out, aurora0_txp_out,
 		aurora1_rxn_in, aurora1_rxp_in, aurora1_txn_out, aurora1_txp_out,
 		aurora2_rxn_in, aurora2_rxp_in, aurora2_txn_out, aurora2_txp_out,
-		aurora3_rxn_in, aurora3_rxp_in, aurora3_txn_out, aurora3_txp_out
-		) CF (
-		aurora0_rxn_in, aurora0_rxp_in, aurora0_txn_out, aurora0_txp_out,
-		aurora1_rxn_in, aurora1_rxp_in, aurora1_txn_out, aurora1_txp_out,
-		aurora2_rxn_in, aurora2_rxp_in, aurora2_txn_out, aurora2_txp_out,
-		aurora3_rxn_in, aurora3_rxp_in, aurora3_txn_out, aurora3_txp_out
-		);
-	
-	schedule (
+		aurora3_rxn_in, aurora3_rxp_in, aurora3_txn_out, aurora3_txp_out,
+
 		user0_channel_up,
 		user0_lane_up,
 		user0_hard_err,
@@ -221,6 +215,11 @@ module mkAuroraExtImport117#(Clock gtx_clk_in, Clock init_clk, Reset init_rst_n,
 		user3_soft_err,
 		user3_data_err_count
 		) CF (
+		aurora0_rxn_in, aurora0_rxp_in, aurora0_txn_out, aurora0_txp_out,
+		aurora1_rxn_in, aurora1_rxp_in, aurora1_txn_out, aurora1_txp_out,
+		aurora2_rxn_in, aurora2_rxp_in, aurora2_txn_out, aurora2_txp_out,
+		aurora3_rxn_in, aurora3_rxp_in, aurora3_txn_out, aurora3_txp_out,
+
 		user0_channel_up,
 		user0_lane_up,
 		user0_hard_err,

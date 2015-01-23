@@ -101,8 +101,8 @@ module mkXBar (XBarIfc#(inPorts, outPorts, tData, tDst))
 				readSrcQ.enq(inidx);
 			end
 			
-		endrule
-		rule rotatePrio;
+		//endrule
+		//rule rotatePrio;
 			if (curPrioInPort + 1 >= fromInteger(valueOf(inPorts)) )
 				curPrioInPort <= 0;
 			else 

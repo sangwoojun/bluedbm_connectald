@@ -49,13 +49,11 @@ import DmaDebugIndicationProxy::*;
 import MMUConfigIndicationProxy::*;
 
 `ifndef BSIM
-import XilinxVC707DDR3::*;
 import Xilinx       :: *;
 import XilinxCells ::*;
 import DefaultValue    :: *;
 `endif
 import Clocks :: *;
-import DRAMImporter::*;
 
 
 // defined by user
@@ -68,15 +66,10 @@ typedef enum {GeneralIndication, GeneralRequest,
 	} IfcNames deriving (Eq,Bits);
 
 interface Top_Pins;
-	interface Aurora_Pins#(4) aurora_fmc1;
-	interface Aurora_Clock_Pins aurora_clk_fmc1;
 	
 	interface Vector#(AuroraExtCount, Aurora_Pins#(1)) aurora_ext;
 	interface Aurora_Clock_Pins aurora_quad119;
 	interface Aurora_Clock_Pins aurora_quad117;
-`ifndef BSIM
-	interface DDR3_Pins_VC707 pins_ddr3;
-`endif
 endinterface
 
 typedef 64 WordSz;
@@ -90,24 +83,9 @@ module mkPortalTop#(HostType host) (PortalTop#(PhysAddrWidth,WordSz,Top_Pins,1))
 	Clock curClk <- exposeCurrentClock;
 	Reset curRst <- exposeCurrentReset;
 
-`ifdef BSIM
-	Clock ddr_buf = host.doubleClock;
-	Reset ddr3ref_rst_n = host.doubleReset;
-`else 
-	Clock clk200 = host.tsys_clk_200mhz_buf;
-	Clock ddr_buf = clk200;
-	Reset ddr3ref_rst_n <- mkAsyncReset( 4, curRst, ddr_buf );
-	/////////////////////////////////////////////////////
-`endif
-	
-	DRAM_Import dramImport <- mkDRAMImport(ddr_buf, ddr3ref_rst_n);
-	DRAM_User dram_user = dramImport.user;
-   
-	/////////////////////////////////////////
-
    GeneralIndicationProxy generalIndicationProxy <- mkGeneralIndicationProxy(GeneralIndication);
 
-   MainIfc hwmain <- mkMain(generalIndicationProxy.ifc, dram_user, clk250, rst250);
+   MainIfc hwmain <- mkMain(generalIndicationProxy.ifc, clk250, rst250);
    GeneralRequestWrapper generalRequestWrapper <- mkGeneralRequestWrapper(GeneralRequest,hwmain.request);
 
    Vector#(1,  ObjectReadClient#(WordSz))   readClients = cons(hwmain.dmaReadClient, nil);
@@ -138,15 +116,9 @@ module mkPortalTop#(HostType host) (PortalTop#(PhysAddrWidth,WordSz,Top_Pins,1))
    interface leds = default_leds;
 
 	interface Top_Pins pins;
-		interface Aurora_Pins aurora_fmc1 = hwmain.aurora_fmc1;
-		interface Aurora_Clock_Pins aurora_clk_fmc1 = hwmain.aurora_clk_fmc1;
-	
 		interface Aurora_Pins aurora_ext = hwmain.aurora_ext;
 		interface Aurora_Clock_Pins aurora_quad119 = hwmain.aurora_quad119;
 		interface Aurora_Clock_Pins aurora_quad117 = hwmain.aurora_quad117;
-		`ifndef BSIM
-		interface DDR3_Pins_VC707 pins_ddr3 = dramImport.ddr3;//.ddr3_ctrl.ddr3;
-		`endif
 	endinterface
 endmodule
 

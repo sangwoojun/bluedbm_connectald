@@ -20,9 +20,9 @@ export KROOT=/lib/modules/$(shell uname -r)/build
 #BOARDDIR=../$(BOARD)/jni
 #DRIVERDIR=$(src)/../../../tools/xbsv/drivers
 
-CPPDIR=../../../tools/connectal/cpp
+CPPDIR=../../../../connectal/cpp
 BOARDDIR=../$(BOARD)/jni
-DRIVERDIR=$(src)/../../../tools/connectal/drivers
+DRIVERDIR=$(src)/../../../../connectal/drivers
 
 
 KBUILD_EXTRA_SYMBOLS := $(DRIVERDIR)/pcieportal/Module.symvers $(DRIVERDIR)/portalmem/Module.symvers
@@ -46,7 +46,7 @@ endif
 
 obj-m := kernel_exe.o
 
-ccflags-y := -I$(src)/../../../tools/connectal -I$(src)/.. -I$(DRIVERDIR)/pcieportal -I$(DRIVERDIR)/portalmem -I$(src)/$(CPPDIR) -I$(src)/$(BOARDDIR) $(HARDWARE_FLAGS) -DBOARD_$(BOARD)
+ccflags-y := -I$(src)/../../../../connectal -I$(src)/.. -I$(DRIVERDIR)/pcieportal -I$(DRIVERDIR)/portalmem -I$(src)/$(CPPDIR) -I$(src)/$(BOARDDIR) $(HARDWARE_FLAGS) -DBOARD_$(BOARD)
 
 default:
 	$(MAKE) -C $(KROOT) M=$(PWD) modules

@@ -29,7 +29,7 @@ void FlashIndicationwriteDone_cb (  struct PortalInternal *p, const uint32_t tag
 
 void FlashIndicationeraseDone_cb (  struct PortalInternal *p, const uint32_t tag, const uint32_t status )
 {
-	PORTAL_PRINTF ( "cb: FlashIndicationWrappereraseDone_cb (tag = %x)\n", tag);
+	PORTAL_PRINTF ( "cb: FlashIndicationWrappereraseDone_cb (tag = %x, status = %x)\n", tag, status);
 	sem_post (&test_sem);
 }
 
@@ -194,9 +194,7 @@ int main (int argc, const char **argv)
 		int byteOffset = t * FLASH_PAGE_SIZE;
 		dstBufBusy[t] = false;
 		srcBufBusy[t] = false;
-		printk (KERN_INFO "FlashRequest_addDmaWriteRefs\n");
 		FlashRequest_addDmaWriteRefs (&intarr[3], ref_dstAlloc, byteOffset, t);
-		printk (KERN_INFO "FlashRequest_addDmaReadRefs\n");
 		FlashRequest_addDmaReadRefs (&intarr[3], ref_srcAlloc, byteOffset, t);
 		readBuffers[t] = dstBuffer + byteOffset/sizeof(unsigned int);
 		writeBuffers[t] = srcBuffer + byteOffset/sizeof(unsigned int);
@@ -205,7 +203,7 @@ int main (int argc, const char **argv)
 	for (t = 0; t < NUM_TAGS; t++) {
 		for (i = 0; i < FLASH_PAGE_SIZE/sizeof(unsigned int); i++ ) {
 			readBuffers[t][i] = 0;
-			writeBuffers[t][i] = (t<<16)+i;
+			writeBuffers[t][i] = i;
 		}
 	}
 
@@ -228,24 +226,24 @@ int main (int argc, const char **argv)
 	sem_wait (&test_sem);
 
 	PORTAL_PRINTF ("OP2: Page Read (all FFs)\n");
-	FlashRequest_readPage (&intarr[3], 0, 0, 0, 0, 0);
+	FlashRequest_readPage (&intarr[3], 0, 0, 0, 1, 0);
 	sem_wait (&test_sem);
 	for (t = 0; t < 1; t++ ) {
-		for (i = 0; i < FLASH_PAGE_SIZE/sizeof(unsigned int); i++ ) {
-			PORTAL_PRINTF ("%x %x %x\n", t, i, readBuffers[t][i] );
+		for (i = 0; i < FLASH_PAGE_SIZE_VALID/sizeof(unsigned int); i++ ) {
+			PORTAL_PRINTF ("%x %d %x\n", t, i, readBuffers[t][i] );
 		}
 	}
 
 	PORTAL_PRINTF ("OP3: Write Page\n");
-	FlashRequest_writePage (&intarr[3], 0, 0, 0, 0, 0);
+	FlashRequest_writePage (&intarr[3], 0, 0, 0, 1, 0);
 	sem_wait (&test_sem);
 
 	PORTAL_PRINTF ("OP4: Page Read\n");
-	FlashRequest_readPage (&intarr[3], 0, 0, 0, 0, 0); // 0, 1, 2, 3, 4 ...
+	FlashRequest_readPage (&intarr[3], 0, 0, 0, 1, 0); // 0, 1, 2, 3, 4 ...
 	sem_wait (&test_sem);
 	for (t = 0; t < 1; t++ ) {
-		for (i = 0; i < FLASH_PAGE_SIZE/sizeof(unsigned int); i++ ) {
-			PORTAL_PRINTF ("%x %x %x\n", t, i, readBuffers[t][i] );
+		for (i = 0; i < FLASH_PAGE_SIZE_VALID/sizeof(unsigned int); i++ ) {
+			PORTAL_PRINTF ("%x %d %d\n", t, i, readBuffers[t][i] );
 		}
 	}
 

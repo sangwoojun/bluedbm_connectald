@@ -23,7 +23,7 @@ accommodate the entire dataset in DRAM.  In this paper, we explore a much
 cheaper alternative where Big Data analytics can be done with reasonable
 efficiency in a single rack with distributed flash storage, which has much
 better random accesses performance than hard disks.  We call our system
-FlashBoost and it provides the following capabilities:
+BlueDBM and it provides the following capabilities:
 
 \begin{enumerate}
 \item A 20-node system with large enough flash storage to host Big Data
@@ -33,9 +33,9 @@ workloads up to 20 TBs;
 \item Flash card design which exposes an interface to make application-specific optimizations in flash accesses.
 \end{enumerate}
 
-Our preliminary experimental results show that for some applications, FlashBoost
+Our preliminary experimental results show that for some applications, BlueDBM
 performance is an order of magnitude better than a conventional cluster where
-SSDs are used only as a disk replacement. FlashBoost unambiguously establishes
+SSDs are used only as a disk replacement. BlueDBM unambiguously establishes
 an architecture whose price-performance-power characteristics provide an
 attractive alternative for doing similar scale applications in a ram cloud.
 
@@ -56,9 +56,9 @@ section~\ref{sec:architecture} we describe the architecture of our rack-level
 system, and in section~\ref{sec:software} we describe the software interface
 that can be used to access flash and the accelerators. In
 section~\ref{sec:implementation} we describe a hardware implementation of
-FlashBoost, and show our results from the implementation in
+BlueDBM, and show our results from the implementation in
 section~\ref{sec:results}.  In section~\ref{sec:acceleration} we describe and
-evaluate some example accelerators we have built for the FlashBoost system. 
+evaluate some example accelerators we have built for the BlueDBM system. 
 Section~\ref{sec:conclusion} summarizes our paper.
 
 

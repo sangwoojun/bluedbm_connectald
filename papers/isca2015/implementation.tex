@@ -1,7 +1,7 @@
 \section{Hardware Implementation}
 \label{sec:implementation}
 
-We have built a 20-node FlashBoost cluster to explore the capabilities of the
+We have built a 20-node BlueDBM cluster to explore the capabilities of the
 architecture. Figure~\ref{fig:bluedbmcluster} shows the photo of our
 implementation.
 
@@ -9,7 +9,7 @@ implementation.
 	\begin{center}
 	\includegraphics[width=0.4\paperwidth]{figures/rackserver-crop.pdf}
 	%\includegraphics[width=0.3\paperwidth]{figures/rack.jpg}
-	\caption{A 20-node FlashBoost Cluster}
+	\caption{A 20-node BlueDBM Cluster}
 	\label{fig:bluedbmcluster}
 	\end{center}
 \end{figure}
@@ -20,7 +20,7 @@ implementation.
 %	\multirow{2}{*}{
 %	\begin{minipage}[c]{.20\textwidth}
 %	\includegraphics[width=\textwidth]{figures/rackserver2.jpg}
-%	\caption{One of the two 10-node FlashBoost Racks}
+%	\caption{One of the two 10-node BlueDBM Racks}
 %	\label{fig:bluedbmcluster}
 %	\end{minipage}
 %	}
@@ -33,7 +33,7 @@ implementation.
 %	&
 %	\begin{minipage}[c]{.20\textwidth}
 %	\includegraphics[width=\textwidth]{figures/racknode.jpg}
-%	\caption{A FlashBoost Rack Node}
+%	\caption{A BlueDBM Rack Node}
 %	\label{fig:flashrack}
 %	\end{minipage}
 %	\end{tabular}
@@ -45,15 +45,15 @@ implementation.
 %	\label{fig:flashboard}
 %	\end{center}
 %\end{figure}
-%	\subfloat[One of the two 10-node FlashBoost Racks]
+%	\subfloat[One of the two 10-node BlueDBM Racks]
 %		{\includegraphics[width=0.22\textwidth]{figures/rackserver2.jpg}}
 %	} 
 
-In our implementation of FlashBoost, we have used a Field Programmable Gate
+In our implementation of BlueDBM, we have used a Field Programmable Gate
 Array (FPGA) to implement the in-store processor and also the flash, host and
-network controllers. However, the FlashBoost Architecture should not be limited
-to an FPGA-based implementation.  Development of FlashBoost was done in the
-high-level hardware description language Bluespec. It is possible to develop in-store processors in any hardware description language, as long as they conform to the interface exposed by the FlashBoost system services. Most of the interfaces are latency-insensitive FIFOs with backpressure. Bluespec provides a lot of support for such interfaces, making in-store accelerator development easier.
+network controllers. However, the BlueDBM Architecture should not be limited
+to an FPGA-based implementation.  Development of BlueDBM was done in the
+high-level hardware description language Bluespec. It is possible to develop in-store processors in any hardware description language, as long as they conform to the interface exposed by the BlueDBM system services. Most of the interfaces are latency-insensitive FIFOs with backpressure. Bluespec provides a lot of support for such interfaces, making in-store accelerator development easier.
 
 The cluster consists of 20 rack-mounted Xeon servers, each with a Xilinx
 VC707 FPGA development board connected via a PCIe connection. Each VC707 board
@@ -73,7 +73,7 @@ including later generation PCIe links.
 \begin{figure}[ht]
 	\begin{center}
 	\includegraphics[width=0.5\textwidth]{figures/racknode-crop.pdf}
-	\caption{A FlashBoost Storage Node}
+	\caption{A BlueDBM Storage Node}
 	\label{fig:bluedbmnode}
 	\end{center}
 \end{figure}
@@ -107,7 +107,7 @@ The serial ports are capable of 10Gbps and 6.6Gbps of bandwidth, respectively.
 
 \subsection{Network Infrastructure}
 
-In our FlashBoost implementation, the link is implemented over the
+In our BlueDBM implementation, the link is implemented over the
 low-latency serial transceivers.  By
 implementing routing in the hardware and using a very low-latency network
 fabric, we were able to achieve very high performance, with less than 0.5$\mu s$ of
@@ -129,7 +129,7 @@ Connectal provides a PCIe Gen 1 endpoint and driver pair, and provides up to
 bandwidth. 
 
 Reading or writing data from the host buffers were done by DMA read/write
-engines implemented in the Connectal framework. In our FlashBoost
+engines implemented in the Connectal framework. In our BlueDBM
 implementation, there are four read engines and four write engines each, in
 order to more easily make maximum use of the PCIe bandwidth. 
 

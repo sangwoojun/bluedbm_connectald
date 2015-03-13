@@ -1,17 +1,17 @@
 \section{Software Interface}
 \label{sec:software}
 
-In FlashBoost, we aim to provide a set of software interfaces that support the
+In BlueDBM, we aim to provide a set of software interfaces that support the
 execution of any existing application as well as modified applications that
 leverage the in-store processors in the system. Furthermore, software layers in
-FlashBoost must perform flash management functions since we chose to expose a
+BlueDBM must perform flash management functions since we chose to expose a
 raw flash interface in hardware for higher efficiency (previously discussed in
 Section~\ref{sec:flashInterface}). The software architecture is shown in
 Figure~\ref{fig:filesystem}.  Three interfaces are supplied to the user
 application: (i) a file system interface, (ii) a block device driver interface
 and (iii) an accelerator interface. 
 
-%The primary design goal of the FlashBoost file system layer is to provide an
+%The primary design goal of the BlueDBM file system layer is to provide an
 %easy-to-use interface between user-level applications and hardware accelerators
 %in the storage device, by hiding many of the complex physical properties of
 %flash storage. Since NAND flash has very different characteristics from
@@ -35,20 +35,20 @@ is RFS~\cite{rfs}.  Unlike conventional FTL designs where the flash
 characteristics are hidden from the file system, RFS performs some
 functionality of an FTL, including logical-to-physical address mapping and
 garbage collection.  This achieves better garbage collection efficiency at much
-lower memory requirement. The file system interface in FlashBoost is built on
+lower memory requirement. The file system interface in BlueDBM is built on
 the same paradigm. 
 %with additional functions for in-storage processor access.
 
-For compatibility with existing software, FlashBoost also offers a full-fledged
+For compatibility with existing software, BlueDBM also offers a full-fledged
 FTL implemented in the device driver, similar to Fusion IO's driver. 
 This allows us to use well-known Linux file systems (e.g.,
 ext2/3/4) as well as database systems (directly running on top of a block
-device) with FlashBoost.
+device) with BlueDBM.
 
-The FlashBoost software allows developers to easily make use of fast in-storage
+The BlueDBM software allows developers to easily make use of fast in-storage
 processing without any efforts to write their own custom interfaces manually.
 Figure~\ref{fig:filesystem} shows how user-level applications access hardware
-accelerators.  In the FlashBoost software stack, user-level applications can
+accelerators.  In the BlueDBM software stack, user-level applications can
 query the file system for the physical locations of files on the flash (see (1)
 in Figure~\ref{fig:filesystem}). This was made possible because the file system
 maintains the mapping information.  Applications can then provide in-storage
@@ -57,12 +57,12 @@ data from flash with very low latency (see (3)).
 The results are sent to software memory and the user application can be notified
 (see (4)).
 
-It is worth noting that, in FlashBoost, all the user requests, including both
+It is worth noting that, in BlueDBM, all the user requests, including both
 user queries and data, are sent to the hardware directly, bypassing almost all
 of the operating system's kernel, except for essential driver modules.  This helps us to avoid deep OS
 kernel stacks that often cause long I/O latencies.  It is also very common that
 multiple instances of a user application may compete for the same hardware
-acceleration units. For efficient sharing of hardware resources, FlashBoost runs
+acceleration units. For efficient sharing of hardware resources, BlueDBM runs
 a scheduler that assigns available hardware-acceleration units to competing
 user-applications. In our implementation, a simple FIFO-based policy is used for
 request scheduling.

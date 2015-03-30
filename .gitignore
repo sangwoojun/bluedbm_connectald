@@ -3,6 +3,8 @@
 *.sched
 *.swm
 *.swn
+*.o
+
 parser.out
 parsetab.py
 vivado.jou
@@ -11,6 +13,7 @@ build.log
 
 flashemul/vc707/
 tools
+bsimall
 
 vc707
 bluesim

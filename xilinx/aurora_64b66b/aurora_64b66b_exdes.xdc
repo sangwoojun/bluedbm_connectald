@@ -70,12 +70,17 @@
 	set_property LOC K8 [get_ports aurora_quad117_gtx_clk_p_v]
 	set_property LOC K7 [get_ports aurora_quad117_gtx_clk_n_v]
 
-	create_clock -name TS_init_clk_i -period 8.0 [get_pins host_ep7/CLK_epClock125]
+	create_clock -name TS_aurora119_init_clk_i -period 8.0 [get_pins host_ep7/CLK_epClock125]
 
-	set_false_path -from [get_cells -hier -filter {NAME =~ */*auroraExt*/rst50/*}]
+	set_false_path -from [get_cells -hier -filter {NAME =~ *auroraExt119/rst50/*}]
+	set_false_path -to [get_pins -hier -filter {NAME =~ *auroraExt119/auroraExt_*_outPacketQ/*/CLR}]
+	set_false_path -to [get_pins -hier -filter {NAME =~ *auroraExt119/auroraExt_*_outPacketQ/*/PRE}]
+	set_false_path -to [get_pins -hier -filter {NAME =~ *auroraExt119/rst50/*/CLR}]
 
-	set_false_path -to [get_pins -hier -filter {NAME =~ */auroraExt_*Q/*/CLR}]
-	set_false_path -to [get_pins -hier -filter {NAME =~ */auroraExt_*Q/*/PRE}]
+	#set_false_path -to [get_pins -hier -filter {NAME =~ */auroraExt_*Q/*/CLR}]
+	#set_false_path -to [get_pins -hier -filter {NAME =~ */auroraExt_*Q/*/PRE}]
+
+	#set_false_path -to [get_pins -hier -filter {NAME =~ */auroraExtImport/aurora_64b66b_block_i/gen_code_reset_logic[?].support_reset_logic_i/reset_debounce_r_reg[0]/S}]
 
 	create_clock -name aurora_init_clk_i -period 20.0 [get_pins *auroraExtClockDiv5_slowbuf/O]
 	create_clock -name GTXQ0_left_119_i -period 1.600	 [get_pins *auroraExt119/auroraExt_gtx_clk/O]
@@ -86,8 +91,14 @@
 	create_clock -name TS_user_clk_i_all -period 6.400	 [get_pins -hier -filter {NAME =~ *aurora_64b66b_block_i/clock_module_i/user_clk_net_i/O}]
 	create_clock -name TS_sync_clk_i_all -period 3.200	 [get_pins -hier -filter {NAME =~ *aurora_64b66b_block_i/clock_module_i/sync_clock_net_i/O}]
 	
-	set_max_delay -from [get_clocks TS_init_clk_i] -to [get_clocks TS_user_clk_i_all] -datapath_only 8.1
-	set_max_delay -from [get_clocks TS_user_clk_i_all] -to [get_clocks TS_init_clk_i] -datapath_only 8.1
+
+set_property LOC MMCME2_ADV_X1Y6 [get_cells -hier -filter { NAME =~ *auroraExt119/auroraExtImport/aurora_64b66b_block_i/clock_module_i/mmcm_adv_inst }]
+
+#startgroup
+#create_pblock pblock_auroraExtImport119
+#resize_pblock pblock_auroraExtImport119 -add {SLICE_X136Y300:SLICE_X221Y349 DSP48_X12Y120:DSP48_X19Y139 RAMB18_X9Y120:RAMB18_X14Y139 RAMB36_X9Y60:RAMB36_X14Y69}
+#add_cells_to_pblock pblock_auroraExtImport119 [get_cells -hier -filter { NAME =~ *auroraExt119/auroraExtImport/*}]
+#endgroup
 
 ######################################## Quad 119
 ################ 24
@@ -218,3 +229,29 @@
  set_property LOC K3 [get_ports { aurora_ext_7_TXN }]
  set_property LOC J6 [get_ports { aurora_ext_7_rxp_i }]
  set_property LOC J5 [get_ports { aurora_ext_7_rxn_i }]
+
+
+
+
+
+
+
+
+
+	set_false_path -from [get_clocks aurora_init_clk_i] -to [get_clocks TS_user_clk_i_all]
+	set_false_path -from [get_clocks TS_user_clk_i_all] -to [get_clocks aurora_init_clk_i]
+	set_false_path -from [get_clocks aurora_init_clk_i] -to [get_clocks TS_user_clk_i_24]
+	set_false_path -from [get_clocks TS_user_clk_i_24] -to [get_clocks aurora_init_clk_i]
+	
+	set_false_path -from [get_clocks TS_aurora119_init_clk_i] -to [get_clocks TS_user_clk_i_all]
+	set_false_path -from [get_clocks TS_user_clk_i_all] -to [get_clocks TS_aurora119_init_clk_i]
+	set_false_path -from [get_clocks TS_aurora119_init_clk_i] -to [get_clocks TS_user_clk_i_24]
+	set_false_path -from [get_clocks TS_user_clk_i_24] -to [get_clocks TS_aurora119_init_clk_i]
+
+
+	set_false_path -from [get_clocks aurora_init_clk_i] -to [get_clocks TS_aurora119_init_clk_i]
+	set_false_path -from [get_clocks TS_aurora119_init_clk_i] -to [get_clocks aurora_init_clk_i]
+
+	
+	set_false_path -from [get_clocks clkgen_pll_CLKOUT0_1] -to [get_clocks TS_aurora119_init_clk_i]
+	set_false_path -from [get_clocks clkgen_pll_CLKOUT0_1] -to [get_clocks aurora_init_clk_i]

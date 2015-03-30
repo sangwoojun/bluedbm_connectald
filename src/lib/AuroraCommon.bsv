@@ -1,5 +1,15 @@
 package AuroraCommon;
 
+/*
+export Aurora_Pins(..);
+export AuroraExtImportIfc(..);
+export AuroraControllerIfc(..);
+
+export Aurora_Clock_Pins;
+export mkGtxClockImport, GtxClockImportIfc::*;
+
+export AuroraImportIfc(..);
+*/
 
 import FIFO::*;
 import Clocks :: *;
@@ -8,7 +18,8 @@ import Xilinx :: *;
 import XilinxCells :: *;
 import ConnectalXilinxCells::*;
 
-typedef 8 AuroraExtCount;
+typedef 2 AuroraExtCount;
+//typedef 4 AuroraExtQuad;
 
 (* always_enabled, always_ready *)
 interface Aurora_Clock_Pins;
@@ -47,6 +58,10 @@ interface AuroraExtImportIfc#(numeric type lanes);
 	interface AuroraControllerIfc#(64) user2;
 	(* prefix = "" *)
 	interface AuroraControllerIfc#(64) user3;
+
+	`ifdef BSIM
+	method Action setNodeIdx(Bit#(8) idx);
+	`endif
 endinterface
 
 interface AuroraImportIfc#(numeric type lanes);
@@ -121,6 +136,10 @@ module mkGtxClockImport (GtxClockImportIfc);
 	interface Clock gtx_clk_n_ifc = clk;
 `endif
 endmodule
+
+
+
+
 
 
 endpackage: AuroraCommon

@@ -36,6 +36,7 @@ import FlashCtrlVirtex::*;
 import FlashCtrlModel::*;
 
 import AuroraExtArbiterBar::*;
+import AuroraExtEndpoint::*;
 import AuroraExtImport::*;
 //import AuroraExtImport117::*;
 import AuroraCommon::*;

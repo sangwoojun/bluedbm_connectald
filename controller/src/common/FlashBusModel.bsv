@@ -11,6 +11,7 @@ import ControllerTypes::*;
 
 //For BSIM: use hashed read data (so we don't have to write before read)
 typedef 0 BSIM_USE_HASHED_DATA; 
+typedef 0 BSIM_DEBUG_LOG;
 
 typedef enum {
 	ST_CMD,
@@ -61,6 +62,9 @@ function Bit#(128) getDataHash (Bit#(16) dataCnt, Bit#(8) page, Bit#(16) block, 
 	Bit#(128) dataCntEx = zeroExtend(dataCnt);
 	Bit#(128) dataRet = zeroExtend( (busEx<<64) + (chipEx<<48) + (blockEx<<32) + (pageEx<<16) + dataCntEx );
 	return dataRet;
+	//FIXME: modified
+	//Bit#(128) dataRet2 = (dataRet<<76) | dataRet;
+	//return dataRet2;
 
 
 endfunction
@@ -183,7 +187,7 @@ module mkFlashBusModel(FlashBusModelIfc);
 		rule chipOpDelay if (chipSt==ST_OP_DELAY);
 			if (delayCnt==0) begin
 				chipSt <= chipStReturn;
-				$display("%m FlashBus chip[%d] op delay done", c);
+				//$display("%m FlashBus chip[%d] op delay done", c);
 			end
 			else begin
 				delayCnt <= delayCnt-1;
@@ -195,7 +199,7 @@ module mkFlashBusModel(FlashBusModelIfc);
 			busReservedChipIdx <= fromInteger(c);
 			busInUse <= True;
 			chipSt <= ST_READ_TRANSFER;
-			$display("@%d %m FlashBus reserved bus for chip = %d", cycleCnt, c);
+			if (valueOf(BSIM_DEBUG_LOG)==1) begin $display("@%d %m FlashBus reserved bus for chip = %d", cycleCnt, c); end
 		endrule
 
 		//READ: transfer read only if selected and bus is reserved
@@ -210,7 +214,7 @@ module mkFlashBusModel(FlashBusModelIfc);
 				if (valueOf(BSIM_USE_HASHED_DATA)==1) begin
 					let dataHashed = getDataHash (readBurstCnt, cmd.page, cmd.block, cmd.chip, cmd.bus);
 					busReadQ.enq(tuple2(dataHashed, cmd.tag));
-					$display("@%d %m FlashBus chip[%d] read data tag=%d @ [%d][%d][%d] = %x", cycleCnt, c, cmd.tag, cmd.block, cmd.page, readBurstCnt, dataHashed);
+					if (valueOf(BSIM_DEBUG_LOG)==1) begin $display("@%d %m FlashBus chip[%d] read data tag=%d @ [%d][%d][%d] = %x", cycleCnt, c, cmd.tag, cmd.block, cmd.page, readBurstCnt, dataHashed) ; end
 				end
 				else begin
 					
@@ -219,7 +223,7 @@ module mkFlashBusModel(FlashBusModelIfc);
 					let rdata = flashArr[c].sub(regAddr);
 
 					busReadQ.enq(tuple2(rdata, cmd.tag));
-					$display("@%d %m FlashBus chip[%d] read data tag=%d @ regAddr=%d [%d][%d][%d] = %x", cycleCnt, c, cmd.tag, regAddr, cmd.block, cmd.page, readBurstCnt, rdata);
+					if (valueOf(BSIM_DEBUG_LOG)==1) begin $display("@%d %m FlashBus chip[%d] read data tag=%d @ regAddr=%d [%d][%d][%d] = %x", cycleCnt, c, cmd.tag, regAddr, cmd.block, cmd.page, readBurstCnt, rdata) ; end
 					
 				end
 				if (readBurstCnt==fromInteger(pageWords-1)) begin
@@ -227,7 +231,7 @@ module mkFlashBusModel(FlashBusModelIfc);
 					readBurstCnt <= 0;
 					chipSt <= ST_CMD;
 					busInUse <= False;
-					$display("@%d %m FlashBus chip[%d] done read", cycleCnt, cmd.chip);
+					if (valueOf(BSIM_DEBUG_LOG)==1) begin $display("@%d %m FlashBus chip[%d] done read", cycleCnt, cmd.chip) ; end
 				end
 				else begin
 					readBurstCnt <= readBurstCnt + 1;
@@ -238,12 +242,12 @@ module mkFlashBusModel(FlashBusModelIfc);
 
 		//write request for data; when selected and have enough page buffers
 		rule chipWriteDataReq if (chipSt==ST_WRITE_REQ && chipSel==fromInteger(c) 
-											&& (writeDataReqIssued - writeDataReqProcessed) < 2);
+											&& (writeDataReqIssued - writeDataReqProcessed) < 1);
 			let cmd = flashChipCmdQs[c].first;
 			writeReqQ.enq(cmd.tag);
 			chipSt <= ST_WRITE_BUS_RESERVE;
 			writeDataReqIssued <= writeDataReqIssued + 1;
-			$display("@%d %m FlashBus chip[%d] writeDataReq issued, tag=%d", cycleCnt, c, cmd.tag);
+			if (valueOf(BSIM_DEBUG_LOG)==1) begin $display("@%d %m FlashBus chip[%d] writeDataReq issued, tag=%d", cycleCnt, c, cmd.tag) ; end
 		endrule
 
 		//write data reserve bus
@@ -253,7 +257,7 @@ module mkFlashBusModel(FlashBusModelIfc);
 			busReservedChipIdx <= fromInteger(c);
 			busInUse <= True;
 			chipSt <= ST_WRITE_DATA;
-			$display("@%d %m FlashBus chip[%d] write bus reserved", cycleCnt, c);
+			if (valueOf(BSIM_DEBUG_LOG)==1) begin $display("@%d %m FlashBus chip[%d] write bus reserved", cycleCnt, c) ; end
 		endrule
 	
 		//write data every 8 cycles
@@ -269,7 +273,7 @@ module mkFlashBusModel(FlashBusModelIfc);
 					let regAddr = getRegAddr(cmd.block, cmd.page, writeBurstCnt); 
 					flashArr[c].upd(regAddr, tpl_1(writeBuffer.first));
 					writeBuffer.deq;
-					$display("@%d %m FlashBus chip[%d] wrote data @ regAddr=%d [%d][%d][%d] = %x", cycleCnt, c,regAddr, cmd.block, cmd.page, writeBurstCnt, tpl_1(writeBuffer.first));
+					if (valueOf(BSIM_DEBUG_LOG)==1) begin $display("@%d %m FlashBus chip[%d] wrote data @ regAddr=%d [%d][%d][%d] = %x", cycleCnt, c,regAddr, cmd.block, cmd.page, writeBurstCnt, tpl_1(writeBuffer.first)) ; end
 					
 				end
 				else begin
@@ -278,7 +282,7 @@ module mkFlashBusModel(FlashBusModelIfc);
 				end
 
 				if (writeBurstCnt==fromInteger(pageWords-1)) begin //done transfer
-					$display("@%d %m FlashBus chip[%d] write done transfer", cycleCnt, c);
+					if (valueOf(BSIM_DEBUG_LOG)==1) begin $display("@%d %m FlashBus chip[%d] write done transfer", cycleCnt, c) ; end
 					//wait tWrite
 					chipSt <= ST_OP_DELAY;
 					chipStReturn <= ST_WRITE_ACK;
@@ -298,7 +302,7 @@ module mkFlashBusModel(FlashBusModelIfc);
 			flashChipCmdQs[c].deq;
 			ackQ.enq(tuple2(cmd.tag, WRITE_DONE));
 			chipSt <= ST_CMD;
-			$display("%m FlashBus chip[%d] write ack tag=%d", c, cmd.tag);
+			if (valueOf(BSIM_DEBUG_LOG)==1) begin $display("%m FlashBus chip[%d] write ack tag=%d", c, cmd.tag) ; end
 		endrule
 
 		//erase
@@ -309,7 +313,7 @@ module mkFlashBusModel(FlashBusModelIfc);
 			//erase entire block
 			let regAddr = getRegAddr(cmd.block, erasePageCnt, eraseWordCnt);
 			flashArr[c].upd(regAddr, -1);
-			$display("%m FlashBus chip[%d] erasing tag=%d, blk = %d, pageCnt = %d, wordCnt = %d", c, cmd.tag, cmd.block, erasePageCnt, eraseWordCnt);
+			if (valueOf(BSIM_DEBUG_LOG)==1) begin $display("%m FlashBus chip[%d] erasing tag=%d, blk = %d, pageCnt = %d, wordCnt = %d", c, cmd.tag, cmd.block, erasePageCnt, eraseWordCnt) ; end
 
 			if (eraseWordCnt == fromInteger(pageWords-1)) begin //done page
 				eraseWordCnt <= 0;

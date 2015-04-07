@@ -7,6 +7,7 @@ cd tools;
 git clone https://github.com/cambridgehackers/connectal.git connectal
 cd connectal;
 git reset --hard 62a9af99ed464ee88c99292f661cc9f31a3a5371
+cd ../;
 
 #old xbsv
 git clone https://github.com/cambridgehackers/xbsv.git xbsv

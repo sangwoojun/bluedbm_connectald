@@ -126,10 +126,10 @@ module mkMain#(GeneralIndication indication
 
 
 
-	AuroraEndpointIfc#(Bit#(128)) aend1 <- mkAuroraEndpointDynamic(32, 64, 128);
-	AuroraEndpointIfc#(Bit#(128)) aend2 <- mkAuroraEndpointDynamic(4, 2, 48);
-	//AuroraEndpointIfc#(Bit#(128)) aend1 <- mkAuroraEndpointBlocking(128, 64);
-	//AuroraEndpointIfc#(Bit#(128)) aend2 <- mkAuroraEndpointBlocking(4, 2);
+	AuroraEndpointIfc#(Bit#(128)) aend1 <- mkAuroraEndpointDynamic(100, 100, 100);
+	//AuroraEndpointIfc#(Bit#(128)) aend1 <- mkAuroraEndpointStatic(128, 64);
+	AuroraEndpointIfc#(Bit#(128)) aend2 <- mkAuroraEndpointStatic(128, 64);
+	//AuroraEndpointIfc#(Bit#(128)) aend1 <- mkAuroraEndpointDynamic(128, 128, 300);
 	let auroraList = cons(aend2.cmd, cons(aend1.cmd, nil));
 	
 	GtxClockImportIfc gtx_clk_119 <- mkGtxClockImport;
@@ -173,12 +173,12 @@ module mkMain#(GeneralIndication indication
 		let rst <- aend1.user.receive;
 		//let rst2 <- aend2.user.receive;
 		let data = tpl_1(rst);
-		//let src = tpl_2(rst);
+		let src = tpl_2(rst);
 
 		//let rcv1 <- auroraExt119.user[2].receive;
 		//let rcv2 <- auroraExt119.user[3].receive;
 		//let data = rcv1.payload;
-		$display( "endpoint received %x from %d", data, tpl_2(rst) );
+		//$display( "endpoint received %x from %d", data, tpl_2(rst) );
 		lastDataIn1 <= truncate(data);
 		if ( lastDataIn1 -1 != truncate(data) ) begin
 			$display( "Data mismatch at aend 1 %x %x", lastDataIn1, data );
@@ -186,14 +186,15 @@ module mkMain#(GeneralIndication indication
 		end
 
 
-		Bit#(9) dataCU = truncate(recvDataCount);
+		Bit#(14) dataCU = truncate(recvDataCount);
 		if ( dataCU == 0 ) begin
-			indication.hexDump(truncate(data));
+			indication.hexDump({truncate(data), src[3:0]});
 		end
 	endrule
 	
 	Reg#(Bit#(32)) lastDataIn2 <- mkReg(0);
 	Reg#(Bit#(32)) aend2Throttle <- mkReg(0);
+	/*
 	rule recvAuroraData2;
 		aend2Throttle <= aend2Throttle + 1;
 		Bit#(18) aet = truncate(aend2Throttle);
@@ -207,6 +208,7 @@ module mkMain#(GeneralIndication indication
 			end
 		end
 	endrule
+	*/
 
 
    interface GeneralRequest request;

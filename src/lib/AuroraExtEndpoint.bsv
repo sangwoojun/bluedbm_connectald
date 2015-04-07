@@ -52,7 +52,8 @@ import AuroraCommon::*;
 typedef 5 HeaderFieldSz;
 typedef Bit#(HeaderFieldSz) HeaderField;
 
-typedef 20 NodeCount;
+//FIXME Change this to 20 when we have 20 nodes up!
+typedef 10 NodeCount;
 
 interface AuroraEndpointUserIfc#(type t);
 	method Action send(t data, Bit#(HeaderFieldSz) dst);

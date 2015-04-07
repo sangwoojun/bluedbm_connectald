@@ -1,6 +1,7 @@
 package Merge2;
 
 import FIFO::*;
+import SpecialFIFOs::*;
 import FIFOF::*;
 
 interface Merge2Ifc#(type t);
@@ -13,9 +14,9 @@ endinterface
 
 module mkMerge2 (Merge2Ifc#(t))
 	provisos(Bits#(t, a__));
-	FIFOF#(t) inQ1 <- mkFIFOF;
-	FIFOF#(t) inQ2 <- mkFIFOF;
-	FIFO#(t) outQ <- mkFIFO;
+	FIFOF#(t) inQ1 <- mkPipelineFIFOF;
+	FIFOF#(t) inQ2 <- mkPipelineFIFOF;
+	FIFO#(t) outQ <- mkPipelineFIFO;
 
 	Reg#(Bit#(1)) prio <- mkReg(0);
 	rule merge;

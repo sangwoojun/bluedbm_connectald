@@ -19,6 +19,7 @@ export mkAuroraExt;
 
 import FIFO::*;
 import Vector::*;
+import BRAMFIFO::*;
 
 import Clocks :: *;
 import DefaultValue :: *;
@@ -80,13 +81,13 @@ endinterface
 
 
 module mkAuroraExtFlowControl#(AuroraControllerIfc#(AuroraPhysWidth) user, Clock uclk, Reset urst) (AuroraExtUserIfc);
-	Integer recvQDepth = 128;
-	Integer windowSize = 64;
+	Integer recvQDepth = 200;
+	Integer windowSize = 100;
 
-	FIFO#(AuroraFC) recvQ <- mkSizedFIFO(recvQDepth);
+	FIFO#(AuroraFC) recvQ <- mkSizedBRAMFIFO(recvQDepth);
 
-	SyncFIFOIfc#(AuroraPacket) outPacketQ <- mkSyncFIFOToCC(4, uclk, urst);
-	SyncFIFOIfc#(AuroraPacket) inPacketQ <- mkSyncFIFOFromCC(4, uclk);
+	SyncFIFOIfc#(AuroraPacket) outPacketQ <- mkSyncFIFOToCC(8, uclk, urst);
+	SyncFIFOIfc#(AuroraPacket) inPacketQ <- mkSyncFIFOFromCC(8, uclk);
 
 
 	Reg#(Bit#(16)) maxInFlightUp <- mkReg(0);
@@ -96,7 +97,7 @@ module mkAuroraExtFlowControl#(AuroraControllerIfc#(AuroraPhysWidth) user, Clock
 	Reg#(Bit#(16)) curSendBudgetUp <- mkReg(0);
 	Reg#(Bit#(16)) curSendBudgetDown <- mkReg(0);
 
-	FIFO#(AuroraFC) sendQ <- mkFIFO;
+	FIFO#(AuroraFC) sendQ <- mkSizedFIFO(32);
 
 	rule sendPacket;
 		let curSendBudget = curSendBudgetUp - curSendBudgetDown;

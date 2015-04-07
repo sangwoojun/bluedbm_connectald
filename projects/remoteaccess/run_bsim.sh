@@ -9,6 +9,7 @@ cd bsimall
 cp -r ../bluesim bluesim1
 cp -r ../bluesim bluesim2
 cp -r ../bluesim bluesim3
+cp -r ../bluesim bluesim4
 
 cd bluesim1
 ./bin/bsim | tee ../bsim1.txt & bsim1=$!
@@ -26,5 +27,10 @@ cd bluesim3
 BDBM_ID=7 ./bin/bsim_exe | tee ../bsim_exe3 & bsimexe3=$1
 cd ..
 
-wait $bsimexe1 $bsimexe2 $bsimexe3
-kill $bsim1 $bsim2 $bsim3
+cd bluesim4
+./bin/bsim | tee ../bsim4.txt & bsim4=$!
+BDBM_ID=8 ./bin/bsim_exe | tee ../bsim_exe4 & bsimexe4=$1
+cd ..
+
+wait $bsimexe1 $bsimexe2 $bsimexe3 $bsimexe4
+kill $bsim1 $bsim2 $bsim3 $bsim4

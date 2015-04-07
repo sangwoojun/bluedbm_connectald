@@ -8,6 +8,7 @@
 // SOFTWARE.
 
 import FIFO::*;
+import SpecialFIFOs::*;
 import FIFOF::*;
 import BRAMFIFO::*;
 import Vector::*;
@@ -38,10 +39,10 @@ module mkAuroraExtArbiterBar#(Vector#(tExtCount, AuroraExtUserIfc) extPorts, Vec
 	Reg#(Bit#(1)) outQdownOff <- mkReg(0);
 	Reg#(Bit#(1)) inQdownOff <- mkReg(0);
 
-	FIFO#(AuroraPacket) outQup <- mkFIFO;
-	FIFO#(AuroraPacket) inQup <- mkFIFO;
-	FIFO#(AuroraPacket) outQdown <- mkFIFO;
-	FIFO#(AuroraPacket) inQdown <- mkFIFO;
+	FIFO#(AuroraPacket) outQup <- mkPipelineFIFO;
+	FIFO#(AuroraPacket) inQup <- mkPipelineFIFO;
+	FIFO#(AuroraPacket) outQdown <- mkPipelineFIFO;
+	FIFO#(AuroraPacket) inQdown <- mkPipelineFIFO;
 	rule scatterOutUp;
 		if ( outQupOff == 0 ) begin
 			outQupOff <= 1;
@@ -59,9 +60,9 @@ module mkAuroraExtArbiterBar#(Vector#(tExtCount, AuroraExtUserIfc) extPorts, Vec
 			inQup.enq(d);
 			inQupOff <= 1;
 		end else if ( inQupOff == 1 ) begin
-			inQupOff <= 0;
 			let d <- pUp[1].receive;
 			inQup.enq(d);
+			inQupOff <= 0;
 		end
 	endrule
 	rule scatterOutDown;
@@ -87,8 +88,8 @@ module mkAuroraExtArbiterBar#(Vector#(tExtCount, AuroraExtUserIfc) extPorts, Vec
 		end
 	endrule
 	
-	FIFO#(AuroraPacket) outQep <- mkFIFO;
-	FIFO#(AuroraPacket) inQep <- mkFIFO;
+	FIFO#(AuroraPacket) outQep <- mkPipelineFIFO;
+	FIFO#(AuroraPacket) inQep <- mkPipelineFIFO;
 
 	Merge2Ifc#(AuroraPacket) mergeUpOut <- mkMerge2;
 	Merge2Ifc#(AuroraPacket) mergeDownOut <- mkMerge2;
@@ -101,7 +102,8 @@ module mkAuroraExtArbiterBar#(Vector#(tExtCount, AuroraExtUserIfc) extPorts, Vec
 		if ( d.dst == myid ) begin
 			mergeEpOut.enq1(d);
 		end else begin
-			mergeUpOut.enq1(d);
+			//mergeUpOut.enq1(d);
+			mergeDownOut.enq1(d);
 		end
 	endrule
 	rule relayUp;
@@ -116,7 +118,8 @@ module mkAuroraExtArbiterBar#(Vector#(tExtCount, AuroraExtUserIfc) extPorts, Vec
 		if ( d.dst == myid ) begin
 			mergeEpOut.enq2(d);
 		end else begin
-			mergeDownOut.enq1(d);
+			//mergeDownOut.enq1(d);
+			mergeUpOut.enq1(d);
 		end
 	endrule
 	rule relayDown;
@@ -163,8 +166,6 @@ module mkAuroraExtArbiterBar#(Vector#(tExtCount, AuroraExtUserIfc) extPorts, Vec
 		endrule
 	end else begin
 		Vector#(TSub#(tEndpointCount, 1), Merge2Ifc#(AuroraPacket)) vMerge <- replicateM(mkMerge2);
-		Vector#(TSub#(tEndpointCount, 1), FIFO#(AuroraPacket)) vRecv <- replicateM(mkFIFO);
-
 
 		rule rOut;
 			outQep.deq;

@@ -150,11 +150,13 @@ void generalifc_readRemotePage(int myid) {
 	if ( myid != src ) return;
 */
 	if ( myid == 5 ) { 
-		device->sendData(1024*1024*1024, 6, 0);
+		device->sendData(1024*1024*1024, 7, 0);
 	} else if ( myid == 6 ) { 
-		device->sendData(1024*1024*1024, 5, 0);
+		//device->sendData(1024*1024*1024, 8, 0);
+	} else if ( myid == 7 ) {
+		//device->sendData(1024*1024*1024, 6, 0);
 	} else {
-		device->sendData(1024*1024*1024, 6, 0);
+		//device->sendData(1024*1024*1024, 6, 0);
 	}
 
 	for ( int i = 0; i < 2; i++ ) {

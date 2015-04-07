@@ -171,7 +171,7 @@ module mkMain#(FlashIndication indication,
 		let cmd = tpl_1(cmdSrc);
 		flashSplit.remFlashServ.sendCmd(cmd);
 		let fcmd = cmd.fcmd;
-		$display("[%d] @%d: Main.bsv: recvd REMOTE cmd dstnode=%d, tag=%d @%x %x %x %x", myNodeId,  
+		$display("[%d] @%d: Main.bsv: recv REMOTE cmd dstnode=%d, tag=%d @%x %x %x %x", myNodeId,  
 						cycleCnt, cmd.dstNode, fcmd.tag, fcmd.bus, fcmd.chip, fcmd.block, fcmd.page);
 	endrule
 

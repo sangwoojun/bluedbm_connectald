@@ -25,7 +25,7 @@
 #include "FlashRequest.h"
 
 #define PAGES_PER_BLOCK 1
-#define BLOCKS_PER_CHIP 1
+#define BLOCKS_PER_CHIP 8
 #define CHIPS_PER_BUS 8
 #define NUM_BUSES 8
 #define NUM_NODES 10
@@ -36,8 +36,8 @@
 #define PAGE_SIZE_VALID (8224)
 #define NUM_TAGS 128
 
-bool verbose = true;
-bool doerasewrites = false;
+bool verbose = false;
+bool doerasewrites = false; //do this only if sending to self
 
 typedef enum {
 	UNINIT,
@@ -358,7 +358,7 @@ void auroraifc_start(int myid) {
 	device->setNetId(myid);
 	device->auroraStatus(0);
 
-	usleep(100);
+	sleep(1);
 }
 
 
@@ -469,7 +469,7 @@ int main(int argc, const char **argv)
 		
 		timespec start, now;
 		double timeElapsed = 0;
-		int node = myid+1; //FIXME: modify this
+		int node = myid; //FIXME: modify this
 
 		if (doerasewrites) {
 			//test erases
@@ -571,7 +571,7 @@ int main(int argc, const char **argv)
 	
 		//for (int node=NUM_NODES-1; node >= 1; node--) {
 		//for (int node=DST_NODE; node == DST_NODE; node++) {
-		for (int repeat = 0; repeat < 1; repeat++){
+		for (int repeat = 0; repeat < 100; repeat++){
 			for (int blk = 0; blk < BLOCKS_PER_CHIP; blk++){
 				for (int chip = 0; chip < CHIPS_PER_BUS; chip++){
 					for (int bus = 0; bus < NUM_BUSES; bus++){
@@ -595,7 +595,7 @@ int main(int argc, const char **argv)
 
 
 		device->debugDumpReq(0);
-		sleep(1);
+		sleep(5);
 		
 
 

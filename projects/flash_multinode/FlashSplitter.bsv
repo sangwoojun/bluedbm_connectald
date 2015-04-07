@@ -43,8 +43,15 @@ module mkFlashSplitter(FlashSplitterIfc);
 
 	FIFO#(Tuple3#(Bit#(128), TagT, HeaderField)) locRdInQ <- mkFIFO();
 	FIFO#(Tuple3#(Bit#(128), TagT, HeaderField)) locRdOutQ <- mkFIFO();
+	FIFO#(Tuple3#(Bit#(128), TagT, HeaderField)) remRdInQ <- mkFIFO();
 	//FIFO#(Tuple2#(Bit#(128), TagT)) remRdInQ <- mkFIFO();
 	FIFO#(Tuple3#(Bit#(128), TagT, HeaderField)) remRdOutQ <- mkFIFO();
+
+	//conflicts with fwdRData but its ok
+	rule mergeRd;
+		locRdOutQ.enq(remRdInQ.first);
+		remRdInQ.deq;
+	endrule
 
 	rule fwdRData;
 		let srcdst <- tagTable.portA.response.get();
@@ -118,7 +125,8 @@ module mkFlashSplitter(FlashSplitterIfc);
 			return remCmdOutQ.first;
 		endmethod
 		method Action readWord(Tuple3#(Bit#(128), TagT, HeaderField) d);
-			locRdOutQ.enq(d);
+			//locRdOutQ.enq(d);
+			remRdInQ.enq(d);
 		endmethod
 	endinterface
 

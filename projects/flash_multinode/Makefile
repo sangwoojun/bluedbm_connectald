@@ -37,8 +37,8 @@ AURORA_INTRA = $(CONNECTALDIR)/out/$(BOARD)/aurora_8b10b_fmc1/aurora_8b10b_fmc1_
 AURORA_EXTRA = $(CONNECTALDIR)/out/$(BOARD)/aurora_64b66b_X1Y24/aurora_64b66b_X1Y24_stub.v
 prebuild:: $(AURORA_EXTRA) $(AURORA_INTRA)
 
-$(AURORA_INTRA): core-scripts/synth-aurora-intra.tcl
-	(cd $(BOARD); vivado -mode batch -source ../core-scripts/synth-aurora-intra.tcl)
+$(AURORA_INTRA): ../../core-scripts/synth-aurora-intra.tcl
+	(cd $(BOARD); vivado -mode batch -source ../../../core-scripts/synth-aurora-intra.tcl)
 
 $(AURORA_EXTRA): ../../core-scripts/synth-aurora-ext.tcl
 	(cd $(BOARD); vivado -mode batch -source ../../../core-scripts/synth-aurora-ext.tcl)

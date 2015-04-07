@@ -1,0 +1,7 @@
+(ok) - decrease node count in aurora endpoint
+(ok) - add fifo upon receiving 
+- add additional set_max_delays/set_false_path for bscan clock and 250mhz clk to aurora clocks (reset)
+(nvm) - shrink stride register width
+
+(nvm) - should 50mhz clock be derived? (going into aurora)
+- check scheduling conflicts within flash splitter

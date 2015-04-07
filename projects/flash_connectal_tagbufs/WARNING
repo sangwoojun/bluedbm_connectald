@@ -1,0 +1,2 @@
+For this design to be constrained properly, set_max_delay must on aurora
+be read AFTER vc707.xdc

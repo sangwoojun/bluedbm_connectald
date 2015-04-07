@@ -63,12 +63,12 @@ create_clock -name auroraI_user_clk_i -period 9.091	 [get_pins -hierarchical -re
 
 # 20.0 ns period Board Clock Constraint 
 #create_clock -name init_clk_i -period 20.0 [get_pins */auroraIntraImport1/aurora_module_i/clock_module_i/init_clk_ibufg_i/O]
-create_clock -name init_clk_i -period 20.0 [get_pins -hierarchical -regexp {.*/auroraIntraClockDiv4_slowbuf/O}]
+create_clock -name auroraI_init_clk_i -period 20.0 [get_pins -hierarchical -regexp {.*/auroraIntraClockDiv4_slowbuf/O}]
 # 20.0 ns period DRP Clock Constraint 
-create_clock -name drp_clk_i -period 20.0 [get_pins -hierarchical -regexp {.*/auroraIntraClockDiv4_slowbuf/O}] -add
+create_clock -name auroraI_drp_clk_i -period 20.0 [get_pins -hierarchical -regexp {.*/auroraIntraClockDiv4_slowbuf/O}] -add
 
 ###### CDC in RESET_LOGIC from INIT_CLK to USER_CLK ##############
-set_max_delay -from [get_clocks init_clk_i] -to [get_clocks auroraI_user_clk_i] -datapath_only 9.091	 
+set_max_delay -from [get_clocks auroraI_init_clk_i] -to [get_clocks auroraI_user_clk_i] -datapath_only 9.091	 
 
 #CDC from auroraI_user_clk_i to/from clkgen_pll_CLKOUT0 (125mhz system clk)
 #Warning: The following constraints must be sourced AFTER vc707.xdc!

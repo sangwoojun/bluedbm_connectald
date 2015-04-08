@@ -146,7 +146,7 @@ module mkMain#(FlashIndication indication,
 	AuroraExtIfc auroraExt119 <- mkAuroraExt(gtx_clk_119.gtx_clk_p_ifc, gtx_clk_119.gtx_clk_n_ifc, clk50);
 	
 	Reg#(HeaderField) myNodeId <- mkReg(0); 
-	AuroraEndpointIfc#(Tuple2#(Bit#(WordSz), TagT)) aendRd <- mkAuroraEndpointDynamic(32, 64, 128);
+	AuroraEndpointIfc#(Tuple2#(Bit#(WordSz), TagT)) aendRd <- mkAuroraEndpointDynamic(256, 256, 256);
 	AuroraEndpointIfc#(FlashCmdRoute) aendFcmd <- mkAuroraEndpointDynamic(4, 2, 32);
 	let auroraList = cons(aendFcmd.cmd, cons(aendRd.cmd, nil));
 	AuroraExtArbiterBarIfc auroraExtArbiter <- mkAuroraExtArbiterBar(auroraExt119.user, auroraList);

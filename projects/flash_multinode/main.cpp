@@ -36,8 +36,10 @@
 #define PAGE_SIZE_VALID (8224)
 #define NUM_TAGS 128
 
+bool readLocal = false;
 bool verbose = false;
-bool doerasewrites = false; //do this only if sending to self
+bool doerasewrites = true; //do this only if sending to self
+
 
 typedef enum {
 	UNINIT,
@@ -463,15 +465,19 @@ int main(int argc, const char **argv)
 	sleep(1);
 
 
-
-	if (myid==3) {
-
+	if (readLocal || myid==2){
+	//if (myid==2) {
 		
 		timespec start, now;
 		double timeElapsed = 0;
-		int node = myid; //FIXME: modify this
+		int node;
+		if (readLocal) {
+			node = myid;
+		} else {
+			node = myid+1; //FIXME: modify this
+		}
 
-		if (doerasewrites) {
+		if (doerasewrites && readLocal) { //FIXME; remote erase/write not supported
 			//test erases
 			//for (int node=NUM_NODES-1; node >= 1; node--) 
 			//for (int node=DST_NODE; node == DST_NODE; node++) 
@@ -571,13 +577,22 @@ int main(int argc, const char **argv)
 	
 		//for (int node=NUM_NODES-1; node >= 1; node--) {
 		//for (int node=DST_NODE; node == DST_NODE; node++) {
-		for (int repeat = 0; repeat < 100; repeat++){
+		for (int repeat = 0; repeat < 200; repeat++){
 			for (int blk = 0; blk < BLOCKS_PER_CHIP; blk++){
 				for (int chip = 0; chip < CHIPS_PER_BUS; chip++){
 					for (int bus = 0; bus < NUM_BUSES; bus++){
+						for (int nodeSend=myid; nodeSend<myid+2; nodeSend++){ //FIXME
+						//int nodeSend = node;
+						//if (pagesRead%4==0) {
+						//	nodeSend=myid+1;
+						//} else {
+						//	nodeSend=myid;
+						//}
+							
 						pagesRead++;
 						int page = 0;
-						readPage(node, bus, chip, blk, page, waitIdleReadBuffer());
+						readPage(nodeSend, bus, chip, blk, page, waitIdleReadBuffer());
+						}
 					}
 				}
 			}

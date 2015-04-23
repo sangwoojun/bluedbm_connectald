@@ -14,8 +14,11 @@ set style data histograms
 
 set output "strstr.ps"
 
+set grid ytics lc rgb "#cccccc" lt 0
+set border lw 4
+
 set style histogram cluster gap 1
 
-plot 'strstr.dat' using 2:xtic(1) title col axis x1y1, \
-        '' using 3:xtic(1) title col axis x1y2
+plot 'strstr.dat' using 2:xtic(1) title col axis x1y1 lw 4, \
+        '' using 3:xtic(1) title col axis x1y2 lw 4
 

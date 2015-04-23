@@ -26,7 +26,7 @@ SerDes & 1 & 3061 & 3463 & 13 \\
 Artix-7 Total
 } & 75225 (56\%) & 62801 (23\%) & 181 (50\%)
 \end{tabular}
-\caption{Flash Controller on Artix 7 Resource Usage}
+\caption{Flash controller on Artix 7 resource usage}
 \label{tab:artixutil}
 \end{table}
 
@@ -51,15 +51,17 @@ Virtex-7 Total
 \multicolumn{2}{c}{
 } & (45\%) & (22\%) & (22\%) & (1\%)
 \end{tabular}
-\caption{Host Virtex 7 Resource Usage}
+\caption{Host Virtex 7 resource usage}
 \label{tab:virtexutil}
 \end{table}
 
 
 \subsection{Power Consumption}
 Table~\ref{tab:power} shows the overall power consumption of the system, which
-were estimated using values from the datasheet. Thanks to the low power
-consumption of the FPGA and flash devices, BlueDBM does not add much power
+were estimated using values from the datasheet. Each Xeon server includes 24
+cores and 50GBs of DRAM.
+Thanks to the low power
+consumption of the FPGA and flash devices, BlueDBM adds less than 20\% of power
 consumption to the system.
 
 \begin{table}[h]\footnotesize
@@ -74,7 +76,7 @@ Xeon Server & 200 \\
 Node Total & 240 \\
 
 \end{tabular}
-\caption{BlueDBM Estimated Power Consumption}
+\caption{BlueDBM estimated power consumption}
 \label{tab:power}
 \end{table}
 
@@ -82,20 +84,23 @@ Node Total & 240 \\
 \centering
 \vspace{0pt}
 \begin{minipage}[c]{.3\textwidth}
-	\includegraphics[width=0.27\paperwidth]{graphs/obj/network-crop.pdf}
-	\caption{BlueDBM Integrated Network Performance}
+	\includegraphics[scale=.35]{graphs/obj/network-crop.pdf}
+	%\includegraphics[width=0.32\paperwidth]{graphs/obj/network-crop.pdf}
+	\caption{BlueDBM integrated network performance}
 	\label{fig:result_network}
 \end{minipage}\hfill
 \vspace{0pt}
 \begin{minipage}[c]{.3\textwidth}
-	\includegraphics[width=0.27\paperwidth]{graphs/obj/latency-crop.pdf}
-	\caption{Latency of Remote Data Access in BlueDBM}
+	\includegraphics[scale=.35]{graphs/obj/latency-crop.pdf}
+	%\includegraphics[width=0.27\paperwidth]{graphs/obj/latency-crop.pdf}
+	\caption{Latency of remote data access in BlueDBM}
 	\label{fig:result_latency}
 \end{minipage}\hfill
 \vspace{0pt}
 \begin{minipage}[c]{.3\textwidth}
-	\includegraphics[width=0.27\paperwidth]{graphs/obj/bandwidth-crop.pdf}
-	\caption{Bandwidth of Data Access in BlueDBM}
+	\includegraphics[scale=.35]{graphs/obj/bandwidth-crop.pdf}
+	%\includegraphics[width=0.26\paperwidth]{graphs/obj/bandwidth-crop.pdf}
+	\caption{Bandwidth of data access in BlueDBM}
 	\label{fig:result_bandwidth}
 \end{minipage}
 \end{figure*}
@@ -105,13 +110,14 @@ Node Total & 240 \\
 We measured the performance of the network by transferring a single stream of 128 bit data packets through multiple nodes across the network in a non-contentious traffic setting. The maximum physical link bandwidth is 10Gbps, and per-hop latency is 0.48 $\mu s$.
 Figure~\ref{fig:result_network} shows that we are able to sustain 8.2Gbps of bandwidth per stream across multiple network hops. This shows that the protocol overhead is under 18\%. The latency is 0.48 $\mu s$ per network hop, the end-to-end latency is simply a multiple of network hops to the destination. 
 
-Each node in our BlueDBM implementation includes a fan-out of 8 network
-ports, so each node can have an aggregate full duplex bandwidth of 8.2GB/s. With
-such a high fan-out, it would be unlikely that a remote node in a rack-class
-cluster to be over 4 hops, or 2 $\mu s$ away. Even if we assume a naive ring
-network of 20 nodes with 4 lanes each to next and previous nodes, the average
-latency to a remote node would be 2.5 $\mu s$, with the ring throughput of 32.8
-Gbps. \emph{Assuming a flash access latency of 50 $\mu s$, such a network will only add 5\% latency in the worst case, giving the illusion of a uniform access storage.}
+Each node in our BlueDBM implementation includes a fan-out of 8 network ports,
+so each node can have an aggregate full duplex bandwidth of 8.2GB/s. With such a
+high fan-out, it would be unlikely that a remote node in a rack-class cluster to
+be over 4 hops, or 2 $\mu s$ away. In a naive ring network of 20 nodes with 4
+lanes each to next and previous nodes, the average latency to a remote node is 5
+hops, or 2.5 $\mu s$. The ring throughput is 32.8 Gbps. \emph{Assuming a flash
+access latency of 50 $\mu s$, such a network will only add 5\% latency in the
+worst case, giving the illusion of a uniform access storage.}
 
 
 %\begin{figure}[h]
@@ -139,7 +145,7 @@ In each case, the request is sent from either the host server or the in-store pr
 \begin{figure}[b]
 	\centering
 	\includegraphics[width=0.40\textwidth]{figures/latencybreak-crop.pdf}
-	\caption{Breakdown of Remote Storage Access Latency}
+	\caption{Breakdown of remote storage access latency}
 	\label{fig:latencybreak}
 \end{figure}
 

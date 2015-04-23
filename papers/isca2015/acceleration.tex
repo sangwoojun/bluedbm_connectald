@@ -4,7 +4,7 @@
 \begin{figure}[t!]
 	\centering
 	\includegraphics[width=0.25\textwidth]{figures/lsh-crop.pdf}
-	\caption{Data Accesses in LSH are Randomly Distributed}
+	\caption{Data accesses in LSH are randomly distributed}
 	\label{fig:lsh}
 \end{figure}
 
@@ -12,27 +12,27 @@
 \begin{figure*}[t]
 \centering
 \vspace{0pt}
-\begin{minipage}[c]{.2\textwidth}
+\begin{minipage}[t]{.2\textwidth}
 	\includegraphics[width=0.2\paperwidth]{graphs/obj/hammingfull-crop.pdf}
-	\caption{Nearest Neighbor with BlueDBM up to Two Nodes}
+	\caption{Nearest neighbor with BlueDBM up to two nodes}
 	\label{fig:result_hammingfull}
 \end{minipage}\hfill
 \vspace{0pt}
-\begin{minipage}[c]{.2\textwidth}
+\begin{minipage}[t]{.2\textwidth}
 	\includegraphics[width=0.2\paperwidth]{graphs/obj/hammingdram-crop.pdf}
-	\caption{Nearest Neighbor with Mostly DRAM}
+	\caption{Nearest neighbor with mostly DRAM}
 	\label{fig:result_hammingdram}
 \end{minipage}\hfill
 \vspace{0pt}
-\begin{minipage}[c]{.2\textwidth}
+\begin{minipage}[t]{.2\textwidth}
 	\includegraphics[width=0.2\paperwidth]{graphs/obj/hammingsamsung-crop.pdf}
-	\caption{Nearest Neighbor with Off-the-shelf SSD}
+	\caption{Nearest neighbor with off-the-shelf SSD}
 	\label{fig:result_hammingsamsung}
 \end{minipage}\hfill
 \vspace{0pt}
-\begin{minipage}[c]{.2\textwidth}
+\begin{minipage}[t]{.2\textwidth}
 	\includegraphics[width=0.2\paperwidth]{graphs/obj/hammingisp-crop.pdf}
-	\caption{Nearest Neighbor with In-Store Processing}
+	\caption{Nearest neighbor with in-store processing}
 	\label{fig:result_hammingisp}
 \end{minipage}
 \end{figure*}
@@ -43,7 +43,7 @@ architecture by presenting some accelerator demonstrations.
 \subsection{Nearest Neighbor Search}
 
 
-\paragraph{Description} :
+\paragraph{Description:}
 Nearest neighbor search is required by many applications, e.g., image querying. One of
 the modern techniques in this field is Locality Sensitive Hashing~\cite{lsh}.
 LSH hashes the dataset using multiple hash functions, so that
@@ -65,12 +65,20 @@ software sends a stream of addresses from a hash bucket along with the query
 data page, and the system returns the index of the data item most closely matching the
 query. Since we do not expect any performance difference for queries emanating from two different hash buckets, we simply send out a million nearest-neighbor searches for the same query.
 
-\paragraph{Evaluation} :
-In this study, we were interested in evaluating and comparing the benefits of flash storage (as opposed to DRAM) and in-store processors. 
-We also wanted to compare the BlueDBM design with off-the-shelf SSDs with PCIe
-interface. We have used a commercially available M.2 mPCIe SSD, whose performance, for 8KB accesses, was limited to 600MB/s. Since BlueDBM performance is much higher (2.4GB/s), we also conducted several experiments with BlueDBM throttled to 600MB/s. 
+\paragraph{Evaluation:}
+In this study, we were interested in evaluating and comparing the benefits of
+flash storage (as opposed to DRAM) and in-store processors.  We also wanted to
+compare the BlueDBM design with off-the-shelf SSDs with PCIe interface. The
+following experiments aims to evaluate the performance of each system during
+various access patterns, such as random or sequential access, and when accesses
+are partially serviced by secondary storage.
 
-Since for this application, performance should scale linearly with the number of nodes, we concentrated on various configurations in a single node setting:
+We have used a commercially available M.2 mPCIe SSD, whose performance, for 8KB
+accesses, was limited to 600MB/s. Since BlueDBM performance is much higher
+(2.4GB/s), we also conducted several experiments with BlueDBM throttled to
+600MB/s. Since performance should scale linearly with the number of nodes for
+this application, we concentrated on various configurations in a single node
+setting:
 
 \begin{enumerate}
 \item Baseline: BlueDBM with in-store acceleration;
@@ -113,7 +121,7 @@ of magnitude faster.
 
 \subsection{Graph Traversal}
 
-\paragraph{Description} :
+\paragraph{Description:}
 Efficient graph traversal is a very important component of any graph processing
 system. Fast graph traversal enables solving many problems in graph theory,
 including maximum flow, shortest path and graph search. It is also a very
@@ -124,7 +132,7 @@ traversal that takes advantages of the in-store processor and the integrated
 storage network, which allows extremely low-latency access into both local and
 remote flash storage.  
 
-\paragraph{Evaluation} :
+\paragraph{Evaluation:}
 Graph traversal algorithms often involve dependent lookups. That is, the data from the first request determines the next request, like a linked-list traversal at the page level. Since such traversals are very sensitive to latency, we conducted the experiments with settings that are very similar to the settings in Section~\ref{sec:latency}.
 
 \begin{enumerate}
@@ -143,7 +151,7 @@ The performance difference between \emph{H-F} and \emph{H-RH-F} illustrates the 
 \begin{figure}[t]
 	\centering
 	\includegraphics[width=0.27\textwidth]{graphs/obj/graph-crop.pdf}
-	\caption{Graph Traversal Performance}
+	\caption{Graph traversal performance}
 	\label{fig:result_graph}
 \end{figure}
 
@@ -165,7 +173,7 @@ The performance difference between \emph{H-F} and \emph{H-RH-F} illustrates the 
 
 \subsection{String Search}
 
-\paragraph{Description} :
+\paragraph{Description:}
 String search is common operation in analytics, often used in
 database table scans, DNA sequence matching and cheminformatics. It is 
 primarily a sequential read and compare workload. We
@@ -183,7 +191,7 @@ size of each file. Since 4 read commands can saturate a single flash bus, we
 use 4 engines per bus to maximize the flash bandwidth. Only
 search results are returned to the server. 
 
-\paragraph{Evaluation} :
+\paragraph{Evaluation:}
 We compared our implementation of hardware-accelerated string search running on
 BlueDBM to the Linux Grep utility querying for exact string matches running
 on both SSD and hard disk. Processing bandwidth and server CPU utilizations are
@@ -208,7 +216,7 @@ for other tasks.
 \begin{figure}[t]
 	\centering
 	\includegraphics[width=0.30\textwidth]{graphs/obj/strstr-crop.pdf}
-	\caption{String Search Bandwidth and CPU Utilization}
+	\caption{String search bandwidth and CPU utilization}
 	\label{fig:result_strstr}
 \end{figure}
 

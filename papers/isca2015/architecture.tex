@@ -41,7 +41,7 @@ through this extra layer. Thus in BlueDBM, we chose to shift flash management
 away from the device and into file system/block device driver (discussed in
 Section~\ref{sec:software}).
 
-\subsubsection{An Interface for High Performance Flash Access}
+\subsubsection{Interface for High Performance Flash Access}
  Our flash controller exposes a low-level, thin,
 fast and bit-error corrected hardware interface to raw NAND flash chips, buses,
 blocks and pages. This has the benefit of (i) cutting down on access latency
@@ -57,7 +57,7 @@ ready to receive the data for that write. The user will send the write data
 corresponding to that request in 128-bit bursts. The controller returns an
 acknowledgement once write is finished. 
 For read operations, the data is returned in 128-bit bursts along with the request tag.
-We emphasize that for maximum performance, the
+For maximum performance, the
 controller may send these data bursts \emph{out of order} with respect to
 the issued request and \emph{interleaved} with other read requests.
 Thus completion buffers may be required on the user side to maintain FIFO
@@ -79,8 +79,24 @@ can have latencies of 50 $\mu s$ or more.
 
 \begin{figure}[h]
 	\begin{center}
-	\includegraphics[scale=0.4]{figures/architecture_flash-crop.pdf}
-	\caption{Flash Interface}
+	\includegraphics[scale=0.45]{figures/architecture_small-crop.pdf}
+	\caption{BlueDBM overall architecture}
+	\label{fig:architecture}
+	\end{center}
+\end{figure}
+
+\begin{figure}[h]
+	\begin{center}
+	\includegraphics[scale=0.45]{figures/architecture_node-crop.pdf}
+	\caption{BlueDBM node architecture}
+	\label{fig:architecture_node}
+	\end{center}
+\end{figure}
+
+\begin{figure}[b]
+	\begin{center}
+	\includegraphics[scale=0.45]{figures/architecture_flash-crop.pdf}
+	\caption{Flash interface}
 	\label{fig:flashinterface}
 	\end{center}
 \end{figure}
@@ -110,7 +126,7 @@ based on the application.
 \begin{figure}[b]
 	\begin{center}
 	\includegraphics[width=0.5\textwidth]{figures/network-architecture-crop.pdf}
-	\caption{Network Architecture}
+	\caption{Network architecture}
 	\label{fig:networkinterface}
 	\end{center}
 \end{figure}
@@ -149,16 +165,16 @@ the routing across a topology can be configured dynamically by the software.
 
 \begin{figure}[b!]
 	\centering
-	\subfloat[Distributed Star]
+	\subfloat[Distributed star]
 		{\includegraphics[scale=0.35]{figures/topology_dist_star-crop.pdf}}
 		\hfill
 	\subfloat[Mesh]
 		{\includegraphics[scale=0.35]{figures/topology_mesh-crop.pdf}}
 		\hfill
-	\subfloat[Fat Tree]
+	\subfloat[Fat tree]
 		{\includegraphics[scale=0.35]{figures/topology_fat_tree-crop.pdf}}
-	\caption{Any Network Topology Is Possible As Long As It Requires Less Than 8
-	Network Ports Per Node}
+	\caption{Any network topology is possible as long as it requires less than 8
+	network ports per node}
 	\label{fig:topologies}
 \end{figure}
 
@@ -195,8 +211,9 @@ network can manage, or if the data cannot be received by the destination node wh
 
 \begin{figure}[h]
 	\begin{center}
-	\includegraphics[width=0.30\textwidth]{figures/routing-crop.pdf}
-	\caption{Routing Packets Across the Network}
+	\includegraphics[width=0.40\textwidth]{figures/routing-crop.pdf}
+	\caption{Packets from the same Endpoint to a destination maintain FIFO
+	order}
 	\label{fig:networkrouting}
 	\end{center}
 \end{figure}
@@ -256,7 +273,7 @@ contiguous data for a DMA burst before issuing a DMA burst, some reordering may
 be required at the DMA engine. This becomes even trickier when the device is
 using the integrated network to receive data from remote nodes, where they might
 all be coming from different buses. To fix this issue, we provide dual-ported
-buffer in hardware providing the semantics of a vector of FIFOs, so that data
+buffer in hardware which has the semantics of a vector of FIFOs, so that data
 for each request can be enqueued into its own FIFO until there is enough data
 for a burst.
 Figure~\ref{fig:hostinterface} describes the structure of the host interface for
@@ -265,7 +282,7 @@ flash reads.
 \begin{figure}[t!]
 	\centering
 	\includegraphics[width=0.25\textwidth]{figures/dmawrite-crop.pdf}
-	\caption{Host-FPGA Interface Over PCIe}
+	\caption{Host-FPGA interface over PCIe}
 	\label{fig:hostinterface}
 \end{figure}
 

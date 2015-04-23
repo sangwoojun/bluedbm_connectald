@@ -1,0 +1,52 @@
+\begin{abstract}
+%\boldmath
+We present a transport-layer network that aids developers in building safe,
+high-performance distributed FPGA applications. Two essential features of such a
+network are virtual channels and end-to-end flow control. Since different
+virtual channels can have vastly different traffic patterns, a proper network
+design requires flexibility in setting buffer sizes and flow control credits. In
+addition, the protocol must have very low latency and low memory resource
+requirements, because the communication links between FPGAs have very low
+latency, and FPGAs have limited on-chip memory. These resource requirements make
+protocols such as TCP/IP unsuitable in this environment. Our network implements
+these features, and takes advantage of the low error characteristic of a rack
+level network deployment to implement a low overhead credit based end-to-end
+flow control. Our design has many parameters in the source code which can be set
+at the time of FPGA synthesis. 
+
+Our prototype cluster, which is composed of 20 Xilinx VC707 boards, each with 4
+20Gb/s serial links, achieves effective bandwidth of 85\% of the maximum
+physical bandwidth, and a latency of 0.5us per hop.  Our network exposes a
+variable width FIFO channel abstraction, with the ability to adjust buffer size
+and flow control credits per channel. Several applications have already been
+developed using this network. The user feedback suggest that these features make
+application development significantly easier.
+
+%Many modern large-scale data-intensive applications can benefit from the use of
+%distributed FPGAs, which offer high performance and low power consumption.
+%Networking a cluster of FPGAs using generic interconnect technologies such as Ethernet and
+%TCP/IP is usually difficult because of the high resource and management overhead
+%of such technologies. Instead, they are often networked using a low overhead link
+%level protocol using the on-chip multi-gigabit serial transceivers. Due to the
+%engineering cost and on-chip resource limitations, most
+%existing network implementations using these links provide a very low level
+%interface, providing packet routing but rarely higher level features such as
+%virtual channels or end-to-end flow control. Developing a correct distributed
+%application using such a network interface is not easy for most developers, and
+%this is one of the major hurdles of large scale distributed FPGA application
+%development.
+%
+%This paper presents a transport-layer network infrastructure that aids
+%application developers to build safe, high-performance distributed FPGA
+%applications. The network implements convenient features such as virtual
+%channels, and takes advantage of the low error characteristic of a rack level
+%network deployment to implement a low overhead credit based end-to-end flow
+%control. The network is parameterized so that each virtual channel can have
+%different, optimized flow control characteristics. 
+%Our prototype implementation achieves an effective
+%bandwidth of 17Gb/s per link, which is 85\% of the maximum physical bandwidth, and a
+%latency of 0.5us.  Out network exposes a variable width FIFO abstraction, which
+%is convenient for application developers.
+
+\end{abstract}
+

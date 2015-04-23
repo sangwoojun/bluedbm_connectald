@@ -1,0 +1,106 @@
+\section{Related Work}
+\label{sec:related}
+
+FPGAs offer very desirable performance and power characteristics,
+but modern data-intensive applications often require more resources that are
+available on a single FPGA chip. As a result, exploration of distributed FPGA
+computing systems is gaining popularity. The scale of distributed FPGA system
+being built range from a cluster-in-a-box systems such as
+BlueHive~\cite{bluehive}, to rack-level deployments such as
+Maxwell~\cite{maxwell_supercomputer}, to datacenter scale deployments such as
+Catapult~\cite{msr_catapult}. Such systems offer a much better power performance
+characteristics over their off-the-shelf server counterparts.
+Attempts to
+exploit the different characteristics of various computing entities such as
+FPGAs, GPGPUs and CPUs using a heterogeneous cluster have also proven
+successful~\cite{axel_hetero}. Some have explored inserting FPGA accelerators
+into the computation datapath, so acceleration happen without the overhead of
+copying the data to the FPGA accelerator. In BlueDBM~\cite{bluedbm}, the FPGA
+managed the data transfer between distributed flash devices over an integrated
+controller network, achieving very low latency acceleration.
+
+The TCP/IP network protocol stack is by far the most popular protocol for
+internetworking computer systems, but it may not be a good fit for inter-FPGA
+communication. The IP protocol is a best
+effort delivery protocol designed for a large and unpredictable network. Because
+packets delivered over IP may be lost or reordered, it is up to TCP to implement
+end-to-end management and ensure safe delivery. Such requirements makes the TCP
+protocol complex and resource heavy, making it a good fit for the internet, but
+not the best choice for datacenter or rack-level deployments where the
+constraints are different. Such complexities also make it unfit for
+implementation on FPGAs. Some FPGA cluster projects have used Ethernet's
+physical and data link layers for its network, but full implementation of the
+TCP/IP stack is rare unless it has to interact with a legacy
+interface~\cite{xilinxmemcached}.
+
+Datacenter scale protocols such as Infiniband~\cite{infiniband} provide better
+managed flow control in the network layers, ensuring no packets are dropped due
+to network congestion. This allows a more efficient transport layer protocol
+implementation. A modified TCP protocol DCTCP~\cite{dctcp} aims to achieve
+similar goals by using a special flag set by a router when a packet has
+experienced congestion to intelligently modify traffic rate, resulting in a much
+smaller packet buffer requirement.  Infiniband also offloads a major part of the
+protocol implementation to the hardware NIC, in order to achieve much better
+performance than software implementations of other protocols.
+
+Most existing network solutions provide many transport layer features, such as
+virtual channels and end-to-end flow control. Virtual channels multiplex the
+network link so that it can be used by multiple components as if it had
+exclusive access to a network link. End-to-end flow control hides
+underlying network details from the virtual channel endpoints, by resending
+packets that may have dropped, managing reorder buffers to handle out-of-order
+delivery, or managing flow control credits so that congestion does not cause
+packet drops.
+
+Due to the high engineering and performance overhead of existing network
+solutions, many inter-FPGA networks on a distributed FPGA deployment are
+implemented using low-overhead link-layer protocols such as Aurora using
+multi-gigabit serial transceivers included in the FPGA. BlueLink~\cite{bluelink}
+demonstrated that a new protocol using high-speed serial links has a better
+area-performance characteristics than trying to implement existing network
+protocols. In a rack-level deployment, the reliability of such links are so
+high, that the constraints for the design of a network are different from larger
+scale networks.
+Many distributed FPGA computing systems have their FPGA nodes networked over
+such high-speed serial links~\cite{ucsd_fpganetwork, maxwell_supercomputer,
+toronto_fpga_multi, nc_rcc}. These systems have demonstrated very high network
+performance by organizing the nodes into various topologies optimized
+for their target applications. Some have developed meta language compilers that
+generate application-specific network logic with features such as flow control
+from separate network specifications~\cite{kermin_multifpga}.
+
+Most distributed FPGA computing systems using high-speed serial links as the
+network fabric often provide link and network level interfaces, but they rarely
+provide higher-level functionality such as end-to-end flow control. We have
+discovered during our own FPGA cluster construction that an FPGA
+developer who is attempting to implement an accelerated application on our
+cluster had trouble writing deadlock-free code without per-virtual channel flow
+end-to-end flow control. 
+
+
+%A large part of internetwork research on FPGA are
+%extensions of rich existing research on on-chip-networks. Many FPGA optimized NoC
+%implementations achieve very slow resource utilization and low latency while
+%maintaining high performance~\cite{radixtree_router, singlecycle_router}.
+%Inter-FPGA networks can often be implemented in similar fashion as packet loss
+%or corruption on the serial links are rare enough. 
+
+
+
+%Another popular method of internetworking an FPGA cluster is over PCIe. Since
+%high-speed FPGA 
+
+%A large percentage of internetwork research on FPGAs are extensions of rich
+%existing research on Network on Chips. 
+%FPGA On chip network. Very low latency implementations exist. Single cycle
+%latency to core, buffer resource not an issue.
+%
+%Research in inter-FPGA networks. Application-optimized at compile time like
+%Elliott's FPGA paper~\cite{kermin_multifpga}. Tiered hierarchy UCSD network~\cite{ucsd_fpganetwork}
+%BlueLink~\cite{bluelink}.
+
+
+
+
+
+

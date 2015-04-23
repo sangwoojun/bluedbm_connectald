@@ -1,3 +1,19 @@
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+// BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+// ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+// CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+/*/////////////////////////////////////////////////
+WARNING:
+This implementation is incorrect at the moment.
+Please use AuroraExtEndpointBar until (or even after)
+this implementation is fixed!
+*/////////////////////////////////////////////////
+
 import FIFO::*;
 import FIFOF::*;
 import Vector::*;
@@ -249,7 +265,7 @@ interface AuroraExtArbiterIfc;
 	method Action setRoutingTable(Bit#(6) node, Bit#(8) portidx, Bit#(3) portsel);
 endinterface
 
-module mkAuroraExtArbiter#(Vector#(tPortCount, AuroraExtUserIfc) extports, Vector#(tEndpointCount, AuroraEndpointCmdIfc) endpoints, Reg#(Bit#(HeaderFieldSz)) myIdx) (AuroraExtArbiterIfc)
+module mkAuroraExtArbiterX#(Vector#(tPortCount, AuroraExtUserIfc) extports, Vector#(tEndpointCount, AuroraEndpointCmdIfc) endpoints, Reg#(Bit#(HeaderFieldSz)) myIdx) (AuroraExtArbiterIfc)
 	provisos(
 	NumAlias#(TAdd#(tPortCount,tEndpointCount),tTotalInCount));
 

@@ -60,6 +60,9 @@ public:
   }
 
   timespec aurorastart;
+  virtual void mismatch(unsigned int data, unsigned int data2) {
+	printf( "diff %x--%d\n", data, data2 );
+  }
   virtual void hexDump(unsigned int data) {
 	printf( "%x--\n", data );
 	timespec now;

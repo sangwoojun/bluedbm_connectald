@@ -42,6 +42,7 @@ int main(int argc, const char **argv)
 	//FIXME "lightning" is evaluated to 0,
 	// so when bdbm00 is returned to the cluster,
 	// code needs to be modified
+	/*
 	if ( strstr(hostname, "bdbm") == NULL 
 		&& strstr(hostname, "umma") == NULL
 		&& strstr(hostname, "lightning") == NULL ) {
@@ -49,13 +50,27 @@ int main(int argc, const char **argv)
 		fprintf(stderr, "ERROR: hostname should be bdbm[idx] or lightning\n");
 		return 1;
 	}
-	int myid = atoi(hostname+strlen("bdbm"));
+	*/
 
-	DmaDebugRequestProxy *hostDmaDebugRequest = new DmaDebugRequestProxy(IfcNames_HostDmaDebugRequest);
-	MMUConfigRequestProxy *dmap = new MMUConfigRequestProxy(IfcNames_HostMMUConfigRequest);
-	DmaManager *dma = new DmaManager(hostDmaDebugRequest, dmap);
-	DmaDebugIndication *hostDmaDebugIndication = new DmaDebugIndication(dma, IfcNames_HostDmaDebugIndication);
-	MMUConfigIndication *hostMMUConfigIndication = new MMUConfigIndication(dma, IfcNames_HostMMUConfigIndication);
+
+	int myid = atoi(hostname+strlen("bdbm"));
+	if ( strstr(hostname, "bdbm") == NULL 
+		&& strstr(hostname, "umma") == NULL
+		&& strstr(hostname, "lightning") == NULL ) {
+			
+			myid = 0;
+
+	}
+	char* userhostid = getenv("BDBM_ID");
+	if ( userhostid != NULL ) {
+		myid = atoi(userhostid);
+	}
+
+	MemServerRequestProxy *hostMemServerRequest = new MemServerRequestProxy(IfcNames_HostMemServerRequest);
+	MMURequestProxy *dmap = new MMURequestProxy(IfcNames_HostMMURequest);
+	DmaManager *dma = new DmaManager(dmap);
+	MemServerIndication *hostMemServerIndication = new MemServerIndication(hostMemServerRequest, IfcNames_HostMemServerIndication);
+	MMUIndication *hostMMUIndication = new MMUIndication(dma, IfcNames_HostMMUIndication);
 
 
 	fprintf(stderr, "Main::allocating memory...\n");

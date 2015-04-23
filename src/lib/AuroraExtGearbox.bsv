@@ -3,9 +3,6 @@ import FIFOF::*;
 import Clocks :: *;
 import Vector:: *;
 
-import BRAM::*;
-import BRAMFIFO::*;
-
 import AuroraCommon::*;
 
 typedef 64 AuroraPhysWidth;

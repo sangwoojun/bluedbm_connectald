@@ -10,10 +10,17 @@ typedef struct {
 } FlashCmdRoute deriving (Bits, Eq);
 
 typedef struct {
-	HeaderField srcNode;
-	HeaderField dstNode;
-	BusT bus;
+	HeaderField src;
+	HeaderField dst;
+	TagT origTag;
 } TagEntry deriving (Bits, Eq);
+
+typedef struct {
+	TagT origTag;
+	TagT reTag;
+	HeaderField src;
+	HeaderField dst;
+} WdReqT deriving (Bits, Eq);
 
 
 typedef NUM_BUSES NUM_ENG_PORTS;

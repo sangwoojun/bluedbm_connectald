@@ -146,20 +146,24 @@ module mkMain#(FlashIndication indication,
 	AuroraExtIfc auroraExt119 <- mkAuroraExt(gtx_clk_119.gtx_clk_p_ifc, gtx_clk_119.gtx_clk_n_ifc, clk50);
 	
 	Reg#(HeaderField) myNodeId <- mkReg(0); 
-	AuroraEndpointIfc#(Tuple2#(Bit#(WordSz), TagT)) aendRd <- mkAuroraEndpointDynamic(256, 256, 256);
+	AuroraEndpointIfc#(Tuple2#(Bit#(WordSz), TagT)) aendRd <- mkAuroraEndpointDynamic(256, 256, 768);
+	AuroraEndpointIfc#(Tuple2#(Bit#(WordSz), TagT)) aendWd <- mkAuroraEndpointDynamic(256, 256, 768);
 	AuroraEndpointIfc#(FlashCmdRoute) aendFcmd <- mkAuroraEndpointDynamic(4, 2, 32);
-	let auroraList = cons(aendFcmd.cmd, cons(aendRd.cmd, nil));
+	AuroraEndpointIfc#(Tuple2#(TagT, StatusT)) aendAck <- mkAuroraEndpointDynamic(4, 2, 32);
+	AuroraEndpointIfc#(WdReqT) aendWreq <- mkAuroraEndpointDynamic(4, 2, 32);
+
+	let auroraList = cons(aendFcmd.cmd, cons(aendAck.cmd, cons(aendWreq.cmd, cons(aendWd.cmd, cons(aendRd.cmd, nil)))));
 	AuroraExtArbiterBarIfc auroraExtArbiter <- mkAuroraExtArbiterBar(auroraExt119.user, auroraList);
 	
 
 	//--------------------------------------------
 	// External Aurora Send/receive
 	//--------------------------------------------
-	
+
 	FlashSplitterIfc flashSplit <- mkFlashSplitter();
 
 	rule sendRemoteFlashCmd;
-		let cmd <- flashSplit.remFlashCli.sendCmd();
+		let cmd <- flashSplit.remFlashCli.sendCmd.get();
 		aendFcmd.user.send(cmd, cmd.dstNode);
 		let fcmd = cmd.fcmd;
 		$display("[%d] @%d: Main.bsv: sent REMOTE cmd dstnode=%d, tag=%d @%x %x %x %x", myNodeId,  
@@ -169,40 +173,78 @@ module mkMain#(FlashIndication indication,
 	rule recRemoteFlashCmd;
 		let cmdSrc <- aendFcmd.user.receive;
 		let cmd = tpl_1(cmdSrc);
-		flashSplit.remFlashServ.sendCmd(cmd);
+		flashSplit.remFlashServ.sendCmd.put(cmd);
 		let fcmd = cmd.fcmd;
 		$display("[%d] @%d: Main.bsv: recv REMOTE cmd dstnode=%d, tag=%d @%x %x %x %x", myNodeId,  
 						cycleCnt, cmd.dstNode, fcmd.tag, fcmd.bus, fcmd.chip, fcmd.block, fcmd.page);
 	endrule
 
 	rule sendRemoteRdata;
-		let d <- flashSplit.remFlashServ.readWord();
+		let d <- flashSplit.remFlashServ.readWord.get();
 		match{.data, .tag, .dst} = d;
 		aendRd.user.send(tuple2(data, tag), dst);
-		$display("[%d] @%d: Main.bsv: sent REMOTE data dstnode=%d, tag=%d data=%x", myNodeId,  
-						cycleCnt, dst, tag, data);
+		//$display("[%d] @%d: Main.bsv: sent REMOTE data dstnode=%d, tag=%d data=%x", myNodeId,  
+		//				cycleCnt, dst, tag, data);
 	endrule
 
 	rule recRemoteRdata;
 		let dSrc <- aendRd.user.receive;
-		let d = tpl_1(dSrc);
+		match{.d, .src} = dSrc;
 		match{.data, .tag} = d;
-		flashSplit.remFlashCli.readWord(tuple3(data, tag, myNodeId));
-		$display("[%d] @%d: Main.bsv: recv REMOTE data dstnode=%d, tag=%d data=%x", myNodeId,  
-						cycleCnt, myNodeId, tag, data);
+		flashSplit.remFlashCli.readWord.put(tuple3(data, tag, src));
+		//$display("[%d] @%d: Main.bsv: recv REMOTE data from srcnode=%d, tag=%d data=%x", myNodeId,  
+		//				cycleCnt, src, tag, data);
 	endrule
 
-	/*
-	rule recvAuroraFcmd;
-		//let recCmd <- aendFlashCmd.user.receive;
-		let cmd <- auroraMux.cmdRecv.get();
-		let srcNode = 0; //FIXME: hacky
-		//match{.cmd, .srcNode} = recCmd;
-		$display("[%d] @%d: Main.bsv: AuroraExt received cmd from node=%d, tag=%d @%x %x %x %x", 
-						myNodeId, cycleCnt, srcNode, cmd.tag, cmd.bus, cmd.chip, cmd.block, cmd.page);
-		flashCmdLocalQ.enq( FlashCmdRoute{srcNode: srcNode, dstNode: myNodeId, fcmd: cmd} );
-	endrule	
-	*/	
+	rule sendRemoteWdata;
+		let d <- flashSplit.remFlashCli.writeWord.get();
+		match{.data, .tag, .dst} = d;
+		aendWd.user.send(tuple2(data, tag), dst);
+		//$display("[%d] @%d: Main.bsv: sent REMOTE WRITE data dstnode=%d, tag=%d data=%x", myNodeId,  
+		//				cycleCnt, dst, tag, data);
+	endrule
+
+	rule recRemoteWdata;
+		let dSrc <- aendWd.user.receive;
+		match{.datatag, .src} = dSrc;
+		match{.data, .tag} = datatag;
+		flashSplit.remFlashServ.writeWord.put(tuple3(data, tag, src));
+	endrule
+
+
+	rule sendRemoteAck;
+		let d <- flashSplit.remFlashServ.ackStatus.get();
+		match{.tag, .stat, .dst} = d;
+		aendAck.user.send(tuple2(tag, stat), dst);
+		$display("[%d] @%d: Main.bsv: sent REMOTE ACK dstnode=%d, tag=%d stat=%x", myNodeId,  
+						cycleCnt, dst, tag, stat);
+	endrule
+
+	rule recRemoteAck;
+		let dSrc <- aendAck.user.receive;
+		match{.ack, .src} = dSrc;
+		match{.tag, .stat} = ack;
+		flashSplit.remFlashCli.ackStatus.put(tuple3(tag, stat, src));
+		$display("[%d] @%d: Main.bsv: recv REMOTE ACK from srcnode=%d, tag=%d stat=%x", myNodeId,  
+						cycleCnt, src, tag, stat);
+	endrule
+
+
+	rule sendRemoteWreq;
+		let req <- flashSplit.remFlashServ.writeDataReq.get();
+		aendWreq.user.send(req, req.dst);
+		$display("[%d] @%d: Main.bsv: sent REMOTE WREQ dstnode=%d, origtag=%d, retag=%d", myNodeId,  
+						cycleCnt, req.dst, req.origTag, req.reTag);
+	endrule
+
+	rule recRemoteWreq;
+		let reqSrc <- aendWreq.user.receive;
+		match{.req, .trash} = reqSrc;
+		flashSplit.remFlashCli.writeDataReq.put(req);
+		$display("[%d] @%d: Main.bsv: recv REMOTE WREQ from srcnode=%d, origtag=%d, retag=%d", myNodeId,  
+						cycleCnt, req.src, req.origTag, req.reTag);
+	endrule
+	
 
 
 
@@ -214,18 +256,21 @@ module mkMain#(FlashIndication indication,
 	endrule
 
 	rule flashCmdForward if (started);
-		let cmdRoute = flashCmdQ.first;
+		let cmdRt = flashCmdQ.first;
 		flashCmdQ.deq;
-		flashSplit.locFlashServ.sendCmd(cmdRoute);
+		flashSplit.locFlashServ.sendCmd.put(cmdRt);
+		let cmd = cmdRt.fcmd;
+		$display("[%d] @%d: Main.bsv: received cmd origtag=%d @%x %x %x %x", myNodeId, 
+						cycleCnt, cmd.tag, cmd.bus, cmd.chip, cmd.block, cmd.page);
 	endrule
 
 	rule issueFlashCmd;
-		let cmdRt <- flashSplit.locFlashCli.sendCmd();
+		let cmdRt <- flashSplit.locFlashCli.sendCmd.get();
 		//flashCmdLocalQ.deq;
 		//let cmdRt = flashCmdLocalQ.first;
 		flashCtrl.user.sendCmd(cmdRt.fcmd); //forward cmd to flash ctrl
 		let cmd = cmdRt.fcmd;
-		$display("[%d] @%d: Main.bsv: received cmd tag=%d @%x %x %x %x", myNodeId, 
+		$display("[%d] @%d: Main.bsv: renamed cmd retag=%d @%x %x %x %x", myNodeId, 
 						cycleCnt, cmd.tag, cmd.bus, cmd.chip, cmd.block, cmd.page);
 	endrule
 
@@ -274,7 +319,7 @@ module mkMain#(FlashIndication indication,
 			debugReadCnt <= debugReadCnt + 1;
 			if (debugFlag==0) begin
 				//dataFlash2FifoVecQ.enq(taggedRdata);
-				flashSplit.locFlashCli.readWord(tuple3(data, tag, ?));
+				flashSplit.locFlashCli.readWord.put(tuple3(data, tag, ?));
 			end
 			delayReg <= truncate(delayRegSet);
 		end
@@ -284,7 +329,7 @@ module mkMain#(FlashIndication indication,
 	endrule
 
 	rule doDistrReadFromFlash;
-		let dataTagDst <- flashSplit.locFlashServ.readWord();
+		let dataTagDst <- flashSplit.locFlashServ.readWord.get();
 		match{.data, .tag, .dst} = dataTagDst;
 		let taggedRdata = tuple2(data, tag);
 		//let taggedRdata = dataFlash2FifoVecQ.first;
@@ -292,8 +337,8 @@ module mkMain#(FlashIndication indication,
 		//match{.data, .tag} = taggedRdata;
 		match{.idx, .sel} = decTag(tag);
 		bramFifoVec[sel].enq(taggedRdata, idx);
-		$display("[%d] @%d Main.bsv: flash read sel=%d, idx=%d, tag=%d, data=%x", myNodeId, 
-						cycleCnt, sel, idx, tag, data);
+		//$display("[%d] @%d Main.bsv: flash read sel=%d, idx=%d, tag=%d, data=%x", myNodeId, 
+		//				cycleCnt, sel, idx, tag, data);
 	endrule
 
 	//connect output of bramfifovecs with WE port
@@ -337,7 +382,7 @@ module mkMain#(FlashIndication indication,
 			let dummy <- we.writeServers[p].response.get;
 			match{.tag, .idxCnt} = dmaReq2RespQ[p].first;
 			dmaReq2RespQ[p].deq;
-			$display("[%d] @%d Main.bsv: dma resp [%d] tag=%d", myNodeId, cycleCnt, idxCnt, tag);
+			//$display("[%d] @%d Main.bsv: dma resp [%d] tag=%d", myNodeId, cycleCnt, idxCnt, tag);
 			if ( idxCnt==fromInteger(dmaBurstsPerPage-1)) begin
 				dmaWriteDoneQs[p].enq(tag);
 			end
@@ -357,18 +402,27 @@ module mkMain#(FlashIndication indication,
 	// Writes to Flash (DMA Reads)
 	//--------------------------------------------
 	Reg#(Bit#(32)) dmaReadSgid <- mkReg(0);
-	Vector#(NUM_ENG_PORTS, FIFO#(TagT)) dmaRdReq2RespQ <- replicateM(mkSizedFIFO(4)); //TODO sz
+	Vector#(NUM_ENG_PORTS, FIFO#(Tuple2#(TagT, HeaderField))) dmaRdReq2RespQ <- replicateM(mkSizedFIFO(4)); //TODO sz
 	Vector#(NUM_ENG_PORTS, Reg#(Bit#(32))) dmaReadBurstCount <- replicateM(mkReg(0));
 	Vector#(NUM_ENG_PORTS, FIFO#(TagT)) dmaReadReqQ <- replicateM(mkSizedFIFO(4));
 	Vector#(NUM_ENG_PORTS, Reg#(Bit#(32))) dmaRdReqCnts <- replicateM(mkReg(0));
 	Reg#(Bit#(TLog#(NUM_ENG_PORTS))) reSel <- mkReg(0);
 
-	//Handle write data requests from controller
-	rule handleWriteDataRequestFromFlash;
+	rule locWriteReq;
 		TagT tag <- flashCtrl.user.writeDataReq();
 		$display("[%d] Main.bsv: writeDataReq received from controller tag=%d", myNodeId,tag);
-		dmaReadReqQ[reSel].enq(tag);
-		dmaRdReq2RespQ[reSel].enq(tag);
+		WdReqT req = WdReqT{origTag: ?, reTag: tag, src: ?, dst: ?};
+		flashSplit.locFlashCli.writeDataReq.put(req);
+	endrule
+
+
+	//Handle write data requests
+	rule handleWriteDataRequestFromFlash;
+		let req <- flashSplit.locFlashServ.writeDataReq.get();
+
+		dmaReadReqQ[reSel].enq(req.origTag); //use original tag to get DMA data
+		//use renamed tag when forwarding bursts; req src is dst of bursts
+		dmaRdReq2RespQ[reSel].enq(tuple2(req.reTag, req.src)); 
 		//round robin through the REs
 		if (reSel == fromInteger(num_eng_ports-1)) begin
 			reSel <= 0;
@@ -407,14 +461,14 @@ module mkMain#(FlashIndication indication,
 		endrule
 
 		//forward data
-		FIFO#(Tuple2#(Bit#(128), TagT)) writeWordPipe <- mkFIFO();
+		FIFO#(Tuple3#(Bit#(128), TagT, HeaderField)) writeWordPipe <- mkFIFO();
 		rule pipeDmaRdData;
 			let d <- toGet(re.dataPipes[p]).get;
-			let tag = dmaRdReq2RespQ[p].first;
+			match{.retag, .dst} = dmaRdReq2RespQ[p].first;
 			if (dmaReadBurstCount[p] < fromInteger(pageWords)) begin
-				writeWordPipe.enq(tuple2(d, tag));
-				$display("[%d] Main.bsv: forwarded dma read data [%d]: tag=%d, data=%x", 
-					myNodeId, dmaReadBurstCount[p], tag, d);
+				writeWordPipe.enq(tuple3(d, retag, dst));
+				//$display("[%d] Main.bsv: forwarded dma read data [%d]: retag=%d, data=%x", 
+				//	myNodeId, dmaReadBurstCount[p], retag, d);
 			end
 			else begin 
 				//drop the data because it's just 0 padded
@@ -433,27 +487,40 @@ module mkMain#(FlashIndication indication,
 		rule forwardDmaRdData;
 			writeWordPipe.deq;
 			debugWriteCnt <= debugWriteCnt + 1;
-			flashCtrl.user.writeWord(writeWordPipe.first);
+			flashSplit.locFlashServ.writeWord.put(writeWordPipe.first);
+			//flashCtrl.user.writeWord(writeWordPipe.first);
 		endrule
 			
-	end //for each bus
+	end //for each engine port
+
+	//local write data
+	rule locWriteData;
+		let d <- flashSplit.locFlashCli.writeWord.get();
+		flashCtrl.user.writeWord(tuple2(tpl_1(d), tpl_2(d)));
+	endrule
+
 
 	//--------------------------------------------
 	// Writes/Erase Acks
 	//--------------------------------------------
 
+	rule locAck;
+		let ackStatus <- flashCtrl.user.ackStatus();
+		match{.tag, .status} = ackStatus;
+		flashSplit.locFlashCli.ackStatus.put(tuple3(tag, status, ?));
+	endrule
+		
 	//Handle acks from controller
 	FIFO#(Tuple2#(TagT, StatusT)) ackQ <- mkFIFO;
 	rule handleControllerAck;
-		let ackStatus <- flashCtrl.user.ackStatus();
-		match{.tag, .status} = ackStatus;
-		ackQ.enq(ackStatus);
+		let ackStatus <- flashSplit.locFlashServ.ackStatus.get();
+		match{.tag, .status, .trash} = ackStatus;
+		ackQ.enq(tuple2(tag, status));
 	endrule
 
 	rule indicateControllerAck;
 		ackQ.deq;
-		TagT tag = tpl_1(ackQ.first);
-		StatusT st = tpl_2(ackQ.first);
+		match{.tag, .st} = ackQ.first;
 		case (st)
 			WRITE_DONE: indication.writeDone(zeroExtend(tag));
 			ERASE_DONE: indication.eraseDone(zeroExtend(tag), 0);

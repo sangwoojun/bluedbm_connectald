@@ -5,3 +5,9 @@
 
 (nvm) - should 50mhz clock be derived? (going into aurora)
 - check scheduling conflicts within flash splitter
+
+- polling pcie
+
+- sharing of tags among operations
+
+

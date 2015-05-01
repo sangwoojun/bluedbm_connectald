@@ -1,0 +1,129 @@
+\section{Performance Evaluation}
+\label{sec:results}
+
+\subsection{Bandwidth Evaluation}
+
+
+We demonstrate that the performance of the network does not suffer from the
+addition of transport-layer network functions. We measured the bandwidth of the
+network under various configurations, such as transporting data to nodes of
+variable distance, with multiple endpoints with various buffer size and flow
+control credits. We show that our network can usually achieve a bandwidth of
+17Gb/s, which is 85\% of the maximum physical link bandwidth. This performance
+is reasonable considering the packet header and flow control overhead.
+
+
+\emph{\bf{Single Endpoint Over Multiple Hops :}}
+We measured the bandwidth of the network implementation by using a single
+endpoint to send a large amount of data to a remote node and measure the elapsed
+time. Data was sent to nodes that are varying hops away. We also measured the
+performance of the network with various flow control stride settings. Larger
+Stride settings mean a larger buffer size is required. Flow control offset
+was set to be half of the stride length. The results can be seen in
+Figure~\ref{fig:bandwidth_hops}. 
+
+When the flow control stride was small, performance of the network was lower
+when going over a longer network distance. This is because the round trip
+latency over multiple hops is longer than the time it takes to deplete the send
+buffer, resulting in idle cycles when no data can safely be sent over the
+network. With the low network latency of the serial links, maximum bandwidth
+over 3 network hops could be achieved using a single endpoint when the flow
+control stride is over 512 packets large.
+
+\begin{figure}[t]
+	\begin{center}
+	\includegraphics[width=0.35\textwidth]{graphs/obj/bandwidth_hops-crop.pdf}
+	\caption{Network Bandwidth With Variable Network Distance}
+	\label{fig:bandwidth_hops}
+	\end{center}
+\end{figure}
+
+\emph{\bf{Multiple Endpoints Over Multiple Hops :}}
+Since most interesting distributed FPGA applications will have more than one
+network endpoint, maximum network performance can be achieved even when a single
+endpoint's stride length is large enough. We measured the aggregate network
+bandwidth of a varying number of endpoints sending data to a node three network
+hops away. We also measured the performance with varying flow control stride
+lengths. Flow control offset was set to be half of the stride length. The
+results can be seen in Figure~\ref{fig:bandwidth_links}. It shows that a
+collection of smaller sized endpoints can saturate the network by filling in
+each others' idle cycles.
+
+\begin{figure}[b]
+	\begin{center}
+	\includegraphics[width=0.35\textwidth]{graphs/obj/bandwidth_links-crop.pdf}
+	\caption{Network Bandwidth With Variable Number of Channels}
+	\label{fig:bandwidth_links}
+	\end{center}
+\end{figure}
+
+\emph{\bf{Buffer Size and Flow Control Offset :}}
+Endpoints can be characterized not only by its flow control stride length, but
+also by the flow control offset and buffer size parameters. Having a larger
+buffer size means being able to reserve space to allocate buffers for more
+remote nodes. The same amount of buffer space can also be allocated to a
+different number of nodes with different flow control strides. 
+The size of the flow control offset also effects endpoint characteristics. A
+larger offset generally requires a larger buffer as space for a new stride has
+to be allocated while the receive queue is not quite emptied of the previous
+stride. But setting a smaller offset has the risk of incurring
+idle time by delivering a flow control packet too late.
+
+We measured the effect of such parameters by having three nodes send a stream of
+packets to the same remote node. We tested three scenarios, two had the same total
+buffer size organized into different organizations, and one had a smaller
+buffer. Table~\ref{tab:offsetresults} describe the three
+scenarios. In the first scenario, the three source nodes will be contending to
+be scheduled into the two possible stride slots, where in the latter two
+scenarios they will be contending for one 64 packet stride slot.
+
+\begin{table}[h]
+	\begin{tabular}{l | l}
+		Setting & Description \\
+		\hline
+		32*2+16 & Buffer has space for two 32 packet strides, with offset of 16\\
+		64*1+16 & Buffer has space for one 64 packet stride, with offset of 16\\
+		64*1+8 & Buffer has space for one 64 packet stride, with offset of 8\\
+		\hline
+	\end{tabular}
+	\caption{Flow Control Parameters}
+	\label{tab:offsetresults}
+\end{table}
+
+The results can be seen in Figure~\ref{fig:bandwidth_offset}. It shows that even
+with the same buffer size, having a larger stride with is
+beneficial to a small buffer configuration. The difference is pronounced enough
+that even reducing buffer usage further by making the offset smaller results
+in a better performance compared to the configuration with smaller stride
+lengths. These results suggest that for smaller endpoints with small buffer
+sizes, buffer space can most effectively be used by using it for larger strides,
+while using a relatively small offset. For large endpoints attempting to exert
+the most amount of bandwidth, a larger offset may be required to fill in the
+time between the flow control packet latency.
+
+\begin{figure}[t]
+	\begin{center}
+	\includegraphics[width=0.35\textwidth]{graphs/obj/bandwidth_offset-crop.pdf}
+	\caption{Network Bandwidth With Different Flow Control Settings}
+	\label{fig:bandwidth_offset}
+	\end{center}
+\end{figure}
+
+\subsection{Latency Evaluation}
+
+Network latency was measured by measuring the round-trip latency by sending a
+packet to nodes of varying distances, where the user logic immediately sends the
+packet back to the original sender. The results can be seen in
+Figure~\ref{fig:latency}. We show a consistent latency of less than 0.5us per
+hop.
+
+\begin{figure}[b]
+	\begin{center}
+	\includegraphics[width=0.35\textwidth]{graphs/obj/latency-crop.pdf}
+	\caption{Network Latency Per Hop}
+	\label{fig:latency}
+	\end{center}
+\end{figure}
+
+
+

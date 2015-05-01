@@ -1,0 +1,90 @@
+Sending 1 Giga-Words
+
+1 hop 1 link buffer 16 -> 71s
+1 hop 1 link buffer 32 -> 41s
+1 hop 1 link buffer 64 -> 24s
+1 hop 1 link buffer 128 -> 13s
+1 hop 1 link buffer 256 -> 10s
+1 hop 1 link buffer 512 -> 10s
+
+2 hop 1 link buffer 16 -> 128
+2 hop 1 link buffer 32 -> 67
+2 hop 1 link buffer 64 -> 38
+2 hop 1 link buffer 128 -> 21
+2 hop 1 link buffer 256 -> 13
+2 hop 1 link buffer 512 -> 10
+
+3 hop 1 link buffer 16 -> 185
+3 hop 1 link buffer 32 -> 96
+3 hop 1 link buffer 64 -> 50
+3 hop 1 link buffer 128 -> 28
+3 hop 1 link buffer 256 -> 16
+3 hop 1 link buffer 512 -> 10
+
+
+Sending 1 Giga-Words per link
+
+3 hop 2 links buffer 16 -> 186
+3 hop 2 links buffer 32 -> 96
+3 hop 2 links buffer 64 -> 51
+3 hop 2 links buffer 128 -> 28
+3 hop 2 links buffer 256 -> 21
+
+3 hop 3 links buffer 16 -> 190
+3 hop 3 links buffer 32 -> 97
+3 hop 3 links buffer 64 -> 52
+3 hop 3 links buffer 128 -> 31
+3 hop 3 links buffer 256 -> 31
+
+3 hop 4 linke buffer 16 -> 201
+3 hop 4 linke buffer 32 -> 106
+3 hop 4 linke buffer 64 -> 58
+3 hop 4 linke buffer 128 -> 42
+3 hop 4 linke buffer 256 -> 40
+
+
+
+5 -> 8 (1GW)
+
+32*3 + 16*4 -> 95
+64*2 + 8*4 -> 54
+128*1 + 8*4 -> 32
+
+5 6 7 -> 8 (1GW each)
+// using this one for a graph
+32*2 + 16*4 96
+64 + 16*4 59
+64 + 8*4 92
+
+
+5 7 -> 6 (1GW each)
+32*2 + 16*4 -> 38
+
+
+/// don't know what I was aiming for
+5 6 7 Sending to 8 (1GW each)
+64 32 -> 53s (+2 for click...)
+128 16 -> 54s (+2 for click delay...?)
+64 8 -> 94 (+2...)
+
+32*2 + 16*4 -> 96 + 2
+
+//same size buffers...
+32*3 + 16*4 -> 96+2
+64*2 + 8*4 -> 58+2
+128*1 + 4*4 ->69+2
+
+// too fast
+2 hop 2 links buffer 16 -> 130
+2 hop 2 link3 buffer 32 -> 68
+2 hop 2 link3 buffer 256 -> 22
+2 hop 2 link3 buffer 512 -> 21
+
+//results strange...?
+2 hop 4 links buffer 16 -> 134
+2 hop 4 links buffer 32 -> 70
+2 hop 4 links buffer 64 -> 42
+2 hop 4 links buffer 128 -> 31
+2 hop 4 links buffer 256 -> 21
+
+

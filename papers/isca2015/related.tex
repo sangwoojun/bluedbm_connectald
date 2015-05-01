@@ -14,7 +14,7 @@ storage distributed across over 1000 servers networked over high-speed
 interconnect. Although RAMCloud provides 100 to 1000 times better performance
 than disk-based systems of similar scale, its high energy consumption and high
 price per GB limits its widespread use except for extremely performance and
-latency sensitive workloads.
+latency-sensitive workloads.
 
 NAND-Flash-based SSD devices are gaining traction as a faster alternative to
 disks, and close the performance gap between DRAM and persistent storage.
@@ -92,30 +92,30 @@ supports SQL queries. LINQits mapped a query language called LINQ to a set of
 accelerated hardware templates on a heterogeneous SoC (FPGA + ARM). Both designs
 exhibited order of magnitude performance gains at lower power, affirming that
 specialized hardware for data processing is very advantageous.
-However, unlike FlashBoost, these architectures accelerate computation on data that is in DRAM.
+However, unlike BlueDBM, these architectures accelerate computation on data that is in DRAM.
 Accelerators have also been placed in-path between network and processor to perform operations
 at wire speed~\cite{fpgastreamquery}, or to collect information such as
 histogram tables without overhead~\cite{histogramssideeffect}.
 
-\begin{figure*}[t!]
-\centering
-\vspace{0pt}
-\begin{minipage}[c]{.4\paperwidth}
-\begin{center}
-	\includegraphics[width=\textwidth]{figures/architecture_small-crop.pdf}
-	\caption{FlashBoost Overall Architecture}
-	\label{fig:architecture}
-\end{center}
-\end{minipage}\hfill
-\vspace{0pt}
-\begin{minipage}[c]{.4\paperwidth}
-\begin{center}
-	\includegraphics[width=0.7\textwidth]{figures/architecture_node-crop.pdf}
-	\caption{FlashBoost Node Architecture}
-	\label{fig:architecture_node}
-\end{center}
-\end{minipage}
-\end{figure*}
+%\begin{figure*}[t!]
+%\centering
+%\vspace{0pt}
+%\begin{minipage}[c]{.4\paperwidth}
+%\begin{center}
+%	\includegraphics[width=\textwidth]{figures/architecture_small-crop.pdf}
+%	\caption{BlueDBM Overall Architecture}
+%	\label{fig:architecture}
+%\end{center}
+%\end{minipage}\hfill
+%\vspace{0pt}
+%\begin{minipage}[c]{.4\paperwidth}
+%\begin{center}
+%	\includegraphics[width=0.7\textwidth]{figures/architecture_node-crop.pdf}
+%	\caption{BlueDBM Node Architecture}
+%	\label{fig:architecture_node}
+%\end{center}
+%\end{minipage}
+%\end{figure*}
 
 
 
@@ -125,10 +125,17 @@ Catapult~\cite{msr_catapult}.  Catapult uses a large number of homogeneous
 servers each augmented with an FPGA.  The FPGAs form a network among themselves
 via high-speed serial links so that large jobs can be mapped to groups of FPGAs.
 Catapult was demonstrated to deliver much faster performance while consuming
-less power, compared to a normal ram cloud cluster. FlashBoost has similar
+less power, compared to a normal ram cloud cluster. BlueDBM has similar
 goals in terms of reconfigurable hardware acceleration, but it uses flash
 devices to accelerate lower cost systems that do not have enough collective DRAM
 to host the entire dataset.
 
-The system closest in design to FlashBoost is BlueDBM~\cite{bluedbm}, but BlueDBM was a 4-node system with less than 100GB of slow flash. It is difficult to extrapolate the performance of real applications from the results obtained from BlueDBM, because of both its size and different relative performance of various system components. FlashBoost has been built with the explicit goal of running real applications, and will be freely available to the community for developing Big Data applications.
+%FIXME
+This system improves upon our previous BlueDBM prototype~\cite{bluedbm}, which was a 4-node system with less than 100GB of slow flash. 
+It was difficult to extrapolate the performance of real applications from the
+results obtained from our previous prototype, because of both its size and
+different relative performance of various system components. The current
+generation of BlueDBM has been built with the explicit goal of running real applications, and will be freely available to the community for developing Big Data applications.
+
+%The system closest in design to FlashBoost is BlueDBM~\cite{bluedbm}, but BlueDBM was a 4-node system with less than 100GB of slow flash. It is difficult to extrapolate the performance of real applications from the results obtained from BlueDBM, because of both its size and different relative performance of various system components. FlashBoost has been built with the explicit goal of running real applications, and will be freely available to the community for developing Big Data applications.
 

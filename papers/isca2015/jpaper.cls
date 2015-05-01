@@ -25,7 +25,7 @@
 \DeclareOption{nopageno}{\togglefalse{jp@pageno}}
 \DeclareOption{hyperref}{\toggletrue{jp@hyperref}}
 \DeclareOption{nohyperref}{\togglefalse{jp@hyperref}}
-\ExecuteOptions{nolineno,pageno,hyperref}
+\ExecuteOptions{nolineno,pageno,nohyperref}
 \ProcessOptions
 
 % Load the underlying article class.
@@ -64,15 +64,16 @@
 \setlength{\droptitle}{-3.5em}
 
 \pretitle{\begin{center}\vspace{-.5in}
-ISCA Submission \#\iscasubmissionnumber -- Confidential Draft -- Do Not Distribute!!\\
 \vspace{.35in}
 \normalfont\Large\bfseries}
 \posttitle{\par\end{center}}
-\preauthor{\begin{center}\normalfont\large%
+\preauthor{\begin{center}\vspace{0.15in}\normalfont\large%
     \begin{tabular}[t]{c}}
 \postauthor{\end{tabular}\par\end{center}}
 \predate{}
 \postdate{}
+
+\newcommand{\authemail}[1]{\large{\texttt{#1}}}
 
 
 % The abstract should be normally sized and italicized. Abstract leading
@@ -104,6 +105,18 @@ ISCA Submission \#\iscasubmissionnumber -- Confidential Draft -- Do Not Distribu
 \RequirePackage{enumerate}
 \RequirePackage{enumitem}
 \setlist{noitemsep, leftmargin=*, topsep=0pt, partopsep=0pt}
+
+
+\newcommand{\copyrightnotice}[2]{
+\begin{figure}[!b]
+\vspace{20pt}
+\footnotesize{#1
+#2
+}
+\end{figure} 
+}
+ 
+
 
 % Bibliography formatting.
 \newcommand{\bibspacing}{\setstretch{0}}

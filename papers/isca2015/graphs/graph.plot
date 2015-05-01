@@ -15,10 +15,14 @@ set xtics ( \
 #set xtic rotate by -45
 set yrange [0:20000]
 set xrange [.45:6.75]
-set bmargin 10
-set tmargin 1
-set lmargin 3
-set rmargin 6
+
+#set bmargin 10
+#set tmargin 1
+#set lmargin 3
+#set rmargin 6
+
+set grid ytics lc rgb "#ccc" lt 0
+set border lw 4
 
 #set key on at 1.7,120,0 samplen 2 #font "Helvetica,8"
 set style fill pattern
@@ -30,4 +34,4 @@ set output "graph.ps"
 
 set multiplot
 
-plot 'graph.dat' u ($2) t "Graph Traversal" fillstyle pattern 2
+plot 'graph.dat' u ($2) t "Graph Traversal" fillstyle pattern 2 lw 4

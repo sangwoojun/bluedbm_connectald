@@ -1,0 +1,132 @@
+\section{Introduction}
+% no \IEEEPARstart
+
+In order to tackle large data intensive applications, many modern FPGA-based
+deployments are exploring the use of FPGA clusters, where a network of FPGAs are
+deployed and a large body of work is distributed across the FPGAs.  A network
+protocol for an FPGA cluster largely has three important criteria: (1) it must
+be easily usable by an application developer, (2) It must have high performance
+with low latency, and (3) it must consume only a small amount of scarce on-chip
+FPGA memory.
+
+Two essential features for a usable network implementation are virtual channel
+and end-to-end flow control, both of which correspond to the transport layer of
+the OSI network model. Virtual channels are useful because most distributed
+applications need to communicate multiple types of messages such as command,
+data and status packets. The messages often have different priorities which when
+sent on a single link, can cause head-of-line blocking. Without virtual channel
+support, the developer must handle multiplexing the network link manually.
+Another crucial feature for building safe distributed systems is end-to-end flow
+control, which is needed so that one blocked channel would not block other
+channels.  Ensuring these properties without a proper transport layer protocol
+makes the development of high performance distributed FPGA applications
+difficult. 
+
+An FPGA cluster is often networked using low-overhead link-layer protocols such
+as Aurora which runs on the high-speed serial transceivers included in the FPGA
+fabric.  Such links provide reliable multi-gigabit bandwidth at a
+sub-microsecond latency. Such low-latency network fabric and scarce on-chip
+memory resources on FPGAs make TCP/IP not an attractive option.
+
+For deadlock-free operations, all virtual channels need separate packet buffers,
+and such packet buffers have to be large enough to mask network latency as well
+as bursts from multiple sources. Scarcity of on-chip memory resources can limit
+the bandwidth even in the presence of low-latency inter-FPGA networks.  A
+solution may be to use a large off-chip DRAM packet buffers, but in such a
+scenario, the high performance serial links will consume a non-trivial amount of
+DRAM bandwidth which may affect application performance, especially if the
+application is using an accelerator on the FPGA.  Another solution is clever
+allocation of buffer space by allowing different amount of buffers for different
+channels. Application developers can adjust the buffer space per channel to meet
+the performance criteria without increasing the total buffer requirement.
+
+%In order to tackle large data intensive applications, many modern FPGA-based
+%deployments are exploring the use of FPGA clusters, where a network of FPGAs are
+%deployed and a large body of work is distributed across the FPGAs.  A network
+%protocol for an FPGA cluster largely has three important criteria: (1) it must
+%be easily usable by an application developer, (2) It must have high performance
+%with low latency, and (3) it must consume little FPGA resources such as on-chip
+%memory.
+%
+%Two essential features for a usable network implementation are virtual channel
+%and end-to-end flow control, both of which correspond to the transport layer of the OSI
+%network model. Virtual channels are useful because most distributed applications
+%need to communicate multiple type of messages to remote nodes, such as command,
+%data and status packets. Without virtual channel support, the developer must
+%handle multiplexing the network link manually. End-to-end flow control is
+%crucial for building safe distributed systems, as it guarantees that one virtual
+%channel being under congestion will not cause other channels to block. Without
+%it, the developer must make sure the application uses the network in a safe way
+%so that congestion does not cause network wide deadlocks. This makes the
+%development of high performance distributed FPGA application development
+%difficult. 
+%
+%An FPGA cluster is often networked using low-overhead link-layer protocols such
+%as Aurora which runs on the high-speed serial transceivers included in the FPGA
+%fabric.  Such links provide multi-gigabit bandwidth at a sub-microsecond
+%latency, while being extremely reliable. Such low latency of the network fabric
+%makes most popular transport layer network protocols such as TCP/IP not very
+%applicable due to their high performance overhead.
+%
+%Efficient implementation of a transport layer network protocol on an FPGA is
+%difficult, mostly because of scarce on-chip memory resources. Because it is
+%difficult to allocate a deep packet buffer, especially since all virtual
+%channels need separate packet buffers, even the relatively low communication
+%latency can have high bandwidth implications. This is exacerbated by the fact
+%that data may come from any node in the network, and the receiving packet buffer
+%should be able to accommodate all of them.  A solution may be to use a larger
+%off-chip DRAM for packet buffers, but the high performance of the serial
+%networks consume a non-trivial amount of DRAM bandwidth that could be used
+%elsewhere. Another solution is parameterization. Since different virtual
+%channels can have vastly different traffic patterns, parameterizing features
+%such as buffer size and flow control credits may be beneficial in conserving
+%resources while meeting performance criteria.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+The contributions of this paper are twofold: We present the design of a
+paramterized low-overhead transport level network for a cluster of FPGAs that
+implement the useful features described earlier, and we evaluate the performance
+of our networ design using a prototype deployment.
+
+Our network design includes transport layer implementations such as virtual
+channels via multiplexing, and end-to-end flow control. It features an
+end-to-end low-overhead credit-based flow control per virtual channel, making a
+distributed FPGA application developer's job much easier.  It also includes a
+network layer implementation including packet forwarding. In our router, we make
+use of the high reliability of the serial link and deterministic routing to
+ensure lossless in-order arriving of packets, greatly simplifying the transport
+layer protocol.  
+
+Our transport layer is parameterized such that flow control features for each
+virtual channel can be configured at FPGA synthesis time. Parameters include
+buffer size and flow control credits.  We demonstrate that a parameterized
+transport-layer implementation can achieve high performance in a distributed
+FPGA environment while maintaining a small BRAM footprint, by adjusting a few
+parameters to best fit the usage characteristics of a virtual channel. 
+
+We have implemented a prototype of our network on a cluster of 20 Xilinx VC707
+FPGA development boards, with 4 20Gb/s serial links each. Our prototype
+implementation achieves an effective bandwidth of 17Gb/s per link, which is 85\%
+of maximum physical link bandwidth, at a latency of 0.5us.
+
+The rest of the paper is organized as follows: Section~\ref{sec:related} covers
+the previous and related work. Section~\ref{sec:architecture} describes our
+implementation of the network and transport layer, and
+Section~\ref{sec:implementation} describes the details of a prototype
+implementation of the network. Section~\ref{sec:results}
+presents the performance evaluation of our implementation, and conclude in
+Section~\ref{sec:conclusion}.
+

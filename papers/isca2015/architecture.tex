@@ -2,12 +2,12 @@
 \label{sec:architecture}
 
 
-The FlashBoost architecture is a homogeneous cluster of host servers coupled
-with a FlashBoost storage device (See Figure~\ref{fig:architecture}). Each FlashBoost storage device is plugged into
+The BlueDBM architecture is a homogeneous cluster of host servers coupled
+with a BlueDBM storage device (See Figure~\ref{fig:architecture}). Each BlueDBM storage device is plugged into
 the host server via a PCIe link, and it consists of flash storage, an in-store
 processing engine, multiple high-speed network interfaces and on-board DRAM. The host
 servers are networked together using Ethernet or other general-purpose
-networking fabric. The host server can access the FlashBoost storage device via
+networking fabric. The host server can access the BlueDBM storage device via
 a host interface implemented over PCIe. It can either directly communicate with
 the flash interface, to treat is as a raw storage device, or with the in-store
 processor to perform computation on the data.
@@ -33,15 +33,15 @@ as a typical block device to the host operating system, and its internal
 architecture and management algorithms are completely hidden. 
 
 However, this additional layer of management duplicates some file system functions and adds significant latency~\cite{rfs}.
-Furthermore, in a distributed storage environment, such as FlashBoost,
+Furthermore, in a distributed storage environment, such as BlueDBM,
 independent flash devices do not have a holistic view of the system and thus
 cannot efficiently manage flash. Finally, in-store processors that we have
-introduced in FlashBoost would also incur performance penalties if passing
-through this extra layer. Thus in FlashBoost, we chose to shift flash management
+introduced in BlueDBM would also incur performance penalties if passing
+through this extra layer. Thus in BlueDBM, we chose to shift flash management
 away from the device and into file system/block device driver (discussed in
 Section~\ref{sec:software}).
 
-\subsubsection{An Interface for High Performance Flash Access}
+\subsubsection{Interface for High Performance Flash Access}
  Our flash controller exposes a low-level, thin,
 fast and bit-error corrected hardware interface to raw NAND flash chips, buses,
 blocks and pages. This has the benefit of (i) cutting down on access latency
@@ -57,7 +57,7 @@ ready to receive the data for that write. The user will send the write data
 corresponding to that request in 128-bit bursts. The controller returns an
 acknowledgement once write is finished. 
 For read operations, the data is returned in 128-bit bursts along with the request tag.
-We emphasize that for maximum performance, the
+For maximum performance, the
 controller may send these data bursts \emph{out of order} with respect to
 the issued request and \emph{interleaved} with other read requests.
 Thus completion buffers may be required on the user side to maintain FIFO
@@ -79,22 +79,38 @@ can have latencies of 50 $\mu s$ or more.
 
 \begin{figure}[h]
 	\begin{center}
-	\includegraphics[scale=0.4]{figures/architecture_flash-crop.pdf}
-	\caption{Flash Interface}
+	\includegraphics[scale=0.45]{figures/architecture_small-crop.pdf}
+	\caption{BlueDBM overall architecture}
+	\label{fig:architecture}
+	\end{center}
+\end{figure}
+
+\begin{figure}[h]
+	\begin{center}
+	\includegraphics[scale=0.45]{figures/architecture_node-crop.pdf}
+	\caption{BlueDBM node architecture}
+	\label{fig:architecture_node}
+	\end{center}
+\end{figure}
+
+\begin{figure}[b]
+	\begin{center}
+	\includegraphics[scale=0.45]{figures/architecture_flash-crop.pdf}
+	\caption{Flash interface}
 	\label{fig:flashinterface}
 	\end{center}
 \end{figure}
 
 \subsubsection{Multiple Access Agents}
 
-Multiple hardware endpoints in FlashBoost may need shared access to this
+Multiple hardware endpoints in BlueDBM may need shared access to this
 flash controller interface. For example, a particular controller may
 be accessed by local in-store processors, local host software over PCIe
 DMA, or remote in-store processors over the network. Thus we implemented a
 Flash Interface Splitter with tag renaming to manage multiple users
 (Figure~\ref{fig:flashinterface}). In addition, 
 to ease development of hardware in-store processors,
-we also provide an optional Flash Server module as part of FlashBoost. This server
+we also provide an optional Flash Server module as part of BlueDBM. This server
 converts the out-of-order and interleaved flash interface into
 multiple simple in-order request/response interfaces
 using page buffers. It also contains an Address Translation Unit that 
@@ -107,18 +123,18 @@ based on the application.
 
 \subsection{Integrated Storage Network}
 
-\begin{figure}[t]
+\begin{figure}[b]
 	\begin{center}
 	\includegraphics[width=0.5\textwidth]{figures/network-architecture-crop.pdf}
-	\caption{Network Architecture}
+	\caption{Network architecture}
 	\label{fig:networkinterface}
 	\end{center}
 \end{figure}
 
 
-FlashBoost provides a low-latency high-bandwidth network infrastructure across
-all FlashBoost storage devices in the cluster, using a simple design with low buffer requirements. FlashBoost storage devices form a separate network
-among themselves via high-performance serial links.  The FlashBoost network is a
+BlueDBM provides a low-latency high-bandwidth network infrastructure across
+all BlueDBM storage devices in the cluster, using a simple design with low buffer requirements. BlueDBM storage devices form a separate network
+among themselves via high-performance serial links.  The BlueDBM network is a
 packet-switched mesh network, in which each storage device has multiple network
 ports and is capable of routing packets across the network without requiring a
 separate switch or router.  In addition to routing, the storage network supports functionality such as
@@ -136,7 +152,7 @@ responsible for relaying inbound packets to the internal
 switch, and relaying outbound packets from the internal switch to a correct
 physical port. 
 
-Due to the multiple ports on the storage nodes, the FlashBoost network is very
+Due to the multiple ports on the storage nodes, the BlueDBM network is very
 flexible and can be configured to implement various topologies, as long as there
 is sufficient number of ports on each node.
 Figure~\ref{fig:topologies} shows some example topologies. To implement a
@@ -147,25 +163,25 @@ the routing across a topology can be configured dynamically by the software.
 %Endpoints}, which provide virtual channel semantics, to access the network in a
 %virtualized manner.
 
-\begin{figure}[t!]
+\begin{figure}[b!]
 	\centering
-	\subfloat[Distributed Star]
+	\subfloat[Distributed star]
 		{\includegraphics[scale=0.35]{figures/topology_dist_star-crop.pdf}}
 		\hfill
 	\subfloat[Mesh]
 		{\includegraphics[scale=0.35]{figures/topology_mesh-crop.pdf}}
 		\hfill
-	\subfloat[Fat Tree]
+	\subfloat[Fat tree]
 		{\includegraphics[scale=0.35]{figures/topology_fat_tree-crop.pdf}}
-	\caption{Any Network Topology Is Possible As Long As It Requires Less Than 8
-	Network Ports Per Node}
+	\caption{Any network topology is possible as long as it requires less than 8
+	network ports per node}
 	\label{fig:topologies}
 \end{figure}
 
 
 \subsubsection{Logical Endpoint}
 
-The FlashBoost network infrastructure exposes virtual channel semantics to the
+The BlueDBM network infrastructure exposes virtual channel semantics to the
 users of the network by providing it with multiple \emph{logical endpoints}.  The
 number of endpoints are determined at design time by setting a parameter, and
 all endpoints share the physical network.  Each endpoint is parameterized with a
@@ -188,21 +204,22 @@ network can manage, or if the data cannot be received by the destination node wh
 
 \subsubsection{Routing Layer}
 
-%The goals of the FlashBoost network infrastructure is to
+%The goals of the BlueDBM network infrastructure is to
 %maintain high bandwidth and low latency, while maintaining a simple design for
 %embedded implementation. This requirement
 %prompted many design choices.
 
 \begin{figure}[h]
 	\begin{center}
-	\includegraphics[width=0.30\textwidth]{figures/routing-crop.pdf}
-	\caption{Routing Packets Across the Network}
+	\includegraphics[width=0.40\textwidth]{figures/routing-crop.pdf}
+	\caption{Packets from the same Endpoint to a destination maintain FIFO
+	order}
 	\label{fig:networkrouting}
 	\end{center}
 \end{figure}
 
 In order to make maximum use of the bandwidth of the network infrastructure
-while keeping resource usage to a minimal, the FlashBoost network implements
+while keeping resource usage to a minimal, the BlueDBM network implements
 deterministic routing for each logical endpoint. This means that all packets
 originating from the same logical endpoint that are directed to the same
 destination node follow the same route across the network, while packets from a
@@ -213,7 +230,7 @@ across multiple links, while maintaining the order of all packets from the same
 endpoint. If packets from the same endpoint are allowed to take different paths,
 it would require a completion buffer which may be expensive in an embedded
 system.
-For simplicity, the FlashBoost network does not implement a discovery protocol, and relies on a
+For simplicity, the BlueDBM network does not implement a discovery protocol, and relies on a
 network configuration file to populate the routing tables. 
 
 In order to maintain extremely low network latency, each endpoint is given a
@@ -256,7 +273,7 @@ contiguous data for a DMA burst before issuing a DMA burst, some reordering may
 be required at the DMA engine. This becomes even trickier when the device is
 using the integrated network to receive data from remote nodes, where they might
 all be coming from different buses. To fix this issue, we provide dual-ported
-buffer in hardware providing the semantics of a vector of FIFOs, so that data
+buffer in hardware which has the semantics of a vector of FIFOs, so that data
 for each request can be enqueued into its own FIFO until there is enough data
 for a burst.
 Figure~\ref{fig:hostinterface} describes the structure of the host interface for
@@ -265,7 +282,7 @@ flash reads.
 \begin{figure}[t!]
 	\centering
 	\includegraphics[width=0.25\textwidth]{figures/dmawrite-crop.pdf}
-	\caption{Host-FPGA Interface Over PCIe}
+	\caption{Host-FPGA interface over PCIe}
 	\label{fig:hostinterface}
 \end{figure}
 

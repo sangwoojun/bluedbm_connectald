@@ -12,10 +12,10 @@ set xtics ("ISP-F" 1, \
 #set xtic rotate by -45
 set yrange [0:350]
 set xrange [.45:4.75]
-set bmargin 10
-set tmargin 1
-set lmargin 3
-set rmargin 6
+
+
+set grid ytics lc rgb "#cccccc" lt 0
+set border lw 4
 
 set key invert
 set key on inside left top samplen 2 #font "Helvetica,8"

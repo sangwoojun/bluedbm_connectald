@@ -296,49 +296,49 @@ module mkAuroraExtImport_bsim#(Clock gtx_clk_in, Clock init_clk, Reset init_rst_
 	rule m0 if ( bdpiRecvAvailable(nodeIdx, 0 ));
 		let d = bdpiRead(nodeIdx, 0);
 		mirrorQ0.enq(d);
-		$display( "\t\tread %x 0", d );
+		//$display( "\t\tread %x 0", d );
 	endrule
 	rule m1 if ( bdpiRecvAvailable(nodeIdx, 1 ));
 		let d = bdpiRead(nodeIdx, 1);
 		mirrorQ1.enq(d);
-		$display( "\t\tread %x 1", d );
+		//$display( "\t\tread %x 1", d );
 	endrule
 	rule m2 if ( bdpiRecvAvailable(nodeIdx, 2 ));
 		let d = bdpiRead(nodeIdx, 2);
 		mirrorQ2.enq(d);
-		$display( "\t\tread %x 2", d );
+		//$display( "\t\tread %x 2", d );
 	endrule
 	rule m3 if ( bdpiRecvAvailable(nodeIdx, 3 ));
 		let d = bdpiRead(nodeIdx, 3);
 		mirrorQ3.enq(d);
-		$display( "\t\tread %x 3", d );
+		//$display( "\t\tread %x 3", d );
 	endrule
 
 	rule w0 if ( bdpiSendAvailable(nodeIdx, 0));
 		let d = writeQ0.first;
 		if ( bdpiWrite(nodeIdx, 0, d) ) begin
-			$display( "\t\twrite %x 0", d );
+			//$display( "\t\twrite %x 0", d );
 			writeQ0.deq;
 		end
 	endrule
 	rule w1 if ( bdpiSendAvailable(nodeIdx, 1));
 		let d = writeQ1.first;
 		if ( bdpiWrite(nodeIdx, 1, d) ) begin
-			$display( "\t\twrite %x 1", d );
+			//$display( "\t\twrite %x 1", d );
 			writeQ1.deq;
 		end
 	endrule
 	rule w2 if ( bdpiSendAvailable(nodeIdx, 2));
 		let d = writeQ2.first;
 		if ( bdpiWrite(nodeIdx, 2, d) ) begin
-			$display( "\t\twrite %x 2", d );
+			//$display( "\t\twrite %x 2", d );
 			writeQ2.deq;
 		end
 	endrule
 	rule w3 if ( bdpiSendAvailable(nodeIdx, 3));
 		let d = writeQ3.first;
 		if ( bdpiWrite(nodeIdx, 3, d) ) begin
-			$display( "\t\twrite %x 3", d );
+			//$display( "\t\twrite %x 3", d );
 			writeQ3.deq;
 		end
 	endrule

@@ -172,7 +172,7 @@ module mkAuroraExtArbiterBar#(Vector#(tExtCount, AuroraExtUserIfc) extPorts, Vec
 			let d = outQep.first;
 			let ptype = d.ptype;
 			endpoints[ptype].send(d);
-			$display( "ep %d recv data %x", d.ptype, d.payload );
+			//$display( "ep %d recv data %x", d.ptype, d.payload );
 			/*
 			for ( Integer eidx = 0; eidx < endpointCount; eidx=eidx+1) begin
 				if ( endpoints[eidx].packetType == ptype ) begin
@@ -220,7 +220,7 @@ module mkAuroraExtArbiterBar#(Vector#(tExtCount, AuroraExtUserIfc) extPorts, Vec
 			let d = vMerge[endpointCount-2].first;
 			vMerge[endpointCount-2].deq;
 			inQep.enq(d);
-			$display( "ep %d sends data %x", d.ptype, d.payload );
+			//$display( "ep %d sends data %x", d.ptype, d.payload );
 		endrule
 	end
 

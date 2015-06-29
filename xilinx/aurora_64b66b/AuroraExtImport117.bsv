@@ -31,7 +31,11 @@ module mkAuroraExt117#(Clock gtx_clk_p, Clock gtx_clk_n, Clock clk50) (AuroraExt
 	MakeResetIfc rst50ifc2 <- mkReset(8, True, clk50);
 	Reset rst50_2 = rst50ifc2.new_rst;
 	//Reset rst50_2 <- mkAsyncReset(2, defaultReset, clk50);
-	Clock auroraExt_gtx_clk <- mkClockIBUFDS_GTE2(True, gtx_clk_p, gtx_clk_n);
+	Clock auroraExt_gtx_clk <- mkClockIBUFDS_GTE2(
+`ifdef ClockDefaultParam
+						      defaultValue,
+`endif
+						      True, gtx_clk_p, gtx_clk_n);
 
 	AuroraExtImportIfc#(AuroraExtPerQuad) auroraExtImport <- mkAuroraExtImport117(auroraExt_gtx_clk, clk50, rst50, rst50_2);
 `else

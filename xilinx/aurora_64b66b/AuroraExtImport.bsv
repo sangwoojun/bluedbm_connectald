@@ -212,16 +212,15 @@ module mkAuroraExt#(Clock gtx_clk_p, Clock gtx_clk_n, Clock clk50) (AuroraExtIfc
 	//ClockDividerIfc auroraExtClockDiv5 <- mkDCMClockDivider(5, 4, clocked_by clk250);
 	//Clock clk50 = auroraExtClockDiv5.slowClock;
 	Reset rst50 <- mkAsyncReset(2, defaultReset, clk50);
-	MakeResetIfc rst50ifc2 <- mkReset(8, True, clk50);
-	Reset rst50_2 = rst50ifc2.new_rst;
-	//Reset rst50_2 <- mkAsyncReset(2, defaultReset, clk50);
 	Clock auroraExt_gtx_clk <- mkClockIBUFDS_GTE2(
 `ifdef ClockDefaultParam
 						      defaultValue,
 `endif
 						      True, gtx_clk_p, gtx_clk_n);
 
-	AuroraExtImportIfc#(AuroraExtPerQuad) auroraExtImport <- mkAuroraExtImport(auroraExt_gtx_clk, clk50, rst50, rst50_2);
+	MakeResetIfc rstgtpifc2 <- mkReset(8, True, auroraExt_gtx_clk);
+	Reset rstgtp = rstgtpifc2.new_rst;
+	AuroraExtImportIfc#(AuroraExtPerQuad) auroraExtImport <- mkAuroraExtImport(auroraExt_gtx_clk, clk50, rst50, rstgtp);
 `else
 	AuroraExtImportIfc#(AuroraExtPerQuad) auroraExtImport <- mkAuroraExtImport_bsim(defaultClock, defaultClock, defaultReset, defaultReset);
 `endif
@@ -486,7 +485,7 @@ module mkAuroraExtImport#(Clock gtx_clk_in, Clock init_clk, Reset init_rst_n, Re
 	input_clock (INIT_CLK_IN) = init_clk;
 	input_reset (RESET_N) = init_rst_n;
 	input_clock (GTX_CLK) = gtx_clk_in;
-	input_reset (GT_RESET_N) = gt_rst_n;
+	input_reset (GT_RESET_N) clocked_by (gtx_clk_in) = gt_rst_n;
 
 	output_clock aurora_clk0(USER_CLK_0);
 	output_reset aurora_rst0(USER_RST_N_0) clocked_by (aurora_clk0);

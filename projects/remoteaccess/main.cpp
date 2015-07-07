@@ -53,7 +53,7 @@ int main(int argc, const char **argv)
 	*/
 
 
-	int myid = atoi(hostname+strlen("bdbm"));
+	unsigned long myid = strtoul(hostname+strlen("bdbm"), NULL, 0);
 	if ( strstr(hostname, "bdbm") == NULL 
 		&& strstr(hostname, "umma") == NULL
 		&& strstr(hostname, "lightning") == NULL ) {
@@ -63,7 +63,7 @@ int main(int argc, const char **argv)
 	}
 	char* userhostid = getenv("BDBM_ID");
 	if ( userhostid != NULL ) {
-		myid = atoi(userhostid);
+	  myid = strtoul(userhostid, NULL, 0);
 	}
 
 	MemServerRequestProxy *hostMemServerRequest = new MemServerRequestProxy(IfcNames_HostMemServerRequest);
@@ -86,7 +86,7 @@ int main(int argc, const char **argv)
 	
 	printf( "Done allocating DMA buffers\n" ); fflush(stdout);
 
-	printf( "initializing aurora with node id %d\n", myid ); fflush(stdout);
+	printf( "initializing aurora with node id %ld\n", myid ); fflush(stdout);
 	auroraifc_start(myid);
 
 	/////////////////////////////////////////////////////////

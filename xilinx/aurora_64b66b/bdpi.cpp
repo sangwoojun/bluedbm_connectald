@@ -64,8 +64,9 @@ bool getPipes(unsigned char nidx, unsigned char pidx) {
 		if ( fifo_fd[rdidx] != -1 ) {
 			read_recv[pidx] = true;
 			fifo_exists[rdidx] = true;
-			printf( "Created and opened read fd for %d(%d)\n", nidx, pidx );
-			fflush(stdout);
+			fprintf(stderr,  "Created and opened read fd for %d(%d)\n", nidx, pidx );
+		} else {
+			fprintf(stderr, "%s:%d failed to open fifo %s errno=%d:%s\n", __FUNCTION__, __LINE__, fifonamerd, errno, strerror(errno));
 		}
 	}
 
@@ -73,8 +74,9 @@ bool getPipes(unsigned char nidx, unsigned char pidx) {
 		fifo_fd[wridx] = open(fifonamewr, O_WRONLY| O_NONBLOCK);
 		if ( fifo_fd[wridx] != -1 ) {
 			fifo_exists[wridx] = true;
-			printf( "Created and opened write fd for %d(%d)\n", nidx, pidx );
-			fflush(stdout);
+			fprintf(stderr, "Created and opened write fd for %d(%d)\n", nidx, pidx );
+		} else {
+			fprintf(stderr, "%s:%d failed to open fifo %s errno=%d:%s\n", __FUNCTION__, __LINE__, fifonamewr, errno, strerror(errno));
 		}
 	}
 
@@ -96,8 +98,10 @@ extern "C" bool bdpiRecvAvailable(unsigned char nidx, unsigned char pidx) {
 	if ( r > 0 ) {
 		lastread[pidx] = d;
 		read_recv[pidx] = false;
-		//printf( "read %d bytes %llx %d(%d)\n", r, lastread[pidx], nidx, pidx );
+		fprintf(stderr, "read %d bytes %llx %d(%d)\n", r, lastread[pidx], nidx, pidx );
 		return true;
+	} else if ( r < 0) {
+		fprintf(stderr, "%s:%d: fd=%d errno=%d:%s\n", __FUNCTION__, __LINE__, errno, strerror(errno));
 	}
 	return false;
 }
@@ -119,12 +123,16 @@ extern "C" unsigned long long bdpiRead(unsigned char nidx, unsigned char pidx) {
 }
 
 extern "C" bool bdpiWrite(unsigned char nidx, unsigned char pidx, unsigned long long data) {
-	//printf( "write data %llx %d(%d)\n", data, nidx, pidx );
+	fprintf(stderr, "write data %llx %d(%d)\n", data, nidx, pidx );
 	if ( ! getPipes(nidx, pidx) ) return false;
 	unsigned char wridx = pidx | WR_PORT;
 
 	int r = write(fifo_fd[wridx], &data, sizeof(unsigned long long));
-	if ( r < 8 ) return false;
+	if ( r < 8 && r > 0 ) {
+		return false;
+	} else if ( r < 0) {
+		fprintf(stderr, "%s:%d: fd=%d errno=%d:%s\n", __FUNCTION__, __LINE__, errno, strerror(errno));
+	}
 
 	return true;
 }

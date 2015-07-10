@@ -290,15 +290,15 @@ module mkAuroraExtImport_bsim#(Clock gtx_clk_in, Clock init_clk, Reset init_rst_
    Vector#(4, FIFO#(Bit#(AuroraPhysWidth))) mirrorQ <- replicateM(mkFIFO);
 
    for (Integer i = 0; i < 4; i = i + 1) begin
-	rule m0 if ( bdpiRecvAvailable(nodeIdx, 0 ));
-		let d = bdpiRead(nodeIdx, 0);
+	rule m0 if ( bdpiRecvAvailable(nodeIdx, fromInteger(i) ));
+		let d = bdpiRead(nodeIdx, fromInteger(i));
 		mirrorQ[i].enq(d);
 	        //$display( "\t\tread %x 0", d );
 	endrule
-	rule w0 if ( bdpiSendAvailable(nodeIdx, 0));
+	rule w0 if ( bdpiSendAvailable(nodeIdx, fromInteger(i)));
 		let d = writeQ[i].first;
-		if ( bdpiWrite(nodeIdx, 0, d) ) begin
-			//$display( "\t\twrite %x 0", d );
+		if ( bdpiWrite(nodeIdx, fromInteger(i), d) ) begin
+			//$display( "\t\twrite %x %d", d, i );
 			writeQ[i].deq;
 		end
 	endrule

@@ -39,10 +39,12 @@ bool getPipes(unsigned char nidx, unsigned char pidx) {
 		sprintf(fifonamerd, "../aurora%02d_%02ddown", nidx,off);
 		// these will probably not fail, or fail with EEXIST
 		if( access( fifonamerd, F_OK ) == -1 ) {
-			mkfifo(fifonamerd, S_IRUSR| S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+			if (mkfifo(fifonamerd, S_IRUSR| S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH) < 0)
+				fprintf(stderr, "%s:%d mkfifo returned errno=%d:%s\n", __FUNCTION__, __LINE__, errno, strerror(errno));
 		}
 		if( access( fifonamewr, F_OK ) == -1 ) {
-			mkfifo(fifonamewr, S_IRUSR| S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+			if (mkfifo(fifonamewr, S_IRUSR| S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH) < 0)
+				fprintf(stderr, "%s:%d mkfifo returned errno=%d:%s\n", __FUNCTION__, __LINE__, errno, strerror(errno));
 		}
 
 	} else if ( pidx >= 2 && pidx < 4 && nidx > 0) { // comes up
@@ -52,10 +54,12 @@ bool getPipes(unsigned char nidx, unsigned char pidx) {
 		sprintf(fifonamewr, "../aurora%02d_%02ddown", nidx-1,off);
 		// these will probably not fail, or fail with EEXIST
 		if( access( fifonamerd, F_OK ) == -1 ) {
-			mkfifo(fifonamerd, S_IRUSR| S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+			if (mkfifo(fifonamerd, S_IRUSR| S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH) < 0)
+				fprintf(stderr, "%s:%d mkfifo returned errno=%d:%s\n", __FUNCTION__, __LINE__, errno, strerror(errno));
 		}
 		if( access( fifonamewr, F_OK ) == -1 ) {
-			mkfifo(fifonamewr, S_IRUSR| S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+			if (mkfifo(fifonamewr, S_IRUSR| S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH) < 0)
+				fprintf(stderr, "%s:%d mkfifo returned errno=%d:%s\n", __FUNCTION__, __LINE__, errno, strerror(errno));
 		}
 	}
 

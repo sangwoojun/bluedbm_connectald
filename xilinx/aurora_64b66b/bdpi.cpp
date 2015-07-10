@@ -70,7 +70,8 @@ bool getPipes(unsigned char nidx, unsigned char pidx) {
 			fifo_exists[rdidx] = true;
 			fprintf(stderr,  "Created and opened read fd for %d(%d)\n", nidx, pidx );
 		} else {
-			fprintf(stderr, "%s:%d failed to open fifo %s errno=%d:%s\n", __FUNCTION__, __LINE__, fifonamerd, errno, strerror(errno));
+			if (errno != EAGAIN)
+				fprintf(stderr, "%s:%d failed to open fifo %s errno=%d:%s\n", __FUNCTION__, __LINE__, fifonamerd, errno, strerror(errno));
 		}
 	}
 

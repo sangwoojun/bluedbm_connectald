@@ -1,9 +1,10 @@
 #!/bin/bash
 
 rm -rf bsimall
-mkdir bsimall
+mkdir -p bsimall
 
 cd bsimall
+mkdir -p aurorapipes
 
 
 cp -r ../bluesim bluesim1

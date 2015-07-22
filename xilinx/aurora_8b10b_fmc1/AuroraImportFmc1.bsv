@@ -42,14 +42,16 @@ module mkAuroraIntra#(Clock gtx_clk_p, Clock gtx_clk_n, Clock clk250) (AuroraIfc
 	//ClockDividerIfc auroraIntraClockDiv4 <- mkDCMClockDivider(4, 5);
 	Reset defaultReset <- exposeCurrentReset;
 	Clock clk50 = auroraIntraClockDiv4.slowClock;
-	//MakeResetIfc rst50ifc <- mkReset(8, True, clk50);
-	MakeResetIfc rst50ifc2 <- mkReset(8, True, clk50);
-	//Reset rst50 = rst50ifc.new_rst;
 	Reset rst50 <- mkAsyncReset(2, defaultReset, clk50);
-	Reset rst50_2 = rst50ifc2.new_rst;
-	Reset rst50_2a <- mkAsyncReset(2, rst50_2, clk50);
-	Clock fmc1_gtx_clk_i <- mkClockIBUFDS_GTE2(True, gtx_clk_p, gtx_clk_n);
-	AuroraImportIfc#(4) auroraIntraImport <- mkAuroraImport_8b10b_fmc1(fmc1_gtx_clk_i, clk50, rst50, /*rst50*/rst50_2a);
+	Clock fmc1_gtx_clk_i <- mkClockIBUFDS_GTE2(
+`ifdef ClockDefaultParam
+						   defaultValue,
+`endif
+						   True, gtx_clk_p, gtx_clk_n);
+
+	MakeResetIfc rstgtxifc <- mkReset(8, True, fmc1_gtx_clk_i);
+        Reset rstgtx = rstgtxifc.new_rst;
+	AuroraImportIfc#(4) auroraIntraImport <- mkAuroraImport_8b10b_fmc1(fmc1_gtx_clk_i, clk50, rst50, rstgtx);
 `else
 	//Clock gtx_clk = cur_clk;
 	AuroraImportIfc#(4) auroraIntraImport <- mkAuroraImport_8b10b_bsim;
@@ -182,7 +184,7 @@ module mkAuroraImport_8b10b_fmc1#(Clock gtx_clk_in, Clock init_clk, Reset init_r
 
 	input_clock (INIT_CLK_IN) = init_clk;
 	input_reset (RESET_N) = init_rst_n;
-	input_reset (GT_RESET_N) = gt_rst_n;
+	input_reset (GT_RESET_N) clocked_by (gtx_clk_in) = gt_rst_n;
 
 	output_clock aurora_clk(USER_CLK);
 	output_reset aurora_rst(USER_RST_N) clocked_by (aurora_clk);

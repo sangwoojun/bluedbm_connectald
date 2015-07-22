@@ -212,12 +212,15 @@ module mkAuroraExt#(Clock gtx_clk_p, Clock gtx_clk_n, Clock clk50) (AuroraExtIfc
 	//ClockDividerIfc auroraExtClockDiv5 <- mkDCMClockDivider(5, 4, clocked_by clk250);
 	//Clock clk50 = auroraExtClockDiv5.slowClock;
 	Reset rst50 <- mkAsyncReset(2, defaultReset, clk50);
-	MakeResetIfc rst50ifc2 <- mkReset(8, True, clk50);
-	Reset rst50_2 = rst50ifc2.new_rst;
-	//Reset rst50_2 <- mkAsyncReset(2, defaultReset, clk50);
-	Clock auroraExt_gtx_clk <- mkClockIBUFDS_GTE2(True, gtx_clk_p, gtx_clk_n);
+	Clock auroraExt_gtx_clk <- mkClockIBUFDS_GTE2(
+`ifdef ClockDefaultParam
+						      defaultValue,
+`endif
+						      True, gtx_clk_p, gtx_clk_n);
 
-	AuroraExtImportIfc#(AuroraExtPerQuad) auroraExtImport <- mkAuroraExtImport(auroraExt_gtx_clk, clk50, rst50, rst50_2);
+	MakeResetIfc rstgtpifc2 <- mkReset(8, True, auroraExt_gtx_clk);
+	Reset rstgtp = rstgtpifc2.new_rst;
+	AuroraExtImportIfc#(AuroraExtPerQuad) auroraExtImport <- mkAuroraExtImport(auroraExt_gtx_clk, clk50, rst50, rstgtp);
 `else
 	AuroraExtImportIfc#(AuroraExtPerQuad) auroraExtImport <- mkAuroraExtImport_bsim(defaultClock, defaultClock, defaultReset, defaultReset);
 `endif
@@ -283,66 +286,57 @@ module mkAuroraExtImport_bsim#(Clock gtx_clk_in, Clock init_clk, Reset init_rst_
 
 	Reg#(Bit#(8)) nodeIdx <- mkReg(255);
 	
-	FIFO#(Bit#(64)) writeQ0 <- mkFIFO;
-	FIFO#(Bit#(64)) writeQ1 <- mkFIFO;
-	FIFO#(Bit#(64)) writeQ2 <- mkFIFO;
-	FIFO#(Bit#(64)) writeQ3 <- mkFIFO;
-	
-	FIFO#(Bit#(64)) mirrorQ0 <- mkFIFO;
-	FIFO#(Bit#(64)) mirrorQ1 <- mkFIFO;
-	FIFO#(Bit#(64)) mirrorQ2 <- mkFIFO;
-	FIFO#(Bit#(64)) mirrorQ3 <- mkFIFO;
+   Vector#(4, FIFO#(Bit#(AuroraPhysWidth))) writeQ <- replicateM(mkFIFO);
+   Vector#(4, FIFO#(Bit#(AuroraPhysWidth))) mirrorQ <- replicateM(mkFIFO);
 
-	rule m0 if ( bdpiRecvAvailable(nodeIdx, 0 ));
-		let d = bdpiRead(nodeIdx, 0);
-		mirrorQ0.enq(d);
-		//$display( "\t\tread %x 0", d );
+   for (Integer i = 0; i < 4; i = i + 1) begin
+	rule m0 if ( bdpiRecvAvailable(nodeIdx, fromInteger(i) ));
+		let d = bdpiRead(nodeIdx, fromInteger(i));
+		mirrorQ[i].enq(d);
+	        //$display( "\t\tread %x 0", d );
 	endrule
-	rule m1 if ( bdpiRecvAvailable(nodeIdx, 1 ));
-		let d = bdpiRead(nodeIdx, 1);
-		mirrorQ1.enq(d);
-		//$display( "\t\tread %x 1", d );
-	endrule
-	rule m2 if ( bdpiRecvAvailable(nodeIdx, 2 ));
-		let d = bdpiRead(nodeIdx, 2);
-		mirrorQ2.enq(d);
-		//$display( "\t\tread %x 2", d );
-	endrule
-	rule m3 if ( bdpiRecvAvailable(nodeIdx, 3 ));
-		let d = bdpiRead(nodeIdx, 3);
-		mirrorQ3.enq(d);
-		//$display( "\t\tread %x 3", d );
-	endrule
-
-	rule w0 if ( bdpiSendAvailable(nodeIdx, 0));
-		let d = writeQ0.first;
-		if ( bdpiWrite(nodeIdx, 0, d) ) begin
-			//$display( "\t\twrite %x 0", d );
-			writeQ0.deq;
+	rule w0 if ( bdpiSendAvailable(nodeIdx, fromInteger(i)));
+		let d = writeQ[i].first;
+		if ( bdpiWrite(nodeIdx, fromInteger(i), d) ) begin
+			//$display( "\t\twrite %x %d", d, i );
+			writeQ[i].deq;
 		end
 	endrule
-	rule w1 if ( bdpiSendAvailable(nodeIdx, 1));
-		let d = writeQ1.first;
-		if ( bdpiWrite(nodeIdx, 1, d) ) begin
-			//$display( "\t\twrite %x 1", d );
-			writeQ1.deq;
-		end
-	endrule
-	rule w2 if ( bdpiSendAvailable(nodeIdx, 2));
-		let d = writeQ2.first;
-		if ( bdpiWrite(nodeIdx, 2, d) ) begin
-			//$display( "\t\twrite %x 2", d );
-			writeQ2.deq;
-		end
-	endrule
-	rule w3 if ( bdpiSendAvailable(nodeIdx, 3));
-		let d = writeQ3.first;
-		if ( bdpiWrite(nodeIdx, 3, d) ) begin
-			//$display( "\t\twrite %x 3", d );
-			writeQ3.deq;
-		end
-	endrule
+   end
 	
+   function AuroraControllerIfc#(AuroraPhysWidth) auroraController(Integer i);
+      return (interface AuroraControllerIfc;
+		 interface Reset aurora_rst_n = rst;
+
+		 method Bit#(1) channel_up;
+		    return 1;
+		 endmethod
+		 method Bit#(1) lane_up;
+		    return 1;
+		 endmethod
+		 method Bit#(1) hard_err;
+		    return 0;
+		 endmethod
+		 method Bit#(1) soft_err;
+		    return 0;
+		 endmethod
+		 method Bit#(8) data_err_count;
+		    return 0;
+		 endmethod
+
+		 method Action send(Bit#(64) data);// if ( bdpiSendAvailable(nodeIdx, 0) );
+		    //$display("aurora.send port %d data %h", i, data);
+		    writeQ[i].enq(data);
+		 endmethod
+		 method ActionValue#(Bit#(64)) receive;
+		    let data = mirrorQ[i].first;
+		    mirrorQ[i].deq;
+		    //$display("aurora.receive port %d data %h", i, data);
+		    return data;
+		 endmethod
+	 endinterface);
+   endfunction
+
 	interface Clock aurora_clk0 = clk;
 	interface Clock aurora_clk1 = clk;
 	interface Clock aurora_clk2 = clk;
@@ -353,117 +347,11 @@ module mkAuroraExtImport_bsim#(Clock gtx_clk_in, Clock init_clk, Reset init_rst_
 	interface Reset aurora_rst2 = rst;
 	interface Reset aurora_rst3 = rst;
 	
-	interface AuroraControllerIfc user0;
-		interface Reset aurora_rst_n = rst;
-
-		method Bit#(1) channel_up;
-			return 1;
-		endmethod
-		method Bit#(1) lane_up;
-			return 1;
-		endmethod
-		method Bit#(1) hard_err;
-			return 0;
-		endmethod
-		method Bit#(1) soft_err;
-			return 0;
-		endmethod
-		method Bit#(8) data_err_count;
-			return 0;
-		endmethod
-
-		method Action send(Bit#(64) data);// if ( bdpiSendAvailable(nodeIdx, 0) );
-			writeQ0.enq(data);
-		endmethod
-		method ActionValue#(Bit#(64)) receive;
-			mirrorQ0.deq;
-			return mirrorQ0.first;
-		endmethod
-	endinterface
 	
-	interface AuroraControllerIfc user1;
-		interface Reset aurora_rst_n = rst;
-
-		method Bit#(1) channel_up;
-			return 1;
-		endmethod
-		method Bit#(1) lane_up;
-			return 1;
-		endmethod
-		method Bit#(1) hard_err;
-			return 0;
-		endmethod
-		method Bit#(1) soft_err;
-			return 0;
-		endmethod
-		method Bit#(8) data_err_count;
-			return 0;
-		endmethod
-
-		method Action send(Bit#(64) data);
-			writeQ1.enq(data);
-		endmethod
-		method ActionValue#(Bit#(64)) receive;
-			mirrorQ1.deq;
-			return mirrorQ1.first;
-		endmethod
-	endinterface
-	
-	interface AuroraControllerIfc user2;
-		interface Reset aurora_rst_n = rst;
-
-		method Bit#(1) channel_up;
-			return 1;
-		endmethod
-		method Bit#(1) lane_up;
-			return 1;
-		endmethod
-		method Bit#(1) hard_err;
-			return 0;
-		endmethod
-		method Bit#(1) soft_err;
-			return 0;
-		endmethod
-		method Bit#(8) data_err_count;
-			return 0;
-		endmethod
-
-		method Action send(Bit#(64) data);
-			writeQ2.enq(data);
-		endmethod
-		method ActionValue#(Bit#(64)) receive;
-			mirrorQ2.deq;
-			return mirrorQ2.first;
-		endmethod
-	endinterface
-	
-	interface AuroraControllerIfc user3;
-		interface Reset aurora_rst_n = rst;
-
-		method Bit#(1) channel_up;
-			return 1;
-		endmethod
-		method Bit#(1) lane_up;
-			return 1;
-		endmethod
-		method Bit#(1) hard_err;
-			return 0;
-		endmethod
-		method Bit#(1) soft_err;
-			return 0;
-		endmethod
-		method Bit#(8) data_err_count;
-			return 0;
-		endmethod
-
-		method Action send(Bit#(64) data);
-			writeQ3.enq(data);
-		endmethod
-		method ActionValue#(Bit#(64)) receive;
-			mirrorQ3.deq;
-			return mirrorQ3.first;
-		endmethod
-	endinterface
+	interface AuroraControllerIfc user0 = auroraController(0);
+	interface AuroraControllerIfc user1 = auroraController(1);
+	interface AuroraControllerIfc user2 = auroraController(2);
+	interface AuroraControllerIfc user3 = auroraController(3);
 	method Action setNodeIdx(Bit#(8) idx);
 		$display( "aurora node idx set to %d", idx);
 		nodeIdx <= idx;
@@ -482,7 +370,7 @@ module mkAuroraExtImport#(Clock gtx_clk_in, Clock init_clk, Reset init_rst_n, Re
 	input_clock (INIT_CLK_IN) = init_clk;
 	input_reset (RESET_N) = init_rst_n;
 	input_clock (GTX_CLK) = gtx_clk_in;
-	input_reset (GT_RESET_N) = gt_rst_n;
+	input_reset (GT_RESET_N) clocked_by (gtx_clk_in) = gt_rst_n;
 
 	output_clock aurora_clk0(USER_CLK_0);
 	output_reset aurora_rst0(USER_RST_N_0) clocked_by (aurora_clk0);

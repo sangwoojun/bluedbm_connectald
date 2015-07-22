@@ -15,7 +15,7 @@ BSVFILES = Main.bsv Top.bsv \
 	../../controller/src/model_virtex/FlashCtrlModel.bsv \
 	../../controller/src/hw_virtex/FlashCtrlVirtex.bsv
 
-CPPFILES=main.cpp
+CPPFILES=main.cpp flash.cpp flash.h
 
 CONNECTALFLAGS = -D IMPORT_HOSTIF -D DataBusWidth=128 -D PinType=Top_Pins --clib rt --bscflags " -D DataBusWidth=128 -D PinType=Top_Pins"
 #CONNECTALFLAGS=--bscflags " -D TRACE_AXI"

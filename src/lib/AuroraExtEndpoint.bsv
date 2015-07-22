@@ -52,8 +52,8 @@ import AuroraCommon::*;
 typedef 5 HeaderFieldSz;
 typedef Bit#(HeaderFieldSz) HeaderField;
 
-//FIXME Change this to 20 when we have 20 nodes up!
-typedef 10 NodeCount;
+//FIXME Change this to 20 when using 20 nodes!
+typedef 4 NodeCount;
 
 interface AuroraEndpointUserIfc#(type t);
 	method Action send(t data, Bit#(HeaderFieldSz) dst);
@@ -159,9 +159,10 @@ module mkAuroraEndpointDynamic#(Integer qSize, Integer flowStride_, Integer extr
 			let s = sendQ.first;
 			let dt = pack(tpl_1(s));
 			let dst = tpl_2(s);
+			let dstm = dst%fromInteger(nodeCount);
 
-			if ( sendBudgetUp[dst] - sendBudgetDown[dst] > 0 ) begin
-				sendBudgetDown[dst] <= sendBudgetDown[dst] + 1;
+			if ( sendBudgetUp[dstm] - sendBudgetDown[dstm] > 0 ) begin
+				sendBudgetDown[dstm] <= sendBudgetDown[dstm] + 1;
 				//tempThrottleQ[dst].enq(True);
 
 				sendQ.deq;
@@ -190,14 +191,15 @@ interface AuroraEndpointUserIfc user;
 		let d_ = recvQ.first;
 		let data = tpl_1(d_);
 		let src = tpl_2(d_);
+		let srcm = src%fromInteger(nodeCount);
 
 		recvQAvailUp <= recvQAvailUp + 1;
 
-		if ( flowStrideCounter[src] +1 >= fromInteger(flowStride) ) begin
+		if ( flowStrideCounter[srcm] +1 >= fromInteger(flowStride) ) begin
 			ackQ.enq(src);
-			flowStrideCounter[src] <= 0;
+			flowStrideCounter[srcm] <= 0;
 		end else begin
-			flowStrideCounter[src] <= flowStrideCounter[src]+1;
+			flowStrideCounter[srcm] <= flowStrideCounter[srcm]+1;
 		end
 		//$display ( "enqing ack packet to %d", src );
 
@@ -210,8 +212,9 @@ interface AuroraEndpointCmdIfc cmd;
 	method Action send(AuroraPacket data);
 		// if ack then inc budget
 		let payload = data.payload;
+		let srcm = data.src%fromInteger(nodeCount);
 		if ( payload[0] == 1 ) begin
-			sendBudgetUp[data.src] <= sendBudgetUp[data.src]+fromInteger(flowStride);
+			sendBudgetUp[srcm] <= sendBudgetUp[srcm]+fromInteger(flowStride);
 			//tempThrottleQ[data.src].deq;
 		end else begin
 			recvQ.enq(tuple2(unpack(truncate(data.payload>>1)), data.src));
@@ -273,9 +276,10 @@ module mkAuroraEndpointStatic#(Integer qSize, Integer flowStride_) (AuroraEndpoi
 			let s = sendQ.first;
 			let dt = pack(tpl_1(s));
 			let dst = tpl_2(s);
+			let dstm = dst%fromInteger(nodeCount);
 
-			if ( sendBudgetUp[dst] - sendBudgetDown[dst] > 0 ) begin
-				sendBudgetDown[dst] <= sendBudgetDown[dst] + 1;
+			if ( sendBudgetUp[dstm] - sendBudgetDown[dstm] > 0 ) begin
+				sendBudgetDown[dstm] <= sendBudgetDown[dstm] + 1;
 				//tempThrottleQ[dst].enq(True);
 
 				sendQ.deq;
@@ -304,12 +308,13 @@ interface AuroraEndpointUserIfc user;
 		let d_ = recvQ.first;
 		let data = tpl_1(d_);
 		let src = tpl_2(d_);
+		let srcm = src%fromInteger(nodeCount);
 
-		if ( flowStrideCounter[src] +1 >= fromInteger(flowStride) ) begin
+		if ( flowStrideCounter[srcm] +1 >= fromInteger(flowStride) ) begin
 			ackQ.enq(src);
-			flowStrideCounter[src] <= 0;
+			flowStrideCounter[srcm] <= 0;
 		end else begin
-			flowStrideCounter[src] <= flowStrideCounter[src]+1;
+			flowStrideCounter[srcm] <= flowStrideCounter[srcm]+1;
 		end
 		//$display ( "enqing ack packet to %d", src );
 
@@ -322,8 +327,9 @@ interface AuroraEndpointCmdIfc cmd;
 	method Action send(AuroraPacket data);
 		// if ack then inc budget
 		let payload = data.payload;
+		let srcm = data.src%fromInteger(nodeCount);
 		if ( payload[0] == 1 ) begin
-			sendBudgetUp[data.src] <= sendBudgetUp[data.src]+fromInteger(flowStride);
+			sendBudgetUp[srcm] <= sendBudgetUp[srcm]+fromInteger(flowStride);
 			//tempThrottleQ[data.src].deq;
 		end else begin
 			recvQ.enq(tuple2(unpack(truncate(data.payload>>1)), data.src));

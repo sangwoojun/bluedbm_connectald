@@ -14,9 +14,9 @@ endinterface
 
 module mkMerge2 (Merge2Ifc#(t))
 	provisos(Bits#(t, a__));
-	FIFOF#(t) inQ1 <- mkPipelineFIFOF;
-	FIFOF#(t) inQ2 <- mkPipelineFIFOF;
-	FIFO#(t) outQ <- mkPipelineFIFO;
+	FIFOF#(t) inQ1 <- mkFIFOF;
+	FIFOF#(t) inQ2 <- mkFIFOF;
+	FIFO#(t) outQ <- mkFIFO;
 
 	Reg#(Bit#(1)) prio <- mkReg(0);
 	rule merge;

@@ -35,8 +35,8 @@ bool getPipes(unsigned char nidx, unsigned char pidx) {
 	if ( pidx <= 1 ) { // goes up
 		off = pidx;
 
-		sprintf(fifonamewr, "../aurora%02d_%02dup", nidx,off);
-		sprintf(fifonamerd, "../aurora%02d_%02ddown", nidx,off);
+		sprintf(fifonamewr, "../aurorapipes/aurora%02d_%02dup", nidx,off);
+		sprintf(fifonamerd, "../aurorapipes/aurora%02d_%02ddown", nidx,off);
 		// these will probably not fail, or fail with EEXIST
 		if( access( fifonamerd, F_OK ) == -1 ) {
 			mkfifo(fifonamerd, S_IRUSR| S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
@@ -48,8 +48,8 @@ bool getPipes(unsigned char nidx, unsigned char pidx) {
 	} else if ( pidx >= 2 && pidx < 4 && nidx > 0) { // comes up
 		if ( pidx == 2 ) off = 1;
 		if ( pidx == 3 ) off = 0;
-		sprintf(fifonamerd, "../aurora%02d_%02dup", nidx-1,off);
-		sprintf(fifonamewr, "../aurora%02d_%02ddown", nidx-1,off);
+		sprintf(fifonamerd, "../aurorapipes/aurora%02d_%02dup", nidx-1,off);
+		sprintf(fifonamewr, "../aurorapipes/aurora%02d_%02ddown", nidx-1,off);
 		// these will probably not fail, or fail with EEXIST
 		if( access( fifonamerd, F_OK ) == -1 ) {
 			mkfifo(fifonamerd, S_IRUSR| S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);

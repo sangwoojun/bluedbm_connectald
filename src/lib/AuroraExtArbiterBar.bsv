@@ -100,7 +100,9 @@ module mkAuroraExtArbiterBar#(Vector#(tExtCount, AuroraExtUserIfc) extPorts, Vec
 		inQup.deq;
 		let d = inQup.first;
 		if ( d.dst == myid ) begin
-			mergeEpOut.enq1(d);
+			if ( d.src != myid ) begin // This should not happen
+				mergeEpOut.enq1(d);
+			end
 		end else begin
 			//mergeUpOut.enq1(d);
 			mergeDownOut.enq1(d);
@@ -116,7 +118,9 @@ module mkAuroraExtArbiterBar#(Vector#(tExtCount, AuroraExtUserIfc) extPorts, Vec
 		inQdown.deq;
 		let d = inQdown.first;
 		if ( d.dst == myid ) begin
-			mergeEpOut.enq2(d);
+			if ( d.src != myid ) begin // This should not happen 
+				mergeEpOut.enq2(d);
+			end
 		end else begin
 			//mergeDownOut.enq1(d);
 			mergeUpOut.enq1(d);
@@ -172,7 +176,7 @@ module mkAuroraExtArbiterBar#(Vector#(tExtCount, AuroraExtUserIfc) extPorts, Vec
 			let d = outQep.first;
 			let ptype = d.ptype;
 			endpoints[ptype].send(d);
-			$display( "ep %d recv data %x", d.ptype, d.payload );
+			//$display( "ep %d recv data %x", d.ptype, d.payload );
 			/*
 			for ( Integer eidx = 0; eidx < endpointCount; eidx=eidx+1) begin
 				if ( endpoints[eidx].packetType == ptype ) begin
@@ -220,7 +224,7 @@ module mkAuroraExtArbiterBar#(Vector#(tExtCount, AuroraExtUserIfc) extPorts, Vec
 			let d = vMerge[endpointCount-2].first;
 			vMerge[endpointCount-2].deq;
 			inQep.enq(d);
-			$display( "ep %d sends data %x", d.ptype, d.payload );
+			//$display( "ep %d sends data %x", d.ptype, d.payload );
 		endrule
 	end
 

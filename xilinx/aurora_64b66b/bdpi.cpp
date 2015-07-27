@@ -70,8 +70,11 @@ bool getPipes(unsigned char nidx, unsigned char pidx) {
 			fifo_exists[rdidx] = true;
 			fprintf(stderr,  "Created and opened read fd for %d(%d)\n", nidx, pidx );
 		} else {
-			if (errno != EAGAIN)
-				fprintf(stderr, "%s:%d failed to open fifo %s errno=%d:%s\n", __FUNCTION__, __LINE__, fifonamerd, errno, strerror(errno));
+			//NOTE: Because FIFOs cannot be opened for writes before before the reading side has already opened it yet
+			// (It will fail with ENXIO(6), the error message below is unneeded. Entering this else block is normal behavior
+
+			//if (errno != EAGAIN)
+			//	fprintf(stderr, "%s:%d failed to open fifo %s errno=%d:%s\n", __FUNCTION__, __LINE__, fifonamerd, errno, strerror(errno));
 		}
 	}
 
@@ -81,7 +84,10 @@ bool getPipes(unsigned char nidx, unsigned char pidx) {
 			fifo_exists[wridx] = true;
 			fprintf(stderr, "Created and opened write fd for %d(%d)\n", nidx, pidx );
 		} else {
-			fprintf(stderr, "%s:%d failed to open fifo %s errno=%d:%s\n", __FUNCTION__, __LINE__, fifonamewr, errno, strerror(errno));
+			//NOTE: Because FIFOs cannot be opened for writes before before the reading side has already opened it yet
+			// (It will fail with ENXIO(6), the error message below is unneeded. Entering this else block is normal behavior
+
+			//fprintf(stderr, "%s:%d failed to open fifo %s errno=%d:%s\n", __FUNCTION__, __LINE__, fifonamewr, errno, strerror(errno));
 		}
 	}
 
@@ -103,10 +109,10 @@ extern "C" bool bdpiRecvAvailable(unsigned char nidx, unsigned char pidx) {
 	if ( r > 0 ) {
 		lastread[pidx] = d;
 		read_recv[pidx] = false;
-		fprintf(stderr, "read %d bytes %llx %d(%d)\n", r, lastread[pidx], nidx, pidx );
+		//fprintf(stderr, "read %d bytes %llx %d(%d)\n", r, lastread[pidx], nidx, pidx ); // Too verbose
 		return true;
 	} else if ( r < 0) {
-		fprintf(stderr, "%s:%d: fd=%d errno=%d:%s\n", __FUNCTION__, __LINE__, errno, strerror(errno));
+		//fprintf(stderr, "%s:%d: fd=%d errno=%d:%s\n", __FUNCTION__, __LINE__, fifo_fd[rdidx], errno, strerror(errno));
 	}
 	return false;
 }
@@ -128,16 +134,12 @@ extern "C" unsigned long long bdpiRead(unsigned char nidx, unsigned char pidx) {
 }
 
 extern "C" bool bdpiWrite(unsigned char nidx, unsigned char pidx, unsigned long long data) {
-	fprintf(stderr, "write data %llx %d(%d)\n", data, nidx, pidx );
+	//fprintf(stderr, "write data %llx %d(%d)\n", data, nidx, pidx ); // Too verbose
 	if ( ! getPipes(nidx, pidx) ) return false;
 	unsigned char wridx = pidx | WR_PORT;
 
 	int r = write(fifo_fd[wridx], &data, sizeof(unsigned long long));
-	if ( r < 8 && r > 0 ) {
-		return false;
-	} else if ( r < 0) {
-		fprintf(stderr, "%s:%d: fd=%d errno=%d:%s\n", __FUNCTION__, __LINE__, errno, strerror(errno));
-	}
+	if ( r < 8 ) return false;
 
 	return true;
 }

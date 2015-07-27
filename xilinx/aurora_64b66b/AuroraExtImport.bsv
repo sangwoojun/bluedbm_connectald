@@ -293,7 +293,7 @@ module mkAuroraExtImport_bsim#(Clock gtx_clk_in, Clock init_clk, Reset init_rst_
 	rule m0 if ( bdpiRecvAvailable(nodeIdx, fromInteger(i) ));
 		let d = bdpiRead(nodeIdx, fromInteger(i));
 		mirrorQ[i].enq(d);
-	        //$display( "\t\tread %x 0", d );
+		//$display( "\t\tread %x %d", d, i );
 	endrule
 	rule w0 if ( bdpiSendAvailable(nodeIdx, fromInteger(i)));
 		let d = writeQ[i].first;

@@ -36,7 +36,7 @@ int wnumBytes = (1 << (10 +4))*WRITE_BUFFER_WAYS; //16KB buffer, to be safe
 size_t ralloc_sz = rnumBytes*sizeof(unsigned char);
 size_t walloc_sz = wnumBytes*sizeof(unsigned char);
 
-char* log_prefix = "\t\tLOG: ";
+const char* log_prefix = "\t\tLOG: ";
 
 GeneralRequestProxy *device = 0;
 GeneralIndication *deviceIndication = 0;
@@ -138,9 +138,11 @@ uint64_t* data64 = NULL;
 int size = 1024*1024*1024;
 void generalifc_start(int datasource) {
 	device->start(datasource);
+	/*
 	srcfd = open("/home/wjun/large.dat", O_RDONLY);
 	void* data = mmap(NULL, size, PROT_READ, MAP_PRIVATE, srcfd, 0);
 	data64 = (uint64_t*) data;
+	*/
 }
 
 void generalifc_readRemotePage(int myid) {
@@ -150,21 +152,24 @@ void generalifc_readRemotePage(int myid) {
 	if ( myid != src ) return;
 */
 	if ( myid == 5 ) { 
-		device->sendData(1024*1024*1024, 7, 0);
+		device->sendData(1024*1024*1024, 6, 0);
 	} else if ( myid == 6 ) { 
-		//device->sendData(1024*1024*1024, 8, 0);
+		device->sendData(1024*1024*1024, 5, 0);
 	} else if ( myid == 7 ) {
-		//device->sendData(1024*1024*1024, 6, 0);
+		device->sendData(1024*1024*1024, 6, 0);
 	} else {
-		//device->sendData(1024*1024*1024, 6, 0);
+		device->sendData(1024*1024*1024, 5, 0);
 	}
+	printf( "Sent read requests\n" ); fflush(stdout);
 
+/*
 	for ( int i = 0; i < 2; i++ ) {
 		clock_gettime(CLOCK_REALTIME, & deviceIndication->aurorastart);
 		// addr, targetnode, datasource, tag
 		//device->readRemotePage(i, dst, 1, 0);
 		usleep(10000);
 	}
+*/
 }
 void generalifc_latencyReport() {
 	for ( int i = 0; i < 16; i++ ) {

@@ -28,7 +28,7 @@
 
 extern bool verbose;
 
-extern char* log_prefix;
+extern const char* log_prefix;
 
 extern unsigned int* writeBuffers[WRITE_BUFFER_COUNT];
 extern unsigned int* readBuffers[READ_BUFFER_COUNT];

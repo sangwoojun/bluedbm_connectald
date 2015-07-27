@@ -151,6 +151,7 @@ module mkMain#(GeneralIndication indication
 		sendDataCount2 <= sendDataCount2 - 1;
 		aend2.user.send(zeroExtend({sendDataCount2,8'hcc}), sendDataTarget);
 	endrule
+
 	rule sendAuroraData(sendDataCount > 0 );
 		if ( sendDataStrideCount > 0 ) begin
 			sendDataStrideCount <= sendDataStrideCount - 1;
@@ -160,6 +161,7 @@ module mkMain#(GeneralIndication indication
 			sendDataCount <= sendDataCount - 1;
 			
 			aend1.user.send(zeroExtend(sendDataCount), sendDataTarget);
+			$display( "Sent data %x to %d", sendDataCount, sendDataTarget);
 			//auroraExt119.user[0].send(AuroraPacket{src:0, dst:0, ptype:1, payload: zeroExtend(sendDataCount)});
 			//auroraExt119.user[1].send(AuroraPacket{src:2, dst:2, ptype:4, payload: zeroExtend(sendDataCount)});
 		end
@@ -169,16 +171,19 @@ module mkMain#(GeneralIndication indication
 	Reg#(Bit#(32)) recvDataCount <- mkReg(0);
 	rule recvAuroraData;
 		recvDataCount <= recvDataCount + 1;
-
+		
 		let rst <- aend1.user.receive;
 		//let rst2 <- aend2.user.receive;
 		let data = tpl_1(rst);
 		let src = tpl_2(rst);
+		$display( "endpoint received %x from %d", data, tpl_2(rst) );
 
+		/*
 		//let rcv1 <- auroraExt119.user[2].receive;
-		//let rcv2 <- auroraExt119.user[3].receive;
-		//let data = rcv1.payload;
-		//$display( "endpoint received %x from %d", data, tpl_2(rst) );
+		let rcv2 <- auroraExt119.user[3].receive;
+		let data = rcv2.payload;
+		$display( "received %x from %d", data, rcv2.src );
+		*/
 		lastDataIn1 <= truncate(data);
 		if ( lastDataIn1 -1 != truncate(data) ) begin
 			$display( "Data mismatch at aend 1 %x %x", lastDataIn1, data );
@@ -188,7 +193,8 @@ module mkMain#(GeneralIndication indication
 
 		Bit#(14) dataCU = truncate(recvDataCount);
 		if ( dataCU == 0 ) begin
-			indication.hexDump({truncate(data), src[3:0]});
+			indication.hexDump(truncate(data));
+			//indication.hexDump({truncate(data), src[3:0]});
 		end
 	endrule
 	

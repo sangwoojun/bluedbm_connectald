@@ -18,7 +18,7 @@ CPPFILES=main.cpp interface.cpp
 
 #CONNECTALFLAGS=--bscflags " -D TRACE_AXI"
 
-CONNECTALFLAGS = -D IMPORT_HOSTIF -D DataBusWidth=128 -D PinType=Top_Pins --clib rt  --bscflags " -D DataBusWidth=128 -D PinType=Top_Pins"
+CONNECTALFLAGS = -D IMPORT_HOSTIF -D DataBusWidth=128 -D PinType=Top_Pins --clib rt  --bscflags " -D DataBusWidth=128 -D PinType=Top_Pins -D NodeCountLog=2"
 
 
 ifeq ($(BOARD), vc707)

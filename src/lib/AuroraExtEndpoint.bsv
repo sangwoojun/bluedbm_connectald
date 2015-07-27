@@ -52,8 +52,8 @@ import AuroraCommon::*;
 typedef 5 HeaderFieldSz;
 typedef Bit#(HeaderFieldSz) HeaderField;
 
-//FIXME Change this to 20 when using 20 nodes!
-typedef 4 NodeCount;
+typedef `NodeCountLog NodeCountLog;
+typedef TExp#(NodeCountLog) NodeCount;
 
 interface AuroraEndpointUserIfc#(type t);
 	method Action send(t data, Bit#(HeaderFieldSz) dst);
@@ -159,7 +159,7 @@ module mkAuroraEndpointDynamic#(Integer qSize, Integer flowStride_, Integer extr
 			let s = sendQ.first;
 			let dt = pack(tpl_1(s));
 			let dst = tpl_2(s);
-			let dstm = dst%fromInteger(nodeCount);
+			Bit#(NodeCountLog) dstm = truncate(dst);
 
 			if ( sendBudgetUp[dstm] - sendBudgetDown[dstm] > 0 ) begin
 				sendBudgetDown[dstm] <= sendBudgetDown[dstm] + 1;
@@ -191,7 +191,7 @@ interface AuroraEndpointUserIfc user;
 		let d_ = recvQ.first;
 		let data = tpl_1(d_);
 		let src = tpl_2(d_);
-		let srcm = src%fromInteger(nodeCount);
+		Bit#(NodeCountLog) srcm = truncate(src);
 
 		recvQAvailUp <= recvQAvailUp + 1;
 
@@ -212,7 +212,8 @@ interface AuroraEndpointCmdIfc cmd;
 	method Action send(AuroraPacket data);
 		// if ack then inc budget
 		let payload = data.payload;
-		let srcm = data.src%fromInteger(nodeCount);
+		Bit#(NodeCountLog) srcm = truncate(data.src);
+
 		if ( payload[0] == 1 ) begin
 			sendBudgetUp[srcm] <= sendBudgetUp[srcm]+fromInteger(flowStride);
 			//tempThrottleQ[data.src].deq;
@@ -241,6 +242,7 @@ module mkAuroraEndpointStatic#(Integer qSize, Integer flowStride_) (AuroraEndpoi
 		Add#(ts,1,ts1),
 		Add#(ts1, a__, PayloadSz));
 	
+	Integer nodeCountLog = valueOf(NodeCountLog);
 	Integer nodeCount = valueOf(NodeCount);
 
 	Integer recvQDepth = nodeCount*qSize;
@@ -276,7 +278,7 @@ module mkAuroraEndpointStatic#(Integer qSize, Integer flowStride_) (AuroraEndpoi
 			let s = sendQ.first;
 			let dt = pack(tpl_1(s));
 			let dst = tpl_2(s);
-			let dstm = dst%fromInteger(nodeCount);
+			Bit#(NodeCountLog) dstm = truncate(dst);
 
 			if ( sendBudgetUp[dstm] - sendBudgetDown[dstm] > 0 ) begin
 				sendBudgetDown[dstm] <= sendBudgetDown[dstm] + 1;
@@ -308,7 +310,7 @@ interface AuroraEndpointUserIfc user;
 		let d_ = recvQ.first;
 		let data = tpl_1(d_);
 		let src = tpl_2(d_);
-		let srcm = src%fromInteger(nodeCount);
+		Bit#(NodeCountLog) srcm = truncate(src);
 
 		if ( flowStrideCounter[srcm] +1 >= fromInteger(flowStride) ) begin
 			ackQ.enq(src);
@@ -327,7 +329,8 @@ interface AuroraEndpointCmdIfc cmd;
 	method Action send(AuroraPacket data);
 		// if ack then inc budget
 		let payload = data.payload;
-		let srcm = data.src%fromInteger(nodeCount);
+		Bit#(NodeCountLog) srcm = truncate(data.src);
+		
 		if ( payload[0] == 1 ) begin
 			sendBudgetUp[srcm] <= sendBudgetUp[srcm]+fromInteger(flowStride);
 			//tempThrottleQ[data.src].deq;

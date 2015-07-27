@@ -23,15 +23,15 @@ cd bluesim2
 BDBM_ID=6 ./bin/bsim_exe | tee ../bsim_exe2 & bsimexe2=$1
 cd ..
 
-cd bluesim3
-./bin/bsim | tee ../bsim3.txt & bsim3=$!
-BDBM_ID=7 ./bin/bsim_exe | tee ../bsim_exe3 & bsimexe3=$1
-cd ..
+#cd bluesim3
+#./bin/bsim | tee ../bsim3.txt & bsim3=$!
+#BDBM_ID=7 ./bin/bsim_exe | tee ../bsim_exe3 & bsimexe3=$1
+#cd ..
+#
+#cd bluesim4
+#./bin/bsim | tee ../bsim4.txt & bsim4=$!
+#BDBM_ID=8 ./bin/bsim_exe | tee ../bsim_exe4 & bsimexe4=$1
+#cd ..
 
-cd bluesim4
-./bin/bsim | tee ../bsim4.txt & bsim4=$!
-BDBM_ID=8 ./bin/bsim_exe | tee ../bsim_exe4 & bsimexe4=$1
-cd ..
-
-wait $bsimexe1 $bsimexe2 $bsimexe3 $bsimexe4
-kill $bsim1 $bsim2 $bsim3 $bsim4
+wait $bsimexe1 $bsimexe2 # $bsimexe3 $bsimexe4
+kill $bsim1 $bsim2 # $bsim3 $bsim4

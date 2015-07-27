@@ -116,8 +116,8 @@ int main(int argc, const char **argv)
 
 	generalifc_readRemotePage(myid);
 	
-	sleep(2);
-	generalifc_latencyReport();
+	//sleep(2);
+	//generalifc_latencyReport();
 
 	printf( "Entering idle loop\n" );
 	while(1) sleep(10);

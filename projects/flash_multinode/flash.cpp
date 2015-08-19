@@ -123,19 +123,19 @@ void auroraifc_start(int id) {
 
 
 void init_dma() {
-	MemServerRequestProxy *hostMemServerRequest = new MemServerRequestProxy(IfcNames_HostMemServerRequest);
-	MMURequestProxy *dmap = new MMURequestProxy(IfcNames_HostMMURequest);
+	MemServerRequestProxy *hostMemServerRequest = new MemServerRequestProxy(HostMemServerRequestS2H);
+	MMURequestProxy *dmap = new MMURequestProxy(HostMMURequestS2H);
 	DmaManager *dma = new DmaManager(dmap);
-	MemServerIndication *hostMemServerIndication = new MemServerIndication(hostMemServerRequest, IfcNames_HostMemServerIndication);
-	MMUIndication *hostMMUIndication = new MMUIndication(dma, IfcNames_HostMMUIndication);
+	MemServerIndication hostMemServerIndication(hostMemServerRequest, HostMemServerIndicationH2S);
+	MMUIndication hostMMUIndication(dma, HostMMUIndicationH2S);
 
 	fprintf(stderr, "Main::allocating memory...\n");
 
-	device = new FlashRequestProxy(IfcNames_FlashRequest);
-	FlashIndication *deviceIndication = new FlashIndication(IfcNames_FlashIndication);
+	device = new FlashRequestProxy(FlashRequestS2H);
+	FlashIndication deviceIndication(FlashIndicationH2S);
 	
-	srcAlloc = portalAlloc(srcAlloc_sz);
-	dstAlloc = portalAlloc(dstAlloc_sz);
+	srcAlloc = portalAlloc(srcAlloc_sz, 1);
+	dstAlloc = portalAlloc(dstAlloc_sz, 1);
 	srcBuffer = (unsigned int *)portalMmap(srcAlloc, srcAlloc_sz);
 	dstBuffer = (unsigned int *)portalMmap(dstAlloc, dstAlloc_sz);
 
@@ -146,13 +146,10 @@ void init_dma() {
 
 	printf( "Done initializing hw interfaces\n" ); fflush(stdout);
 
-	portalExec_start();
-	printf( "Done portalExec_start\n" ); fflush(stdout);
-	
-	defaultPoller->portalExec_timeout = 0;
+	//defaultPoller->portalExec_timeout = 0;
 
-	portalDCacheFlushInval(dstAlloc, dstAlloc_sz, dstBuffer);
-	portalDCacheFlushInval(srcAlloc, srcAlloc_sz, srcBuffer);
+	portalCacheFlush(dstAlloc, dstBuffer, dstAlloc_sz, 1);
+	portalCacheFlush(srcAlloc, srcBuffer, srcAlloc_sz, 1);
 	ref_dstAlloc = dma->reference(dstAlloc);
 	ref_srcAlloc = dma->reference(srcAlloc);
 
@@ -179,7 +176,7 @@ void init_dma() {
 
 
 	for (int t = 0; t < NUM_TAGS; t++) {
-		for ( int i = 0; i < PAGE_SIZE/sizeof(unsigned int); i++ ) {
+		for (unsigned int i = 0; i < PAGE_SIZE/sizeof(unsigned int); i++ ) {
 			readBuffers[t][i] = 0;
 			writeBuffers[t][i] = 0;
 		}
@@ -201,10 +198,10 @@ unsigned int hashAddrToData(int node, int bus, int chip, int blk, int word) {
 bool checkReadData(int tag) {
 	TagTableEntry e = readTagTable[tag];
 	bool pass = true;
-	int goldenData;
+	unsigned int goldenData;
 	if (flashStatus[e.node][e.bus][e.chip][e.block]==WRITTEN) {
 		int numErrors = 0;
-		for (int word=0; word<PAGE_SIZE_VALID/sizeof(unsigned int); word++) {
+		for (unsigned int word=0; word<PAGE_SIZE_VALID/sizeof(unsigned int); word++) {
 			goldenData = hashAddrToData(e.node, e.bus, e.chip, e.block, word);
 			if (goldenData != readBuffers[tag][word]) {
 				LOG(0, "LOG: **ERROR: read data mismatch [%d]! Expected: %x, read: %x\n", word, goldenData, readBuffers[tag][word]);
@@ -218,7 +215,7 @@ bool checkReadData(int tag) {
 	}
 	else if (flashStatus[e.node][e.bus][e.chip][e.block]==ERASED) {
 		//only check first word. It may return 0 if bad block, or -1 if erased
-		if (readBuffers[tag][0]==-1) {
+		if (readBuffers[tag][0]==(unsigned int)-1) {
 			LOG(0, "LOG: Read check passed on erased block!\n");
 		}
 		else if (readBuffers[tag][0]==0) {

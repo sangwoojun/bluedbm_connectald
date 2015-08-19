@@ -17,6 +17,7 @@ import DefaultValue :: *;
 import Xilinx :: *;
 import XilinxCells :: *;
 import ConnectalXilinxCells::*;
+import ConnectalClocks::*;
 
 typedef 2 AuroraExtCount;
 //typedef 4 AuroraExtQuad;

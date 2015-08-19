@@ -17,9 +17,10 @@ BSVFILES = Main.bsv Top.bsv \
 
 CPPFILES=main.cpp flash.cpp flash.h
 
-CONNECTALFLAGS = -D IMPORT_HOSTIF -D DataBusWidth=128 -D PinType=Top_Pins --clib rt --bscflags " -D DataBusWidth=128 -D PinType=Top_Pins"
-#CONNECTALFLAGS=--bscflags " -D TRACE_AXI"
+CONNECTALFLAGS = -D IMPORT_HOSTIF -D DataBusWidth=128 --clib rt
 
+CONNECTALFLAGS += -P mkPcieEndpointX7 -P mkMemMasterEngine -P mkMemSlaveEngineSynth -P mkPcieTracer
+CONNECTALFLAGS += -P mkAuroraExt
 
 ifeq ($(BOARD), vc707)
 CONNECTALFLAGS += \
@@ -37,10 +38,10 @@ AURORA_INTRA = $(CONNECTALDIR)/out/$(BOARD)/aurora_8b10b_fmc1/aurora_8b10b_fmc1_
 AURORA_EXTRA = $(CONNECTALDIR)/out/$(BOARD)/aurora_64b66b_X1Y24/aurora_64b66b_X1Y24_stub.v
 prebuild:: $(AURORA_EXTRA) $(AURORA_INTRA)
 
-$(AURORA_INTRA): ../../core-scripts/synth-aurora-intra.tcl
+$(AURORA_INTRA):
 	(cd $(BOARD); vivado -mode batch -source ../../../core-scripts/synth-aurora-intra.tcl)
 
-$(AURORA_EXTRA): ../../core-scripts/synth-aurora-ext.tcl
+$(AURORA_EXTRA):
 	(cd $(BOARD); vivado -mode batch -source ../../../core-scripts/synth-aurora-ext.tcl)
 	find $(CONNECTALDIR)/out/$(BOARD)/ -name "aurora_64b66b_X1Y??_wrapper.v" -exec sed -i "s/GT0_txdiffctrl_in[ \t]\+([4'b10]\+),/GT0_txdiffctrl_in (4'b1100),/g" '{}' \;
 else

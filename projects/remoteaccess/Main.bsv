@@ -109,8 +109,8 @@ module mkMain#(GeneralIndication indication
 `endif
 
 
-	MemwriteEngineV#(WordSz,1,4) we <- mkMemwriteEngineBuff(512);
-	MemreadEngineV#(WordSz,1,4)  re <- mkMemreadEngineBuff(512);
+	MemwriteEngine#(WordSz,1,4) we <- mkMemwriteEngineBuff(512);
+	MemreadEngine#(WordSz,1,4)  re <- mkMemreadEngineBuff(512);
 
 
 

@@ -61,8 +61,8 @@ import Main::*;
 import AuroraExtImport::*;
 import AuroraCommon::*;
 
-typedef enum {GeneralIndication, GeneralRequest, 
-	HostMemServerIndication, HostMemServerRequest, HostMMURequest, HostMMUIndication
+typedef enum {GeneralIndicationPortal, GeneralRequestPortal, 
+	HostMemServerIndicationPortal, HostMemServerRequestPortal, HostMMURequestPortal, HostMMUIndicationPortal
 	} IfcNames deriving (Eq,Bits);
 
 interface Top_Pins;
@@ -73,7 +73,7 @@ endinterface
 
 typedef 128 WordSz;
 
-module mkConnectalTop#(HostType host) (ConnectalTop#(PhysAddrWidth,WordSz,Top_Pins,1));
+module mkConnectalTop#(HostInterface host) (ConnectalTop#(PhysAddrWidth,WordSz,Top_Pins,1));
 
 	Clock clk250 = host.derivedClock;
 	Reset rst250 = host.derivedReset;
@@ -81,22 +81,22 @@ module mkConnectalTop#(HostType host) (ConnectalTop#(PhysAddrWidth,WordSz,Top_Pi
 	Clock curClk <- exposeCurrentClock;
 	Reset curRst <- exposeCurrentReset;
 
-   GeneralIndicationProxy generalIndicationProxy <- mkGeneralIndicationProxy(GeneralIndication);
+   GeneralIndicationProxy generalIndicationProxy <- mkGeneralIndicationProxy(GeneralIndicationPortal);
 
    MainIfc hwmain <- mkMain(generalIndicationProxy.ifc, clk250, rst250);
-   GeneralRequestWrapper generalRequestWrapper <- mkGeneralRequestWrapper(GeneralRequest,hwmain.request);
+   GeneralRequestWrapper generalRequestWrapper <- mkGeneralRequestWrapper(GeneralRequestPortal,hwmain.request);
 
    Vector#(1, MemReadClient#(WordSz))   readClients = cons(hwmain.dmaReadClient, nil);
    Vector#(1, MemWriteClient#(WordSz))  writeClients = cons(hwmain.dmaWriteClient, nil);
    
    
-   MMUIndicationProxy hostMMUIndicationProxy <- mkMMUIndicationProxy(HostMMUIndication);
+   MMUIndicationProxy hostMMUIndicationProxy <- mkMMUIndicationProxy(HostMMUIndicationPortal);
    MMU#(PhysAddrWidth) hostMMU <- mkMMU(0, True, hostMMUIndicationProxy.ifc);
-   MMURequestWrapper hostMMURequestWrapper <- mkMMURequestWrapper(HostMMURequest, hostMMU.request);
+   MMURequestWrapper hostMMURequestWrapper <- mkMMURequestWrapper(HostMMURequestPortal, hostMMU.request);
 
-   MemServerIndicationProxy hostMemServerIndicationProxy <- mkMemServerIndicationProxy(HostMemServerIndication);
-   MemServer#(PhysAddrWidth,DataBusWidth,1) dma <- mkMemServerRW(hostMemServerIndicationProxy.ifc, readClients, writeClients, cons(hostMMU,nil));
-   MemServerRequestWrapper hostMemServerRequestWrapper <- mkMemServerRequestWrapper(HostMemServerRequest, dma.request);
+   MemServerIndicationProxy hostMemServerIndicationProxy <- mkMemServerIndicationProxy(HostMemServerIndicationPortal);
+   MemServer#(PhysAddrWidth,DataBusWidth,1) dma <- mkMemServer(readClients, writeClients, cons(hostMMU,nil), hostMemServerIndicationProxy.ifc);
+   MemServerRequestWrapper hostMemServerRequestWrapper <- mkMemServerRequestWrapper(HostMemServerRequestPortal, dma.request);
 
    Vector#(6,StdPortal) portals;
    portals[0] = generalRequestWrapper.portalIfc;
@@ -111,7 +111,6 @@ module mkConnectalTop#(HostType host) (ConnectalTop#(PhysAddrWidth,WordSz,Top_Pi
    interface interrupt = getInterruptVector(portals);
    interface slave = ctrl_mux;
    interface masters = dma.masters;
-   interface leds = default_leds;
 
 	interface Top_Pins pins;
 		interface Aurora_Pins aurora_ext = hwmain.aurora_ext;

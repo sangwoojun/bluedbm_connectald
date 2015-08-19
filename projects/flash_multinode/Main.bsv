@@ -131,8 +131,8 @@ module mkMain#(FlashIndication indication,
 	`endif
 
 	//Create read/write engines with NUM_BUSES memservers
-	MemreadEngineV#(WordSz, 4, NUM_ENG_PORTS) re <- mkMemreadEngine;
-	MemwriteEngineV#(WordSz, 2, NUM_ENG_PORTS) we <- mkMemwriteEngine;
+	MemreadEngine#(WordSz, 4, NUM_ENG_PORTS) re <- mkMemreadEngine;
+	MemwriteEngine#(WordSz, 2, NUM_ENG_PORTS) we <- mkMemwriteEngine;
 
 
 	//External Aurora

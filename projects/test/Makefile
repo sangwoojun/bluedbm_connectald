@@ -1,16 +1,17 @@
-CONNECTALDIR=../../tools/xbsv/
+CONNECTALDIR=../../tools/connectal/
 
-S2H = FlashRequest StorageBridgeRequest
-H2S = FlashIndication StorageBridgeIndication
+CORE_SCRIPTS=$(shell realpath ../../core-scripts)
+
+INTERFACES = FlashRequest FlashIndication StorageBridgeRequest StorageBridgeIndication
 BSVFILES = Main.bsv Top.bsv \
 	../../xilinx/aurora_8b10b_fmc1/AuroraImportFmc1.bsv \
 	../../xilinx/aurora_64b66b/AuroraExtImport.bsv \
 	../../src/lib/AuroraCommon.bsv \
 	../../src/lib/PageCache.bsv
 CPPFILES=main.cpp flashinterface.cpp storagebridge.cpp
-#CONNECTALFLAGS=--bscflags " -D TRACE_AXI"
 
-CONNECTALFLAGS += -D IMPORT_HOSTIF -D PinType=Top_Pins --bscflags " -D DataBusWidth=128 " --clib rt
+PIN_TYPE=Top_Pins
+CONNECTALFLAGS += -D DataBusWidth=128 -D IMPORT_HOSTIF --clib rt
 
 
 ifeq ($(BOARD), vc707)
@@ -46,12 +47,11 @@ AURORA_INTRA = $(CONNECTALDIR)/out/$(BOARD)/aurora_8b10b_fmc1/aurora_8b10b_fmc1_
 AURORA_EXTRA = $(CONNECTALDIR)/out/$(BOARD)/aurora_64b66b_X1Y24/aurora_64b66b_X1Y24_stub.v
 prebuild:: $(AURORA_INTRA) $(AURORA_EXTRA)
 
-$(AURORA_INTRA): core-scripts/synth-aurora-intra.tcl
-	(cd $(BOARD); vivado -mode batch -source ../core-scripts/synth-aurora-intra.tcl)
-$(AURORA_EXTRA): core-scripts/synth-aurora-ext.tcl
-	(cd $(BOARD); vivado -mode batch -source ../core-scripts/synth-aurora-ext.tcl)
+$(AURORA_INTRA):
+	(cd $(BOARD); mkdir -p Cache; BUILDCACHE_CACHEDIR=Cache$(BUILDCACHE) vivado -mode batch -source $(CORE_SCRIPTS)/synth-aurora-intra.tcl)
+$(AURORA_EXTRA):
+	(cd $(BOARD); mkdir -p Cache; BUILDCACHE_CACHEDIR=Cache $(BUILDCACHE) vivado -mode batch -source $(CORE_SCRIPTS)/synth-aurora-ext.tcl)
 	find $(CONNECTALDIR)/out/$(BOARD)/ -name "aurora_64b66b_X1Y??_wrapper.v" -exec sed -i "s/GT0_txdiffctrl_in[ \t]\+([4'b10]\+),/GT0_txdiffctrl_in (4'b1100),/g" '{}' \;
-	
 endif
 
 include $(CONNECTALDIR)/Makefile.connectal

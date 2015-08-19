@@ -66,11 +66,11 @@ int main(int argc, const char **argv)
 	  myid = strtoul(userhostid, NULL, 0);
 	}
 
-	MemServerRequestProxy *hostMemServerRequest = new MemServerRequestProxy(IfcNames_HostMemServerRequest);
-	MMURequestProxy *dmap = new MMURequestProxy(IfcNames_HostMMURequest);
+	MemServerRequestProxy *hostMemServerRequest = new MemServerRequestProxy(HostMemServerRequestPortal);
+	MMURequestProxy *dmap = new MMURequestProxy(HostMMURequestPortal);
 	DmaManager *dma = new DmaManager(dmap);
-	MemServerIndication *hostMemServerIndication = new MemServerIndication(hostMemServerRequest, IfcNames_HostMemServerIndication);
-	MMUIndication *hostMMUIndication = new MMUIndication(dma, IfcNames_HostMMUIndication);
+	MemServerIndication hostMemServerIndication(hostMemServerRequest, HostMemServerIndicationPortal);
+	MMUIndication hostMMUIndication(dma, HostMMUIndicationPortal);
 
 
 	fprintf(stderr, "Main::allocating memory...\n");
@@ -78,9 +78,6 @@ int main(int argc, const char **argv)
 	interface_init();
 
 	printf( "Done initializing hw interfaces\n" ); fflush(stdout);
-
-	portalExec_start();
-	printf( "Done portalExec_start\n" ); fflush(stdout);
 
 	interface_alloc(dma);
 	

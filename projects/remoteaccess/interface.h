@@ -1,5 +1,5 @@
-#ifndef __FLASH_INTERFACE_H__
-#define __FLASH_INTERFACE_H__
+#ifndef __GENERAL_INTERFACE_H__
+#define __GENERAL_INTERFACE_H__
 
 #include <stdio.h>
 #include <sys/mman.h>

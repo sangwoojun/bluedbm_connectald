@@ -93,7 +93,7 @@ void local_test(bool check, int read_repeat, int debug_lvl ) {
 				int freeTag = waitIdleWriteBuffer();
 				if (g_checkdata) {
 					//fill write memory only if we're doing readback checks
-					for (int w=0; w<PAGE_SIZE/sizeof(unsigned int); w++) {
+					for (unsigned int w=0; w<PAGE_SIZE/sizeof(unsigned int); w++) {
 						writeBuffers[freeTag][w] = hashAddrToData(node, bus, chip, blk, w);
 					}
 				}
@@ -142,7 +142,7 @@ void local_test(bool check, int read_repeat, int debug_lvl ) {
 	sleep(1);
 
 	for ( int t = 0; t < NUM_TAGS; t++ ) {
-		for ( int i = 0; i < PAGE_SIZE/sizeof(unsigned int); i++ ) {
+		for ( unsigned int i = 0; i < PAGE_SIZE/sizeof(unsigned int); i++ ) {
 			LOG(1, "%x %x %x\n", t, i, readBuffers[t][i] );
 		}
 	}
@@ -227,7 +227,7 @@ void one_to_many_test(bool check, int read_repeat, int debug_lvl, int accessNode
 					int freeTag = waitIdleWriteBuffer();
 					if (g_checkdata) {
 						//fill write memory only if we're doing readback checks
-						for (int w=0; w<PAGE_SIZE/sizeof(unsigned int); w++) {
+						for (unsigned int w=0; w<PAGE_SIZE/sizeof(unsigned int); w++) {
 							writeBuffers[freeTag][w] = hashAddrToData(node, bus, chip, blk, w);
 						}
 					}
@@ -279,7 +279,7 @@ void one_to_many_test(bool check, int read_repeat, int debug_lvl, int accessNode
 	sleep(1);
 
 	for ( int t = 0; t < NUM_TAGS; t++ ) {
-		for ( int i = 0; i < PAGE_SIZE/sizeof(unsigned int); i++ ) {
+		for ( unsigned int i = 0; i < PAGE_SIZE/sizeof(unsigned int); i++ ) {
 			LOG(1, "%x %x %x\n", t, i, readBuffers[t][i] );
 		}
 	}
@@ -365,7 +365,7 @@ void many_to_many_test(bool check, int test_repeat, int read_repeat, int debug_l
 						int freeTag = waitIdleWriteBuffer();
 						if (g_checkdata) {
 							//fill write memory only if we're doing readback checks
-							for (int w=0; w<PAGE_SIZE/sizeof(unsigned int); w++) {
+							for (unsigned int w=0; w<PAGE_SIZE/sizeof(unsigned int); w++) {
 								writeBuffers[freeTag][w] = hashAddrToData(node, bus, chip, blk, w);
 							}
 						}
@@ -419,7 +419,7 @@ void many_to_many_test(bool check, int test_repeat, int read_repeat, int debug_l
 	sleep(1);
 
 	for ( int t = 0; t < NUM_TAGS; t++ ) {
-		for ( int i = 0; i < PAGE_SIZE/sizeof(unsigned int); i++ ) {
+		for ( unsigned int i = 0; i < PAGE_SIZE/sizeof(unsigned int); i++ ) {
 			LOG(1, "%x %x %x\n", t, i, readBuffers[t][i] );
 		}
 	}
@@ -471,12 +471,10 @@ int main(int argc, const char **argv)
 	device->debugDumpReq(0);
 	sleep(1);
 
-	char str[10];
-
 	//void local_test(bool check, int read_repeat, int debug_lvl )
 	local_test(true, 1, 5);
 	LOG(0, "Press any key to continue..\n");
-	gets(str);
+	//gets(str);
 
 	/*
 	//void one_to_many_test(bool check, int read_repeat, int debug_lvl, int accessNode)
